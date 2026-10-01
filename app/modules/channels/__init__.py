@@ -1,0 +1,1 @@
+"""Study channel domain."""
