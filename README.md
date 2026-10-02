@@ -49,11 +49,21 @@ uvicorn app.main:app --reload
 
 Set `DATABASE_URL` in `.env` to a PostgreSQL connection string for local development.
 The default uses a local SQLite file. Apply schema changes with `alembic upgrade head`.
+Set `AUTH_TOKEN_SECRET` to a unique random value of at least 32 bytes before using
+login; `.env.example` includes a command for generating one. Access tokens expire
+after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
 
 ## Current API
 
 - `GET /health` — process health check.
+- `POST /auth/register` — create a student account with a validated email and scrypt-hashed password.
+- `POST /auth/token` — exchange a username/email and password for a signed bearer token.
+- `GET /auth/me` — return the authenticated account profile; requires a valid bearer token.
 - `GET /docs` — interactive API documentation.
+
+Role checks are provided by the accounts module for protected feature routers. Newly
+registered accounts receive the seeded `student` role; clients cannot choose a role
+at registration. Apply database migrations before registering users.
 
 Functional endpoints will be added in the corresponding modules as their stories are
 implemented. See `docs/architecture.md` for current boundaries and schema scope.

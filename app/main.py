@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 
 from app.core.config import settings
+from app.modules.accounts.router import router as accounts_router
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
+app.include_router(accounts_router)
 
 
 @app.get("/health", tags=["operations"])

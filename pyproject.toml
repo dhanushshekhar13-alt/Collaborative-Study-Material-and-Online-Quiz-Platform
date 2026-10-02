@@ -9,6 +9,7 @@ description = "Modular API for a collaborative study material and quiz platform"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.13,<2",
+  "email-validator>=2.2,<3",
   "fastapi>=0.115,<1",
   "psycopg[binary]>=3.2,<4",
   "pydantic-settings>=2.6,<3",
