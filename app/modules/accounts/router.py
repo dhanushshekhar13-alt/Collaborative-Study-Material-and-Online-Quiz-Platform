@@ -4,7 +4,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.modules.accounts.models import Role, User
-from app.modules.accounts.schemas import LoginRequest, RegistrationRequest, TokenResponse, UserProfile
+from app.modules.accounts.schemas import (
+    LoginRequest,
+    RegistrationRequest,
+    TokenResponse,
+    UserProfile,
+)
 from app.modules.accounts.security import (
     create_access_token,
     get_current_user,
