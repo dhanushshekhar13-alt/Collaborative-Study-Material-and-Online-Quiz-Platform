@@ -7,6 +7,7 @@ from app.modules.accounts.models import Role, User
 from app.modules.accounts.schemas import (
     LoginRequest,
     RegistrationRequest,
+    RegistrationResponse,
     TokenResponse,
     UserProfile,
 )
@@ -21,8 +22,14 @@ from app.modules.accounts.security import (
 router = APIRouter(prefix="/auth", tags=["accounts"])
 
 
-@router.post("/register", response_model=UserProfile, status_code=status.HTTP_201_CREATED)
-def register(payload: RegistrationRequest, db: Session = Depends(get_db)) -> User:
+@router.post(
+    "/register",
+    response_model=RegistrationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    payload: RegistrationRequest, db: Session = Depends(get_db)
+) -> RegistrationResponse:
     username = payload.username.strip()
     email = str(payload.email).strip().lower()
     duplicate = db.scalar(
@@ -60,7 +67,7 @@ def register(payload: RegistrationRequest, db: Session = Depends(get_db)) -> Use
             detail="A user with that username or email already exists",
         ) from exc
     db.refresh(user)
-    return user
+    return RegistrationResponse(message="Registration successful", user=user)
 
 
 @router.post("/token", response_model=TokenResponse)
