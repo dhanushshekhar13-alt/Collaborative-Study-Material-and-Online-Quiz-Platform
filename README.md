@@ -56,7 +56,7 @@ after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
 ## Current API
 
 - `GET /health` — process health check.
-- `POST /auth/register` — create a student account with a validated email and scrypt-hashed password.
+- `POST /auth/register` — create a student account with a validated email and scrypt-hashed password. Success returns a `Registration successful` message and the new profile; invalid email returns `Enter a valid email address`.
 - `POST /auth/token` — exchange a username/email and password for a signed bearer token.
 - `GET /auth/me` — return the authenticated account profile; requires a valid bearer token.
 - `GET /docs` — interactive API documentation.
