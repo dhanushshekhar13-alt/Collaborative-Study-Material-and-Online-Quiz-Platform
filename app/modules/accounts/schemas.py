@@ -1,4 +1,6 @@
+from email_validator import EmailNotValidError, validate_email
 from pydantic import AliasPath, BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 
 class RegistrationRequest(BaseModel):
@@ -6,6 +8,18 @@ class RegistrationRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=12, max_length=128)
     display_name: str = Field(min_length=1, max_length=120)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email_format(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        try:
+            return validate_email(value, check_deliverability=False).normalized
+        except EmailNotValidError as exc:
+            raise PydanticCustomError(
+                "email_format", "Enter a valid email address"
+            ) from exc
 
     @field_validator("username", "display_name", mode="before")
     @classmethod
@@ -32,6 +46,11 @@ class UserProfile(BaseModel):
     display_name: str
     bio: str | None
     role: str = Field(validation_alias=AliasPath("role", "name"))
+
+
+class RegistrationResponse(BaseModel):
+    message: str = "Registration successful"
+    user: UserProfile
 
 
 class TokenResponse(BaseModel):
