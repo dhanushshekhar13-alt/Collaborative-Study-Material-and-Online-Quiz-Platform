@@ -56,9 +56,15 @@ after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
 ## Current API
 
 - `GET /health` — process health check.
-- `POST /auth/register` — create a student account with a validated email and scrypt-hashed password. Success returns a `Registration successful` message and the new profile; invalid email returns `Enter a valid email address`.
+- `POST /auth/register` — create a student account with a validated email and scrypt-hashed
+  password. Success returns a `Registration successful` message and the new profile;
+  invalid email returns `Enter a valid email address`.
 - `POST /auth/token` — exchange a username/email and password for a signed bearer token.
 - `GET /auth/me` — return the authenticated account profile; requires a valid bearer token.
+- `POST /channels` — create a Normal channel and automatically join its creator. Creating
+  an Authorized channel requires an `authorized_user` or `admin` role.
+- `GET /channels?query=...` — search channel names and subjects; requires authentication
+  and returns the channel type for each result.
 - `GET /docs` — interactive API documentation.
 
 Role checks are provided by the accounts module for protected feature routers. Newly
