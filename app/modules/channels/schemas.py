@@ -32,3 +32,11 @@ class ChannelView(BaseModel):
     channel_type: ChannelType
     created_by_id: int
     created_at: datetime
+
+
+class ChannelMembershipView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    channel_id: int
+    user_id: int
+    joined_at: datetime
