@@ -65,6 +65,10 @@ after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
   an Authorized channel requires an `authorized_user` or `admin` role.
 - `GET /channels?query=...` — search channel names and subjects; requires authentication
   and returns the channel type for each result.
+- `GET /channels/mine` — list channels the authenticated user has joined.
+- `POST /channels/{channel_id}/memberships` — join a channel; repeating the request is safe.
+- `DELETE /channels/{channel_id}/memberships/me` — leave a channel and remove the user's
+  membership record.
 - `GET /docs` — interactive API documentation.
 
 Role checks are provided by the accounts module for protected feature routers. Newly
