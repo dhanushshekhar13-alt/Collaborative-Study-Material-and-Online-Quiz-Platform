@@ -40,3 +40,10 @@ class ChannelMembershipView(BaseModel):
     channel_id: int
     user_id: int
     joined_at: datetime
+
+
+class ChannelMemberView(BaseModel):
+    user_id: int
+    username: str
+    display_name: str
+    joined_at: datetime
