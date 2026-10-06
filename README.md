@@ -1,26 +1,27 @@
 # Collaborative Study Material and Online Quiz Platform
 
-This repository is the six-week implementation of the requirements in `Documents/`.
+This repository implements the requirements in `Documents/` against the revised
+three-sprint delivery deadline of 30 October 2026.
 The first increment establishes a modular API and a PostgreSQL-backed data model.
 
 ## Delivery plan
 
-The GitHub Project tracks the six-week delivery in three two-week iterations. Each
-week ends with a reviewable pull request and a board update; issues are closed only
-when their acceptance criteria are met and the change is merged.
+The GitHub Project tracks three one-week iterations. Each sprint ends with a reviewable
+pull request and a board update; issues are closed only when their acceptance criteria
+are met and the change is merged.
 
-| Week | Iteration | Planned focus |
+| Sprint | Dates | Planned focus |
 | --- | --- | --- |
-| 1 | Sprint 1 | Repository foundation, API boundaries, initial data model, CI |
-| 2 | Sprint 1 | Accounts, authentication, profiles, channels and memberships |
-| 3 | Sprint 2 | Study material sharing, discovery, ratings and reports |
-| 4 | Sprint 2 | Question bank, quiz authoring, attempts and deterministic scoring |
-| 5 | Sprint 3 | LLM-assisted learning, chat, analytics and recommendations |
-| 6 | Sprint 3 | Moderation, notifications, hardening and acceptance review |
+| 1 | 12-16 Oct | Foundation and core access MVP: repository/data model, account access, channel discovery and membership |
+| 2 | 19-23 Oct | Shared study-material MVP: publishing, discovery, ratings and reports |
+| 3 | 26-30 Oct | Quiz MVP: question bank, authoring, attempts, scoring, acceptance review and freeze |
 
-This is a plan, not a claim that work is complete. Sprint and issue status should be
-updated as work is actually reviewed and merged. The remaining backlog stays visible
-for prioritization after this six-week delivery.
+Backlog refinement and story-point estimation are due by 12 Oct. The submitted
+deliverables schedule calls 12-16 Oct an optional dry-run week, then specifies Sprint 1
+for 19-23 Oct and Sprint 2 for 26-30 Oct. To retain three sprints, this plan uses the
+optional week as a real Sprint 1; document this schedule deviation in the final demo.
+This is a timeboxed MVP plan, not a claim that every backlog issue will be completed.
+Issues that do not fit remain prioritized follow-on work after the 30 Oct freeze.
 
 ## Stack and architecture
 
@@ -69,6 +70,10 @@ after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
 - `POST /channels/{channel_id}/memberships` — join a channel; repeating the request is safe.
 - `DELETE /channels/{channel_id}/memberships/me` — leave a channel and remove the user's
   membership record.
+- `GET /channels/{channel_id}/members` — list members for a joined user, creator, moderator
+  or admin.
+- `DELETE /channels/{channel_id}/members/{member_id}` — creator, moderator or admin removes
+  a member; clients should ask for confirmation before sending this request.
 - `GET /docs` — interactive API documentation.
 
 Role checks are provided by the accounts module for protected feature routers. Newly
