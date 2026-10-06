@@ -6,19 +6,19 @@ The first increment establishes a modular API and a PostgreSQL-backed data model
 
 ## Delivery plan
 
-The GitHub Project tracks three one-week iterations. Each sprint ends with a reviewable
+The proposed delivery plan uses three one-week iterations. Mirror these dates in the GitHub Project settings before Sprint 1 begins. Each sprint ends with a reviewable
 pull request and a board update; issues are closed only when their acceptance criteria
 are met and the change is merged.
 
 | Sprint | Dates | Planned focus |
 | --- | --- | --- |
-| 1 | 12-16 Oct | Foundation and core access MVP: repository/data model, account access, channel discovery and membership |
-| 2 | 19-23 Oct | Shared study-material MVP: publishing, discovery, ratings and reports |
-| 3 | 26-30 Oct | Quiz MVP: question bank, authoring, attempts, scoring, acceptance review and freeze |
+| 1 | 12–16 Oct | Foundation and core access MVP: repository/data model, account access, channel discovery and membership |
+| 2 | 19–23 Oct | Shared study-material MVP: publishing, discovery, ratings and reports |
+| 3 | 26–30 Oct | Quiz MVP: question bank, authoring, attempts, scoring, acceptance review and freeze |
 
 Backlog refinement and story-point estimation are due by 12 Oct. The submitted
-deliverables schedule calls 12-16 Oct an optional dry-run week, then specifies Sprint 1
-for 19-23 Oct and Sprint 2 for 26-30 Oct. To retain three sprints, this plan uses the
+deliverables schedule calls 12–16 Oct an optional dry-run week, then specifies Sprint 1
+for 19–23 Oct and Sprint 2 for 26–30 Oct. To retain three sprints, this plan uses the
 optional week as a real Sprint 1; document this schedule deviation in the final demo.
 This is a timeboxed MVP plan, not a claim that every backlog issue will be completed.
 Issues that do not fit remain prioritized follow-on work after the 30 Oct freeze.
