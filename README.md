@@ -66,6 +66,8 @@ after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
   an Authorized channel requires an `authorized_user` or `admin` role.
 - `GET /channels?query=...` — search channel names and subjects; requires authentication
   and returns the channel type for each result.
+- `GET /channels/{channel_id}` — return channel details to joined members, the creator,
+  moderators, or admins; a user who leaves or is removed receives `403`.
 - `GET /channels/mine` — list channels the authenticated user has joined.
 - `POST /channels/{channel_id}/memberships` — join a channel; repeating the request is safe.
 - `DELETE /channels/{channel_id}/memberships/me` — leave a channel and remove the user's
