@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.accounts.models import User
 from app.modules.accounts.security import get_current_user, get_db
+from app.modules.channels.access import require_channel_access
 from app.modules.channels.models import Channel, ChannelMembership, ChannelType
 from app.modules.channels.schemas import (
     ChannelCreate,
@@ -77,6 +78,12 @@ def list_my_channels(
     return list(db.scalars(statement).all())
 
 
+@router.get("/{channel_id}", response_model=ChannelView)
+def get_channel(channel: Channel = Depends(require_channel_access)) -> Channel:
+    """Return channel details only to users allowed to access that channel."""
+    return channel
+
+
 @router.post(
     "/{channel_id}/memberships",
     response_model=ChannelMembershipView,
@@ -144,26 +151,8 @@ def leave_channel(
 def list_channel_members(
     channel_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    _channel: Channel = Depends(require_channel_access),
 ) -> list[ChannelMemberView]:
-    channel = db.get(Channel, channel_id)
-    if channel is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Channel not found")
-
-    is_moderator = user.role.name in {"moderator", "admin"}
-    is_creator = channel.created_by_id == user.id
-    is_member = db.scalar(
-        select(ChannelMembership.id).where(
-            ChannelMembership.channel_id == channel_id,
-            ChannelMembership.user_id == user.id,
-        )
-    ) is not None
-    if not (is_moderator or is_creator or is_member):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Join this channel to view its members",
-        )
-
     rows = db.execute(
         select(
             User.id,
