@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.modules.accounts.models import Role, User
 from app.modules.accounts.schemas import (
     LoginRequest,
+    ProfileUpdateRequest,
     RegistrationRequest,
     RegistrationResponse,
     TokenResponse,
@@ -92,4 +93,31 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 
 @router.get("/me", response_model=UserProfile)
 def read_current_user(user: User = Depends(get_current_user)) -> User:
+    return user
+
+
+@router.patch("/me", response_model=UserProfile)
+def update_current_user(
+    payload: ProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> User:
+    if not payload.model_fields_set:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide at least one profile field to update",
+        )
+
+    if "display_name" in payload.model_fields_set:
+        if payload.display_name is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Display name cannot be null",
+            )
+        user.display_name = payload.display_name
+    if "bio" in payload.model_fields_set:
+        user.bio = payload.bio
+
+    db.commit()
+    db.refresh(user)
     return user

@@ -9,8 +9,8 @@ from app.modules.channels.access import require_channel_access
 from app.modules.channels.models import Channel, ChannelMembership, ChannelType
 from app.modules.channels.schemas import (
     ChannelCreate,
-    ChannelMemberView,
     ChannelMembershipView,
+    ChannelMemberView,
     ChannelView,
 )
 
