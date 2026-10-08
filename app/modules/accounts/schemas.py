@@ -48,6 +48,18 @@ class UserProfile(BaseModel):
     role: str = Field(validation_alias=AliasPath("role", "name"))
 
 
+class ProfileUpdateRequest(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
+    bio: str | None = Field(default=None, max_length=500)
+
+    @field_validator("display_name", "bio", mode="before")
+    @classmethod
+    def strip_profile_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
 class RegistrationResponse(BaseModel):
     message: str = "Registration successful"
     user: UserProfile

@@ -62,6 +62,7 @@ after `ACCESS_TOKEN_EXPIRE_MINUTES` (30 by default).
   invalid email returns `Enter a valid email address`.
 - `POST /auth/token` — exchange a username/email and password for a signed bearer token.
 - `GET /auth/me` — return the authenticated account profile; requires a valid bearer token.
+- `PATCH /auth/me` — update the authenticated user's display name and/or bio; send `bio: null` to clear the bio.
 - `POST /channels` — create a Normal channel and automatically join its creator. Creating
   an Authorized channel requires an `authorized_user` or `admin` role.
 - `GET /channels?query=...` — search channel names and subjects; requires authentication
