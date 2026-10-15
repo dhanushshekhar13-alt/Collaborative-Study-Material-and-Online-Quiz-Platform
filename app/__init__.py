@@ -1,1 +1,0 @@
-"""Collaborative study platform API."""

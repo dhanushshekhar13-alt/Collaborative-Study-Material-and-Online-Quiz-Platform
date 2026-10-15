@@ -1,1 +1,0 @@
-"""Accounts and authorization domain."""
