@@ -43,3 +43,22 @@ the tests use `Pass@1234`.
 Migration `0002` (username) upgrades and downgrades cleanly and matches the models
 (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite database:
 UT_01, UT_02, IT_01, IT_02 and IT_28 behave as above, and seeded users sign in by email.
+
+## S02.1 (#20) — Channel creation and classification
+
+Test Plan cases are automated in `tests/test_channels.py` under their case IDs, run
+against the endpoints the UI (UI-1 #62) will call. Styling is delivered as a
+`type_style` key on every channel response; the visual treatment is part of UI-1.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_03` | A created channel is shown with a "Normal" tag; creator auto-added as member | `test_UT_03_student_creates_a_normal_channel_and_becomes_a_member` | Pass |
+| — | Channel name and subject or topic are required | `test_channel_name_is_required`, `test_subject_or_topic_is_required`, `test_a_topic_alone_is_enough` | Pass |
+| `UT_04` | Authorized rejected for a Student with "Only authorized users/admins can create Authorized Channels" | `test_UT_04_student_cannot_create_an_authorized_channel`, `test_UT_04_student_cannot_approve_an_authorized_channel` | Pass |
+| `UT_04` | The restriction is enforced server side | Same tests call the API directly, bypassing any UI | Pass |
+| `ST_27` | An admin can approve a pending Authorized Channel request; it becomes visible platform-wide | `test_ST_27_admin_approves_a_pending_channel_and_it_becomes_visible`, `test_a_decided_request_cannot_be_decided_again`, `test_channel_requests_are_admin_only` | Pass |
+| `ST_04` | Type label consistent in search results, channel lists and channel pages | `test_ST_04_type_label_is_consistent_across_list_search_and_page` | Pass |
+| `ST_04` | Authorized Channels carry distinct styling | `type_style` = `channel-authorized` vs `channel-normal`, asserted in the ST_04 test | Pass (API); visual styling in UI-1 |
+
+Manually verified on a migrated, seeded SQLite database: UT_03, UT_04, ST_27 and ST_04
+behave as above alongside the seeded channels.

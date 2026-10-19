@@ -23,7 +23,7 @@ public service interface keeps its promises (NFR-07).
 | Module | Requirements | Owns tables | May call |
 | --- | --- | --- | --- |
 | accounts | FR-01 | users | – |
-| channels | FR-02, FR-03 | channels, channel_memberships | – |
+| channels | FR-02, FR-03 | channels, channel_memberships | accounts |
 | materials | FR-04 | study_materials, material_reviews | – |
 | questions | FR-05, FR-07 | questions, question_ratings | – |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | questions |

@@ -1,8 +1,9 @@
 """Public interface of the channels module."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.channels.models import (
@@ -22,10 +23,41 @@ class ChannelSummary:
     approval_status: ApprovalStatus
     subject: str | None
     topic: str | None
+    description: str | None = None
+    created_by: int | None = None
+    created_at: datetime | None = None
+    member_count: int = 0
+
+    @property
+    def type_label(self) -> str:
+        """The label shown wherever the channel appears (S02.1, ST_04)."""
+        return "Authorized" if self.channel_type is ChannelType.AUTHORIZED else "Normal"
 
 
-def _summary(c: Channel) -> ChannelSummary:
-    return ChannelSummary(c.id, c.name, c.channel_type, c.approval_status, c.subject, c.topic)
+def _member_count(db: Session, channel_id: int) -> int:
+    return (
+        db.scalar(
+            select(func.count(ChannelMembership.id)).where(
+                ChannelMembership.channel_id == channel_id
+            )
+        )
+        or 0
+    )
+
+
+def _summary(c: Channel, member_count: int = 0) -> ChannelSummary:
+    return ChannelSummary(
+        c.id,
+        c.name,
+        c.channel_type,
+        c.approval_status,
+        c.subject,
+        c.topic,
+        c.description,
+        c.created_by,
+        c.created_at,
+        member_count,
+    )
 
 
 def create_channel(
@@ -94,3 +126,60 @@ def member_role(db: Session, channel_id: int, user_id: int) -> MemberRole | None
 
 def is_member(db: Session, channel_id: int, user_id: int) -> bool:
     return member_role(db, channel_id, user_id) is not None
+
+
+# --------------------------------------------------------------------------- #
+# S02.1 - creation, classification, discovery and approval
+# --------------------------------------------------------------------------- #
+
+
+def describe_channel(db: Session, channel_id: int) -> ChannelSummary | None:
+    """A channel with its member count, for channel pages and lists."""
+    channel = db.get(Channel, channel_id)
+    return _summary(channel, _member_count(db, channel.id)) if channel else None
+
+
+def is_visible_to(summary: ChannelSummary, viewer_id: int, viewer_is_admin: bool) -> bool:
+    """Approved channels are visible to everyone; a pending or rejected Authorized
+    Channel only to the person who requested it and to admins."""
+    if summary.approval_status is ApprovalStatus.APPROVED:
+        return True
+    return viewer_is_admin or summary.created_by == viewer_id
+
+
+def list_channels(
+    db: Session,
+    *,
+    viewer_id: int,
+    viewer_is_admin: bool,
+    query: str | None = None,
+    channel_type: ChannelType | None = None,
+) -> list[ChannelSummary]:
+    """Channels the viewer may see, optionally searched by name, subject or topic."""
+    statement = select(Channel).order_by(Channel.name, Channel.id)
+    if channel_type is not None:
+        statement = statement.where(Channel.channel_type == channel_type)
+    if query and query.strip():
+        needle = f"%{query.strip().lower()}%"
+        statement = statement.where(
+            or_(
+                func.lower(Channel.name).like(needle),
+                func.lower(Channel.subject).like(needle),
+                func.lower(Channel.topic).like(needle),
+            )
+        )
+    if not viewer_is_admin:
+        statement = statement.where(
+            or_(Channel.approval_status == ApprovalStatus.APPROVED, Channel.created_by == viewer_id)
+        )
+    return [_summary(c, _member_count(db, c.id)) for c in db.scalars(statement)]
+
+
+def pending_requests(db: Session) -> list[ChannelSummary]:
+    """Authorized Channel requests awaiting an admin decision, oldest first."""
+    statement = (
+        select(Channel)
+        .where(Channel.approval_status == ApprovalStatus.PENDING)
+        .order_by(Channel.created_at, Channel.id)
+    )
+    return [_summary(c, _member_count(db, c.id)) for c in db.scalars(statement)]

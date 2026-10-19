@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app import __version__
 from app.core.config import settings
 from app.modules.accounts.router import router as accounts_router
+from app.modules.channels.router import router as channels_router
 
 API_PREFIX = "/api/v1"
 
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "version": __version__}
 
     app.include_router(accounts_router, prefix=API_PREFIX)
+    app.include_router(channels_router, prefix=API_PREFIX)
 
     return app
 
