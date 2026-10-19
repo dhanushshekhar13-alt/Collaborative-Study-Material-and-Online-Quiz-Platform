@@ -34,6 +34,12 @@ public service interface keeps its promises (NFR-07).
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
 | notifications | FR-14 | notifications, notification_preferences | – |
 
+Routes that need a signed-in user or a permission use the guards exported by
+`app.modules.accounts.service` (`current_user`, `require_capability`,
+`require_roles`); see `app/modules/accounts/README.md`. A module adding its first
+guarded route adds `accounts` to its `ALLOWED_DEPENDENCIES` entry. That keeps the
+dependency graph honest: chat's guard on accounts gives quizzes no path to chat.
+
 Quiz scoring lives in `app/modules/quizzes/scoring.py` as pure functions. No module
 that quizzes depends on can reach chat, so a change to chat can never require a change
 to scoring (checked by `test_quiz_scoring_does_not_depend_on_chat` and

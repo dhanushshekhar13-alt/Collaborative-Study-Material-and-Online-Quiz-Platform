@@ -35,6 +35,17 @@ extend-exclude = ["alembic/versions"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI declares dependencies as argument defaults by design; B008 does not apply.
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.Header",
+  "fastapi.Path",
+  "fastapi.Query",
+  "app.modules.accounts.service.require_capability",
+  "app.modules.accounts.service.require_roles",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
