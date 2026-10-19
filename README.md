@@ -26,11 +26,14 @@ python -m venv .venv
 python -m pip install -e '.[dev]'
 cp .env.example .env
 alembic upgrade head
+python -m app.seed
 uvicorn app.main:app --reload
 ```
 
 The API is then at http://127.0.0.1:8000 and interactive docs at
-http://127.0.0.1:8000/docs. Run the checks CI runs with `ruff check . && pytest`.
+http://127.0.0.1:8000/docs. `python -m app.seed` loads one test user per role plus sample
+content; set `SEED_USER_PASSWORD` first or note the password it prints. Run the checks
+CI runs with `ruff check . && pytest`.
 
 ## Configuration
 
@@ -44,6 +47,7 @@ All settings come from environment variables or a git-ignored `.env` file (see
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, default 30 |
 | `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | LLM integration; `LLM_PROVIDER=none` disables it |
 | `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
+| `SEED_USER_PASSWORD` | Optional password for the seeded test users (local only) |
 
 ## Deployment
 
@@ -61,7 +65,8 @@ on port 8000.
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`:
-`ruff check`, `ruff format --check` and the `pytest` suite. The `lint-and-test` check
+`ruff check`, `ruff format --check` and the `pytest` suite, with migration tests run
+against a PostgreSQL 16 service as well as SQLite. The `lint-and-test` check
 is required before anything merges into `main`.
 
 ## Project layout
@@ -74,5 +79,6 @@ app/
 alembic/       database migrations
 tests/         unit and API tests
 Documents/     SRS, use cases, test plan, security requirements
-docs/          architecture notes, API contract and test execution log
+docs/          architecture.md, api/openapi-v1.json (API contract), test execution log
+scripts/       deploy.sh, export_openapi.py
 ```
