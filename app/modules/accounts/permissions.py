@@ -18,6 +18,7 @@ class Capability(enum.StrEnum):
     MATERIAL_RATE = "material:rate"
     CHANNEL_CREATE_NORMAL = "channel:create_normal"
     CHANNEL_CREATE_AUTHORIZED = "channel:create_authorized"
+    CHANNEL_APPROVE = "channel:approve"
     QUESTION_CONTRIBUTE = "question:contribute"
     QUIZ_ATTEMPT = "quiz:attempt"
     QUIZ_PUBLISH = "quiz:publish"
@@ -47,6 +48,7 @@ _AUTHORIZED_USER: frozenset[Capability] = _STUDENT | {
 }
 
 _ADMIN: frozenset[Capability] = _AUTHORIZED_USER | {
+    Capability.CHANNEL_APPROVE,
     Capability.REPORT_RESOLVE,
     Capability.USER_MANAGE,
 }

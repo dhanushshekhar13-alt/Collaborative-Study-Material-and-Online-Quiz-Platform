@@ -65,7 +65,7 @@ sign-in cannot be used to discover which accounts exist.
 | `question:contribute`, `quiz:attempt`, `quiz:publish` | ✓ | ✓ | ✓ |
 | `report:submit` | ✓ | ✓ | ✓ |
 | `channel:create_authorized`, `official_content:manage` | | ✓ | ✓ |
-| `report:resolve`, `user:manage` | | | ✓ |
+| `channel:approve`, `report:resolve`, `user:manage` | | | ✓ |
 
 Self-registration always produces a Student; a `role` in the request is ignored.
 

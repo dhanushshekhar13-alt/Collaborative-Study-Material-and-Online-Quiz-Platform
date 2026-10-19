@@ -9,7 +9,7 @@ Tables still reference each other through foreign keys, which needs no Python im
 
 ALLOWED_DEPENDENCIES: dict[str, set[str]] = {
     "accounts": set(),
-    "channels": set(),
+    "channels": {"accounts"},
     "materials": set(),
     "questions": set(),
     "quizzes": {"questions"},
