@@ -1,0 +1,35 @@
+# Production-like stack: API + PostgreSQL. Secrets come from the shell or a .env file.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: study_platform
+      POSTGRES_USER: study
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U study -d study_platform"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://study:${POSTGRES_PASSWORD}@db:5432/study_platform
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?set AUTH_TOKEN_SECRET in .env}
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  db-data:

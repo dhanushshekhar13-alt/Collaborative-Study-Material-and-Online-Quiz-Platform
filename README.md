@@ -1,0 +1,78 @@
+# Collaborative Study Material and Online Quiz Platform
+
+Backend API for the platform specified in `Documents/` (SRS, use cases, test plan and
+security requirements). Python 3.12, FastAPI, SQLAlchemy 2, Alembic and PostgreSQL
+(SQLite works for local development).
+
+## Delivery plan
+
+Two one-week sprints, tracked on the GitHub Project board:
+
+| Sprint | Dates | Focus |
+| --- | --- | --- |
+| 1 | 19–23 Oct | Foundation, accounts, channels, materials, question bank, quizzes, LLM generation |
+| 2 | 26–30 Oct | Chat, analytics, moderation, admin, notifications, web UI, hardening (NFRs) |
+
+Every story is delivered as one pull request that references its issue
+(`Closes #N`). `main` is protected: a pull request can only merge after CI passes.
+
+## Local setup
+
+```sh
+git clone https://github.com/dhanushshekhar13-alt/Collaborative-Study-Material-and-Online-Quiz-Platform.git
+cd Collaborative-Study-Material-and-Online-Quiz-Platform
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+cp .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+The API is then at http://127.0.0.1:8000 and interactive docs at
+http://127.0.0.1:8000/docs. Run the checks CI runs with `ruff check . && pytest`.
+
+## Configuration
+
+All settings come from environment variables or a git-ignored `.env` file (see
+`.env.example`). No secret has a default and none is committed:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | SQLAlchemy URL; SQLite locally, PostgreSQL in deployment |
+| `AUTH_TOKEN_SECRET` | Signing secret for access tokens (at least 32 bytes) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, default 30 |
+| `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | LLM integration; `LLM_PROVIDER=none` disables it |
+| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
+
+## Deployment
+
+On any host with Docker and a clone of this repository, create `.env` with
+`POSTGRES_PASSWORD` and `AUTH_TOKEN_SECRET` (plus the LLM variables if used), then run:
+
+```sh
+./scripts/deploy.sh
+```
+
+The script pulls the latest `main`, rebuilds the image, applies migrations on start-up
+and restarts the API and PostgreSQL containers (`docker-compose.yml`). The API listens
+on port 8000.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`:
+`ruff check`, `ruff format --check` and the `pytest` suite. The `lint-and-test` check
+is required before anything merges into `main`.
+
+## Project layout
+
+```text
+app/
+  core/        configuration and database session
+  modules/     one package per product area (models, service interface, routes)
+  main.py      application factory and router registration
+alembic/       database migrations
+tests/         unit and API tests
+Documents/     SRS, use cases, test plan, security requirements
+docs/          architecture notes, API contract and test execution log
+```
