@@ -8,6 +8,18 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Migration tests also run against PostgreSQL, the deployment database.
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres:ci-only@localhost:5432/ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
