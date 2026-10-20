@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -65,3 +66,25 @@ class MaterialReview(CreatedAtMixin, Base):
     rating: Mapped[int] = mapped_column(Integer)
     review: Mapped[str | None] = mapped_column(Text)
     is_helpful: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+
+
+class MaterialFile(Base):
+    """The uploaded file behind a study material (S04.1), at most one per material.
+
+    Kept in the database, like profile pictures, so every API instance serves the same
+    file and nothing is lost on redeploy without a shared volume. Uploads are capped by
+    ``settings.material_max_upload_mb``. ``data`` is deferred so listings never load it.
+    """
+
+    __tablename__ = "material_files"
+    __table_args__ = (CheckConstraint("size_bytes > 0", name="ck_material_file_size"),)
+
+    material_id: Mapped[int] = mapped_column(
+        ForeignKey("study_materials.id", ondelete="CASCADE"), primary_key=True
+    )
+    filename: Mapped[str] = mapped_column(String(255))
+    # Decided from the file's extension and checked against its bytes, never taken
+    # from the client's Content-Type.
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)

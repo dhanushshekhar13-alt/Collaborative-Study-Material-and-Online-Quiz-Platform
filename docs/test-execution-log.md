@@ -124,3 +124,25 @@ against the endpoints the UI (UI-2 #63) will call. A report's "Incorrect answer"
 No schema change: `questions`, `question_ratings` and `reports` already exist (migration
 `0001`). Unreviewed LLM drafts stay out of the bank
 (`test_unreviewed_llm_drafts_stay_out_of_the_bank`).
+
+## S04.1 (#22) — Upload, search and download study materials
+
+Test Plan cases are automated in `tests/test_materials.py` under their case IDs, run
+against the endpoints the UI (UI-2 #63) will call. The NFR-01 target for this path is
+written down as: search or filter answers within 1 second with 1,000 materials.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_07` | A fully tagged upload succeeds and appears in the subject and topic listing with all tags shown | `test_UT_07_tagged_upload_succeeds_and_is_listed_with_all_tags` | Pass |
+| `UT_08` | Upload blocked with "Subject is required" when a mandatory field is blank | `test_UT_08_blank_subject_blocks_the_upload`, `test_every_mandatory_tag_is_required` | Pass |
+| — | Supported file types and a maximum size are enforced | `test_supported_file_types_are_accepted`, `test_unsupported_file_types_are_refused`, `test_a_renamed_file_is_refused_by_its_contents`, `test_a_file_over_the_size_limit_is_refused` | Pass |
+| `IT_07` | Filtering by subject and topic returns only materials matching both | `test_IT_07_subject_and_topic_return_only_materials_matching_both`, `test_filters_ignore_case_and_surrounding_spaces` | Pass |
+| — | An empty result set shows a helpful empty state | `test_an_empty_result_carries_a_helpful_empty_state` | Pass |
+| — | Search and filter complete within the agreed response-time target (NFR-01) | `test_search_and_filter_stay_inside_the_response_time_target` | Pass |
+| `IT_08` | Material preview loads correctly | `test_IT_08_a_peer_material_previews_and_downloads`, `test_non_previewable_files_download_but_do_not_preview` | Pass |
+| `IT_08` | The file downloads successfully to the device | `test_IT_08_a_peer_material_previews_and_downloads`, `test_unicode_file_names_download_under_their_name` | Pass |
+| — | Access respects channel membership where the material is channel-scoped | `test_channel_materials_are_for_members_only`, `test_joining_opens_channel_materials_and_leaving_closes_them`, `test_only_members_can_upload_to_a_channel` | Pass |
+
+Migration `0004` (material files) upgrades and downgrades cleanly and matches the
+models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
+database: UT_07, UT_08, IT_07 and IT_08 behave as above alongside the seeded materials.
