@@ -38,6 +38,20 @@ def file_report(
     return report.id
 
 
+def find_open_report(
+    db: Session, *, reporter_id: int, target_type: ReportTarget, target_id: int
+) -> int | None:
+    """The reporter's still-open report on this target, if any (avoids duplicates)."""
+    return db.scalar(
+        select(Report.id).where(
+            Report.reporter_id == reporter_id,
+            Report.target_type == target_type,
+            Report.target_id == target_id,
+            Report.status == ReportStatus.OPEN,
+        )
+    )
+
+
 def open_reports(db: Session, channel_id: int | None = None) -> list[int]:
     stmt = select(Report.id).where(Report.status == ReportStatus.OPEN)
     if channel_id is not None:

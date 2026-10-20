@@ -82,3 +82,22 @@ models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQL
 database with uvicorn: ST_01 via curl (bio and `profile2.jpg` intact after a second
 login, picture served as `image/jpeg`), a 3 MB upload refused with the 2 MB message,
 and the seeded student's profile shows its one material and 5 reputation points.
+
+## S05.1 (#24) — Question bank contribution and discovery
+
+Test Plan cases are automated in `tests/test_questions.py` under their case IDs, run
+against the endpoints the UI (UI-2 #63) will call. A report's "Incorrect answer" is the
+`incorrect` reason of the moderation module's report.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_09` | A fully specified question is saved with all tags and appears in the bank list | `test_UT_09_question_is_saved_with_all_tags_and_appears_in_the_bank`, `test_every_question_type_can_be_contributed`, `test_text_and_tags_are_required`, `test_difficulty_and_type_tags_are_required` | Pass |
+| `UT_10` | Submission blocked with "Please select the correct answer" when no correct answer is chosen | `test_UT_10_submission_without_a_correct_answer_is_blocked`, `test_UT_10_every_question_type_needs_a_correct_answer`, `test_correct_answer_must_be_one_of_the_options` | Pass |
+| — | The question can be scoped to a channel bank or the general bank | `test_question_can_be_scoped_to_a_channel_bank`, `test_question_without_a_channel_goes_to_the_general_bank`, `test_only_channel_members_can_add_to_a_channel_bank`, `test_a_hidden_channel_bank_is_not_revealed` | Pass |
+| `IT_09` | A keyword search returns matching questions | `test_IT_09_search_rate_and_report` (step 1), `test_keyword_search_ignores_case_and_matches_tags`, `test_search_filters_by_tags` | Pass |
+| `IT_09` | A rating is saved against the question | `test_IT_09_search_rate_and_report` (steps 2–3), `test_rating_again_replaces_the_earlier_rating`, `test_rating_must_be_one_to_five_stars` | Pass |
+| `IT_09` | A report such as "Incorrect answer" is logged for moderation | `test_IT_09_search_rate_and_report` (step 4), `test_reporting_twice_does_not_file_a_duplicate`, `test_a_channel_question_report_is_scoped_to_its_channel` | Pass |
+
+No schema change: `questions`, `question_ratings` and `reports` already exist (migration
+`0001`). Unreviewed LLM drafts stay out of the bank
+(`test_unreviewed_llm_drafts_stay_out_of_the_bank`).

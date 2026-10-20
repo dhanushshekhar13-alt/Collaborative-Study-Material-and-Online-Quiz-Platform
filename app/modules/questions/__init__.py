@@ -2,5 +2,6 @@
 
 Owns tables: questions, question_ratings.
 Public interface: ``app.modules.questions.service``.
-May call the services of: none.
+May call the services of: accounts (route guards), channels (bank scope and
+membership), moderation (question reports).
 """

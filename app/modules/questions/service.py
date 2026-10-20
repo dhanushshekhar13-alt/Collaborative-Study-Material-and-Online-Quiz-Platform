@@ -8,12 +8,13 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.questions.models import (
     Difficulty,
     Question,
+    QuestionRating,
     QuestionSource,
     QuestionStatus,
     QuestionType,
@@ -156,3 +157,142 @@ def recent_authored_by(db: Session, user_id: int, limit: int = 10) -> list[Quest
 def _headline(text: str, limit: int = 80) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"
+
+
+# --------------------------------------------------------------------------- #
+# S05.1 - question bank contribution and discovery
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class BankQuestion:
+    """A question as the bank presents it: content, scope, provenance and ratings."""
+
+    question: QuestionView
+    channel_id: int | None
+    author_id: int
+    source: QuestionSource
+    status: QuestionStatus
+    created_at: datetime | None
+    rating_average: float | None
+    rating_count: int
+    my_rating: int | None = None
+
+
+def _ratings(db: Session, ids: list[int]) -> dict[int, tuple[float, int]]:
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(
+            QuestionRating.question_id,
+            func.avg(QuestionRating.rating),
+            func.count(QuestionRating.id),
+        )
+        .where(QuestionRating.question_id.in_(ids))
+        .group_by(QuestionRating.question_id)
+    )
+    return {qid: (round(float(avg), 2), int(count)) for qid, avg, count in rows}
+
+
+def _my_ratings(db: Session, ids: list[int], user_id: int | None) -> dict[int, int]:
+    if not ids or user_id is None:
+        return {}
+    rows = db.execute(
+        select(QuestionRating.question_id, QuestionRating.rating).where(
+            QuestionRating.question_id.in_(ids), QuestionRating.user_id == user_id
+        )
+    )
+    return dict(rows.tuples().all())
+
+
+def _bank(db: Session, rows: list[Question], viewer_id: int | None) -> list[BankQuestion]:
+    ids = [q.id for q in rows]
+    ratings, mine = _ratings(db, ids), _my_ratings(db, ids, viewer_id)
+    return [
+        BankQuestion(
+            question=_view(q),
+            channel_id=q.channel_id,
+            author_id=q.author_id,
+            source=q.source,
+            status=q.status,
+            created_at=q.created_at,
+            rating_average=ratings.get(q.id, (None, 0))[0],
+            rating_count=ratings.get(q.id, (None, 0))[1],
+            my_rating=mine.get(q.id),
+        )
+        for q in rows
+    ]
+
+
+def get_bank_question(
+    db: Session, question_id: int, viewer_id: int | None = None
+) -> BankQuestion | None:
+    """One question with its rating summary, whatever its status (callers check access)."""
+    q = db.get(Question, question_id)
+    return _bank(db, [q], viewer_id)[0] if q else None
+
+
+def search_bank(
+    db: Session,
+    *,
+    keyword: str | None = None,
+    subject: str | None = None,
+    topic: str | None = None,
+    difficulty: Difficulty | None = None,
+    question_type: QuestionType | None = None,
+    channel_id: int | None = None,
+    viewer_id: int | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[BankQuestion]:
+    """Published questions in one bank, newest first.
+
+    ``channel_id=None`` searches the general bank; otherwise that channel's bank. The
+    keyword matches the question text, subject, topic or explanation, ignoring case;
+    subject and topic filters match whole values, ignoring case.
+    """
+    stmt = select(Question).where(Question.status == QuestionStatus.PUBLISHED)
+    if channel_id is None:
+        stmt = stmt.where(Question.channel_id.is_(None))
+    else:
+        stmt = stmt.where(Question.channel_id == channel_id)
+    if keyword and keyword.strip():
+        needle = f"%{keyword.strip().lower()}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(Question.text).like(needle),
+                func.lower(Question.subject).like(needle),
+                func.lower(Question.topic).like(needle),
+                func.lower(Question.explanation).like(needle),
+            )
+        )
+    if subject and subject.strip():
+        stmt = stmt.where(func.lower(Question.subject) == subject.strip().lower())
+    if topic and topic.strip():
+        stmt = stmt.where(func.lower(Question.topic) == topic.strip().lower())
+    if difficulty is not None:
+        stmt = stmt.where(Question.difficulty == difficulty)
+    if question_type is not None:
+        stmt = stmt.where(Question.question_type == question_type)
+    stmt = stmt.order_by(Question.created_at.desc(), Question.id.desc())
+    rows = list(db.scalars(stmt.offset(offset).limit(limit)))
+    return _bank(db, rows, viewer_id)
+
+
+def rate_question(db: Session, question_id: int, user_id: int, rating: int) -> BankQuestion:
+    """Save the user's 1-5 rating; rating again replaces their earlier rating."""
+    if not 1 <= rating <= 5:
+        raise ValueError("rating must be between 1 and 5")
+    if db.get(Question, question_id) is None:
+        raise LookupError(f"question {question_id} not found")
+    existing = db.scalar(
+        select(QuestionRating).where(
+            QuestionRating.question_id == question_id, QuestionRating.user_id == user_id
+        )
+    )
+    if existing is None:
+        db.add(QuestionRating(question_id=question_id, user_id=user_id, rating=rating))
+    else:
+        existing.rating = rating
+    db.flush()
+    return get_bank_question(db, question_id, user_id)
