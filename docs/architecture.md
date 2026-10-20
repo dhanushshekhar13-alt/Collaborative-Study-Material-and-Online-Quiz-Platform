@@ -24,7 +24,7 @@ public service interface keeps its promises (NFR-07).
 | --- | --- | --- | --- |
 | accounts | FR-01 | users, profile_pictures | – |
 | channels | FR-02, FR-03 | channels, channel_memberships | accounts |
-| materials | FR-04 | study_materials, material_reviews | – |
+| materials | FR-04 | study_materials, material_files, material_reviews | accounts, channels |
 | questions | FR-05, FR-07 | questions, question_ratings | accounts, channels, moderation |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | questions |
 | llm | FR-07, FR-08, FR-09 | llm_requests | questions, quizzes |
@@ -59,6 +59,7 @@ erDiagram
   users ||--o{ channels : creates
   channels ||--o{ study_materials : contains
   study_materials ||--o{ material_reviews : rated_by
+  study_materials ||--o| material_files : stores
   channels ||--o{ questions : contains
   questions ||--o{ question_ratings : rated_by
   channels ||--o{ quizzes : contains

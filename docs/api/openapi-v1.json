@@ -92,6 +92,119 @@
         "title": "BadgeResponse",
         "type": "object"
       },
+      "Body_upload_material_api_v1_materials_post": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PDF, Word, PowerPoint, text, PNG or JPEG",
+            "title": "File"
+          },
+          "material_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Type"
+          },
+          "semester": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semester"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "Body_upload_material_api_v1_materials_post",
+        "type": "object"
+      },
       "Body_upload_my_picture_api_v1_profiles_me_picture_put": {
         "properties": {
           "file": {
@@ -405,6 +518,265 @@
         ],
         "title": "LoginRequest",
         "type": "object"
+      },
+      "MaterialFileResponse": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "previewable": {
+            "title": "Previewable",
+            "type": "boolean"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "content_type",
+          "size_bytes",
+          "previewable"
+        ],
+        "title": "MaterialFileResponse",
+        "type": "object"
+      },
+      "MaterialListResponse": {
+        "properties": {
+          "empty_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty State"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "empty_state"
+        ],
+        "title": "MaterialListResponse",
+        "type": "object"
+      },
+      "MaterialResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialFileResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_official": {
+            "title": "Is Official",
+            "type": "boolean"
+          },
+          "material_type": {
+            "$ref": "#/components/schemas/MaterialType"
+          },
+          "preview_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Url"
+          },
+          "semester": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semester"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "type_label": {
+            "title": "Type Label",
+            "type": "string"
+          },
+          "uploader_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploader Id"
+          },
+          "uploader_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploader Name"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "subject",
+          "topic",
+          "semester",
+          "material_type",
+          "type_label",
+          "tags",
+          "channel_id",
+          "is_official",
+          "uploader_id",
+          "uploader_name",
+          "created_at",
+          "url",
+          "file",
+          "preview_url",
+          "download_url"
+        ],
+        "title": "MaterialResponse",
+        "type": "object"
+      },
+      "MaterialType": {
+        "enum": [
+          "notes",
+          "pdf",
+          "presentation",
+          "link",
+          "other"
+        ],
+        "title": "MaterialType",
+        "type": "string"
       },
       "MemberResponse": {
         "properties": {
@@ -1850,6 +2222,344 @@
         "summary": "Reject Channel",
         "tags": [
           "channels"
+        ]
+      }
+    },
+    "/api/v1/materials": {
+      "get": {
+        "description": "Search and filter materials (IT_07). Subject and topic together return only\nmaterials matching both.\n\nWithout ``channel_id`` the search covers general materials and those in the\ncaller's channels; with it, that channel only, for its members. An empty result\ncarries ``empty_state`` for the UI.",
+        "operationId": "search_materials_api_v1_materials_get",
+        "parameters": [
+          {
+            "description": "Keyword",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keyword",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "semester",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semester"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MaterialType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Materials",
+        "tags": [
+          "materials"
+        ]
+      },
+      "post": {
+        "description": "Upload a tagged study material (UT_07).\n\nSubject, topic, semester and material type are all required; a blank one is refused\nwith its own message, e.g. ``Subject is required`` (UT_08). Files are checked for a\nsupported type and the size limit before anything is saved. A ``link`` material\ncarries a URL instead of a file. With ``channel_id`` the material is channel-scoped\nand only that channel's members can see it.",
+        "operationId": "upload_material_api_v1_materials_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_material_api_v1_materials_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}": {
+      "get": {
+        "description": "One material with all its tags and file details.",
+        "operationId": "read_material_api_v1_materials__material_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/download": {
+      "get": {
+        "description": "The file as a download, under its original name (IT_08).",
+        "operationId": "download_material_api_v1_materials__material_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, as an attachment"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/preview": {
+      "get": {
+        "description": "The file for viewing in the browser (IT_08): PDFs, images and text only.",
+        "operationId": "preview_material_api_v1_materials__material_id__preview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, shown inline"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Material",
+        "tags": [
+          "materials"
         ]
       }
     },

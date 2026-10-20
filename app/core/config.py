@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_api_key: SecretStr | None = None
 
+    # Study material uploads (materials module, S04.1).
+    material_max_upload_mb: int = 20
+
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = ""
 

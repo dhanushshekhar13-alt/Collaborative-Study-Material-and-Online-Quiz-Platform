@@ -13,6 +13,7 @@ ENTITIES_BY_REQUIREMENT = {
     "FR-03 authorized vs normal channel content": {"channels", "study_materials", "quizzes"},
     "FR-04 materials, ratings, reviews, reports": {
         "study_materials",
+        "material_files",
         "material_reviews",
         "reports",
     },
