@@ -63,6 +63,29 @@ against the endpoints the UI (UI-1 #62) will call. Styling is delivered as a
 Manually verified on a migrated, seeded SQLite database: UT_03, UT_04, ST_27 and ST_04
 behave as above alongside the seeded channels.
 
+## S02.2 (#21) — Channel membership and member management
+
+Test Plan cases are automated in `tests/test_channel_membership.py` under their case
+IDs, run against the endpoints the UI (UI-1 #62) will call. The member list is the
+channel-restricted content that exists today; materials and chat gate on the same
+`is_member` check. The UI's confirm step is mirrored by `confirm=true` on removal.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_03` | A keyword search returns matching channels | `test_IT_03_search_and_join_adds_the_user_at_once`, `test_keyword_search_returns_only_matching_channels` | Pass |
+| `IT_03` | Joining adds the user to the member list immediately and grants access to channel content | `test_IT_03_search_and_join_adds_the_user_at_once`, `test_joining_grants_access_to_channel_content` | Pass |
+| `IT_03` | A joined channel appears under My Channels | `test_a_joined_channel_appears_under_my_channels` | Pass |
+| `IT_04` | Leaving removes the user from the member list | `test_IT_04_leaving_removes_the_user_and_the_channel_from_my_channels` | Pass |
+| `IT_04` | The channel no longer appears under My Channels | Same test | Pass |
+| `IT_04` | Channel-restricted content is no longer accessible | `test_after_leaving_channel_content_is_closed` | Pass |
+| `ST_03` | A creator or moderator can remove a member after confirming | `test_ST_03_creator_removes_a_member_who_loses_access`, `test_a_moderator_can_remove_a_member`, `test_removal_needs_confirmation` | Pass |
+| `ST_03` | The removed member loses access to channel-restricted content | `test_ST_03_creator_removes_a_member_who_loses_access` | Pass |
+| — | A regular member cannot remove anyone | `test_a_regular_member_cannot_remove_anyone`, `test_a_non_member_cannot_remove_anyone`, `test_a_moderator_cannot_remove_the_creator` | Pass |
+
+Manually verified on a migrated, seeded SQLite database: search, join, My Channels,
+member list, removal by the owner (and refusal for a plain member) and leave behave as
+above on the seeded "DBMS study group".
+
 ## S05.1 (#24) — Question bank contribution and discovery
 
 Test Plan cases are automated in `tests/test_questions.py` under their case IDs, run
