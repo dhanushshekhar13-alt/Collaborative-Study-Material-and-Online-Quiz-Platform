@@ -183,3 +183,74 @@ def pending_requests(db: Session) -> list[ChannelSummary]:
         .order_by(Channel.created_at, Channel.id)
     )
     return [_summary(c, _member_count(db, c.id)) for c in db.scalars(statement)]
+
+
+# --------------------------------------------------------------------------- #
+# S02.2 - membership: join, leave, My Channels and member management
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class MemberSummary:
+    user_id: int
+    role: MemberRole
+    joined_at: datetime | None
+
+
+# Who may remove whom. An owner manages everyone but themselves; a moderator manages
+# plain members only, so moderators cannot remove each other or the owner.
+_REMOVABLE_BY: dict[MemberRole, frozenset[MemberRole]] = {
+    MemberRole.OWNER: frozenset({MemberRole.MODERATOR, MemberRole.MEMBER}),
+    MemberRole.MODERATOR: frozenset({MemberRole.MEMBER}),
+    MemberRole.MEMBER: frozenset(),
+}
+
+
+def can_manage_members(role: MemberRole | None) -> bool:
+    """Whether a channel role may remove members at all (creator or moderator)."""
+    return role is not None and bool(_REMOVABLE_BY[role])
+
+
+def can_remove(actor_role: MemberRole | None, target_role: MemberRole) -> bool:
+    return actor_role is not None and target_role in _REMOVABLE_BY[actor_role]
+
+
+def remove_member(db: Session, channel_id: int, user_id: int) -> bool:
+    """Delete a membership. Returns ``False`` if the user was not a member.
+
+    Access to channel-restricted content is decided by ``is_member``, so it ends the
+    moment the membership row is gone.
+    """
+    membership = db.scalar(
+        select(ChannelMembership).where(
+            ChannelMembership.channel_id == channel_id, ChannelMembership.user_id == user_id
+        )
+    )
+    if membership is None:
+        return False
+    db.delete(membership)
+    db.flush()
+    return True
+
+
+def list_members(db: Session, channel_id: int) -> list[MemberSummary]:
+    """A channel's members, owner first, then moderators, then by join order."""
+    rank = {MemberRole.OWNER: 0, MemberRole.MODERATOR: 1, MemberRole.MEMBER: 2}
+    rows = db.scalars(
+        select(ChannelMembership)
+        .where(ChannelMembership.channel_id == channel_id)
+        .order_by(ChannelMembership.joined_at, ChannelMembership.id)
+    )
+    members = [MemberSummary(m.user_id, m.role, m.joined_at) for m in rows]
+    return sorted(members, key=lambda m: rank[m.role])
+
+
+def channels_for_member(db: Session, user_id: int) -> list[tuple[ChannelSummary, MemberRole]]:
+    """My Channels: every channel the user belongs to, with their role in it."""
+    rows = db.execute(
+        select(Channel, ChannelMembership.role)
+        .join(ChannelMembership, ChannelMembership.channel_id == Channel.id)
+        .where(ChannelMembership.user_id == user_id)
+        .order_by(Channel.name, Channel.id)
+    )
+    return [(_summary(c, _member_count(db, c.id)), role) for c, role in rows]
