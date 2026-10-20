@@ -1,4 +1,4 @@
-"""HTTP surface of the channels module, mounted at ``/api/v1/channels`` (S02.1)."""
+"""HTTP surface of the channels module, mounted at ``/api/v1/channels`` (S02.1, S02.2)."""
 
 from datetime import datetime
 
@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.accounts import service as accounts
 from app.modules.accounts.service import (
     Capability,
     UserSummary,
@@ -15,7 +16,7 @@ from app.modules.accounts.service import (
     require_capability,
 )
 from app.modules.channels import service
-from app.modules.channels.models import ApprovalStatus, ChannelType
+from app.modules.channels.models import ApprovalStatus, ChannelType, MemberRole
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
@@ -23,6 +24,16 @@ router = APIRouter(prefix="/channels", tags=["channels"])
 AUTHORIZED_ONLY_MESSAGE = "Only authorized users/admins can create Authorized Channels"
 SUBJECT_OR_TOPIC_MESSAGE = "Enter a subject or topic"
 NOT_FOUND_MESSAGE = "Channel not found"
+# S02.2 membership messages.
+ALREADY_MEMBER_MESSAGE = "You are already a member of this channel"
+NOT_A_MEMBER_MESSAGE = "You are not a member of this channel"
+OWNER_CANNOT_LEAVE_MESSAGE = "The channel creator cannot leave their own channel"
+MEMBERS_ONLY_MESSAGE = "Join this channel to view its content"
+REMOVE_FORBIDDEN_MESSAGE = "Only the channel creator or a moderator can remove members"
+REMOVE_ROLE_FORBIDDEN_MESSAGE = "You cannot remove a member with this role"
+REMOVE_SELF_MESSAGE = "Use Leave Channel to leave a channel yourself"
+CONFIRM_REMOVAL_MESSAGE = "Confirm removal of this member"
+MEMBER_NOT_FOUND_MESSAGE = "This user is not a member of the channel"
 
 
 class ChannelCreate(BaseModel):
@@ -141,6 +152,14 @@ def list_channels(
     return [_response(s, _role(db, s.id, user.id)) for s in summaries]
 
 
+@router.get("/mine", response_model=list[ChannelResponse])
+def my_channels(
+    user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
+) -> list[ChannelResponse]:
+    """My Channels: every channel the caller belongs to, with their role (IT_03, IT_04)."""
+    return [_response(s, role.value) for s, role in service.channels_for_member(db, user.id)]
+
+
 @router.get(
     "/requests",
     response_model=list[ChannelResponse],
@@ -197,6 +216,120 @@ def approve_channel(channel_id: int, db: Session = Depends(get_db)) -> ChannelRe
 def reject_channel(channel_id: int, db: Session = Depends(get_db)) -> ChannelResponse:
     """Reject a pending Authorized Channel; it stays visible only to its requester."""
     return _decide(db, channel_id, ApprovalStatus.REJECTED)
+
+
+# --------------------------------------------------------------------------- #
+# S02.2 - join, leave and member management
+# --------------------------------------------------------------------------- #
+
+
+class MemberResponse(BaseModel):
+    user_id: int
+    username: str | None
+    display_name: str
+    role: MemberRole
+    joined_at: datetime | None
+
+
+def _visible_channel(db: Session, channel_id: int, user: UserSummary) -> service.ChannelSummary:
+    summary = service.describe_channel(db, channel_id)
+    if summary is None or not service.is_visible_to(
+        summary, user.id, _can(user, Capability.CHANNEL_APPROVE)
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MESSAGE)
+    return summary
+
+
+@router.post("/{channel_id}/join", response_model=ChannelResponse)
+def join_channel(
+    channel_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
+) -> ChannelResponse:
+    """Join a channel found through search; membership takes effect at once (IT_03).
+
+    Only channels the caller can see are joinable, so a pending Authorized Channel
+    answers 404 to everyone but its requester and admins.
+    """
+    _visible_channel(db, channel_id, user)
+    if service.is_member(db, channel_id, user.id):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ALREADY_MEMBER_MESSAGE)
+    service.add_member(db, channel_id, user.id)
+    db.commit()
+    return _response(service.describe_channel(db, channel_id), MemberRole.MEMBER.value)
+
+
+@router.post("/{channel_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+def leave_channel(
+    channel_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
+) -> None:
+    """Leave a channel; it drops out of My Channels and its content closes (IT_04).
+
+    The creator cannot leave, since that would leave the channel without an owner.
+    """
+    _visible_channel(db, channel_id, user)
+    role = service.member_role(db, channel_id, user.id)
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=NOT_A_MEMBER_MESSAGE)
+    if role is MemberRole.OWNER:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=OWNER_CANNOT_LEAVE_MESSAGE)
+    service.remove_member(db, channel_id, user.id)
+    db.commit()
+
+
+@router.get("/{channel_id}/members", response_model=list[MemberResponse])
+def list_members(
+    channel_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
+) -> list[MemberResponse]:
+    """The member list: channel-restricted, so only members (and admins) may read it."""
+    _visible_channel(db, channel_id, user)
+    if not service.is_member(db, channel_id, user.id) and not _can(
+        user, Capability.CHANNEL_APPROVE
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MEMBERS_ONLY_MESSAGE)
+    members = []
+    for m in service.list_members(db, channel_id):
+        account = accounts.get_user(db, m.user_id)
+        members.append(
+            MemberResponse(
+                user_id=m.user_id,
+                username=account.username if account else None,
+                display_name=account.display_name if account else "",
+                role=m.role,
+                joined_at=m.joined_at,
+            )
+        )
+    return members
+
+
+@router.delete("/{channel_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_member(
+    channel_id: int,
+    user_id: int,
+    confirm: bool = Query(default=False, description="Must be true: the UI's confirm step"),
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Remove a member after confirming (ST_03). Creator or moderator only.
+
+    The creator can remove moderators and members; a moderator only members. The
+    removed user loses access to channel-restricted content immediately.
+    """
+    _visible_channel(db, channel_id, user)
+    actor_role = service.member_role(db, channel_id, user.id)
+    if not service.can_manage_members(actor_role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=REMOVE_FORBIDDEN_MESSAGE)
+    if user_id == user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=REMOVE_SELF_MESSAGE)
+    target_role = service.member_role(db, channel_id, user_id)
+    if target_role is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MEMBER_NOT_FOUND_MESSAGE)
+    if not service.can_remove(actor_role, target_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=REMOVE_ROLE_FORBIDDEN_MESSAGE
+        )
+    if not confirm:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=CONFIRM_REMOVAL_MESSAGE)
+    service.remove_member(db, channel_id, user_id)
+    db.commit()
 
 
 def _role(db: Session, channel_id: int, user_id: int) -> str | None:

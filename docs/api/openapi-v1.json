@@ -406,6 +406,62 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MemberResponse": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "joined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Joined At"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MemberRole"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "display_name",
+          "role",
+          "joined_at"
+        ],
+        "title": "MemberResponse",
+        "type": "object"
+      },
+      "MemberRole": {
+        "enum": [
+          "member",
+          "moderator",
+          "owner"
+        ],
+        "title": "MemberRole",
+        "type": "string"
+      },
       "PermissionsResponse": {
         "properties": {
           "capabilities": {
@@ -1388,6 +1444,37 @@
         ]
       }
     },
+    "/api/v1/channels/mine": {
+      "get": {
+        "description": "My Channels: every channel the caller belongs to, with their role (IT_03, IT_04).",
+        "operationId": "my_channels_api_v1_channels_mine_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelResponse"
+                  },
+                  "title": "Response My Channels Api V1 Channels Mine Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Channels",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
     "/api/v1/channels/requests": {
       "get": {
         "description": "Admin > Channel Requests: Authorized Channels waiting for a decision (ST_27).",
@@ -1510,6 +1597,209 @@
           }
         ],
         "summary": "Approve Channel",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/api/v1/channels/{channel_id}/join": {
+      "post": {
+        "description": "Join a channel found through search; membership takes effect at once (IT_03).\n\nOnly channels the caller can see are joinable, so a pending Authorized Channel\nanswers 404 to everyone but its requester and admins.",
+        "operationId": "join_channel_api_v1_channels__channel_id__join_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Join Channel",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/api/v1/channels/{channel_id}/leave": {
+      "post": {
+        "description": "Leave a channel; it drops out of My Channels and its content closes (IT_04).\n\nThe creator cannot leave, since that would leave the channel without an owner.",
+        "operationId": "leave_channel_api_v1_channels__channel_id__leave_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave Channel",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/api/v1/channels/{channel_id}/members": {
+      "get": {
+        "description": "The member list: channel-restricted, so only members (and admins) may read it.",
+        "operationId": "list_members_api_v1_channels__channel_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberResponse"
+                  },
+                  "title": "Response List Members Api V1 Channels  Channel Id  Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Members",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/api/v1/channels/{channel_id}/members/{user_id}": {
+      "delete": {
+        "description": "Remove a member after confirming (ST_03). Creator or moderator only.\n\nThe creator can remove moderators and members; a moderator only members. The\nremoved user loses access to channel-restricted content immediately.",
+        "operationId": "remove_member_api_v1_channels__channel_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Must be true: the UI's confirm step",
+            "in": "query",
+            "name": "confirm",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Must be true: the UI's confirm step",
+              "title": "Confirm",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Member",
         "tags": [
           "channels"
         ]
