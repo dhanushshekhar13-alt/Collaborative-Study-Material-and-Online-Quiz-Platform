@@ -1,5 +1,8 @@
 """Public interface of the reputation module (FR-13)."""
 
+from dataclasses import dataclass
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -54,3 +57,22 @@ def grant_badge(db: Session, user_id: int, badge_id: int) -> None:
     if exists is None:
         db.add(UserBadge(user_id=user_id, badge_id=badge_id))
         db.flush()
+
+
+@dataclass(frozen=True)
+class EarnedBadge:
+    code: str
+    name: str
+    description: str | None
+    earned_at: datetime
+
+
+def badges_for(db: Session, user_id: int) -> list[EarnedBadge]:
+    """Badges the user has earned, most recent first (S01.2 profile)."""
+    rows = db.execute(
+        select(Badge, UserBadge.created_at)
+        .join(UserBadge, UserBadge.badge_id == Badge.id)
+        .where(UserBadge.user_id == user_id)
+        .order_by(UserBadge.created_at.desc(), Badge.id.desc())
+    )
+    return [EarnedBadge(b.code, b.name, b.description, earned_at) for b, earned_at in rows]

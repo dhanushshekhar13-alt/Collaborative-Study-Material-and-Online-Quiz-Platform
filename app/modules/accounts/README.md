@@ -12,6 +12,14 @@ always sets it, and those older accounts sign in with their email.
 
 Passwords are stored only as salted scrypt digests (`app.core.security`).
 
+S01.2 adds `profile_pictures` (migration `0003`): at most one picture per user, kept in
+the database (≤ 2 MB) so it survives redeploys without a file volume. Profile reads and
+edits go through `get_profile`, `update_profile`, `set_profile_picture`,
+`remove_profile_picture` and `get_profile_picture`; `set_profile_picture` validates
+size and type (detected from the bytes) and raises `InvalidPictureError` with the
+user-facing message. The profile endpoints live in the
+[profiles module](../profiles/README.md).
+
 ## Protecting a route in another module
 
 Everything is imported from `app.modules.accounts.service`:

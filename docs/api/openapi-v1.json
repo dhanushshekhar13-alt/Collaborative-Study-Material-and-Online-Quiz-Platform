@@ -56,6 +56,57 @@
         "title": "ApprovalStatus",
         "type": "string"
       },
+      "BadgeResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "earned_at": {
+            "format": "date-time",
+            "title": "Earned At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "description",
+          "earned_at"
+        ],
+        "title": "BadgeResponse",
+        "type": "object"
+      },
+      "Body_upload_my_picture_api_v1_profiles_me_picture_put": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "JPEG, PNG, GIF or WebP, at most 2 MB",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_my_picture_api_v1_profiles_me_picture_put",
+        "type": "object"
+      },
       "ChannelCreate": {
         "properties": {
           "channel_type": {
@@ -237,6 +288,79 @@
         "title": "ChannelType",
         "type": "string"
       },
+      "ContributionResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ContributionType"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "title",
+          "created_at"
+        ],
+        "title": "ContributionResponse",
+        "type": "object"
+      },
+      "ContributionType": {
+        "enum": [
+          "material",
+          "question",
+          "quiz"
+        ],
+        "title": "ContributionType",
+        "type": "string"
+      },
+      "ContributionsResponse": {
+        "properties": {
+          "materials": {
+            "title": "Materials",
+            "type": "integer"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "quizzes": {
+            "title": "Quizzes",
+            "type": "integer"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionResponse"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "materials",
+          "questions",
+          "quizzes",
+          "recent"
+        ],
+        "title": "ContributionsResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -291,6 +415,145 @@
           "capabilities"
         ],
         "title": "PermissionsResponse",
+        "type": "object"
+      },
+      "ProfileResponse": {
+        "description": "Everything the profile page shows. New users get zeros and empty lists.",
+        "properties": {
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/BadgeResponse"
+            },
+            "title": "Badges",
+            "type": "array"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "contributions": {
+            "$ref": "#/components/schemas/ContributionsResponse"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "member_since": {
+            "format": "date-time",
+            "title": "Member Since",
+            "type": "string"
+          },
+          "picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to load the picture from; changes whenever the picture does.",
+            "title": "Picture Url"
+          },
+          "reputation": {
+            "title": "Reputation",
+            "type": "integer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "bio",
+          "institution",
+          "member_since",
+          "picture_url",
+          "reputation",
+          "contributions",
+          "badges"
+        ],
+        "title": "ProfileResponse",
+        "type": "object"
+      },
+      "ProfileUpdate": {
+        "description": "Fields to change; omitted fields stay as they are, blank bio/institution clears it.",
+        "properties": {
+          "bio": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          }
+        },
+        "title": "ProfileUpdate",
         "type": "object"
       },
       "RegistrationRequest": {
@@ -928,6 +1191,237 @@
         "summary": "Reject Channel",
         "tags": [
           "channels"
+        ]
+      }
+    },
+    "/api/v1/profiles/me": {
+      "get": {
+        "description": "The signed-in user's profile: details, contributions, reputation and badges.",
+        "operationId": "read_my_profile_api_v1_profiles_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Profile",
+        "tags": [
+          "profiles"
+        ]
+      },
+      "patch": {
+        "description": "Edit display name, bio or institution. Saved immediately and kept across sessions.",
+        "operationId": "update_my_profile_api_v1_profiles_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update My Profile",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/picture": {
+      "delete": {
+        "description": "Remove the profile picture; the UI falls back to initials.",
+        "operationId": "remove_my_picture_api_v1_profiles_me_picture_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove My Picture",
+        "tags": [
+          "profiles"
+        ]
+      },
+      "put": {
+        "description": "Set or replace the profile picture. Anything not an image, or over 2 MB, is refused.",
+        "operationId": "upload_my_picture_api_v1_profiles_me_picture_put",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_my_picture_api_v1_profiles_me_picture_put"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload My Picture",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/{user_id}": {
+      "get": {
+        "description": "Another user's profile, as any signed-in user sees it. Email is never included.",
+        "operationId": "read_profile_api_v1_profiles__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Profile",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/{user_id}/picture": {
+      "get": {
+        "description": "The picture's bytes. Public so an ``<img>`` tag can load it without a token.",
+        "operationId": "read_profile_picture_api_v1_profiles__user_id__picture_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/*": {}
+            },
+            "description": "The picture"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Profile Picture",
+        "tags": [
+          "profiles"
         ]
       }
     },

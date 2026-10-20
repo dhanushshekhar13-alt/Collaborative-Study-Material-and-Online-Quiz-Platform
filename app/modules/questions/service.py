@@ -6,8 +6,9 @@ it carries everything needed to present and score a question.
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.questions.models import (
@@ -119,3 +120,39 @@ def find_questions(
     if channel_id is not None:
         stmt = stmt.where(Question.channel_id == channel_id)
     return [_view(q) for q in db.scalars(stmt.order_by(Question.id).limit(limit))]
+
+
+@dataclass(frozen=True)
+class QuestionContribution:
+    """One question the user contributed, for their profile's history (S01.2)."""
+
+    id: int
+    title: str
+    created_at: datetime
+
+
+def count_authored_by(db: Session, user_id: int) -> int:
+    """How many published questions the user wrote; drafts and removed ones don't count."""
+    return (
+        db.scalar(
+            select(func.count(Question.id)).where(
+                Question.author_id == user_id, Question.status == QuestionStatus.PUBLISHED
+            )
+        )
+        or 0
+    )
+
+
+def recent_authored_by(db: Session, user_id: int, limit: int = 10) -> list[QuestionContribution]:
+    rows = db.scalars(
+        select(Question)
+        .where(Question.author_id == user_id, Question.status == QuestionStatus.PUBLISHED)
+        .order_by(Question.created_at.desc(), Question.id.desc())
+        .limit(limit)
+    )
+    return [QuestionContribution(r.id, _headline(r.text), r.created_at) for r in rows]
+
+
+def _headline(text: str, limit: int = 80) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"

@@ -22,7 +22,7 @@ public service interface keeps its promises (NFR-07).
 
 | Module | Requirements | Owns tables | May call |
 | --- | --- | --- | --- |
-| accounts | FR-01 | users | – |
+| accounts | FR-01 | users, profile_pictures | – |
 | channels | FR-02, FR-03 | channels, channel_memberships | accounts |
 | materials | FR-04 | study_materials, material_reviews | – |
 | questions | FR-05, FR-07 | questions, question_ratings | – |
@@ -33,6 +33,7 @@ public service interface keeps its promises (NFR-07).
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
 | notifications | FR-14 | notifications, notification_preferences | – |
+| profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |
 
 Routes that need a signed-in user or a permission use the guards exported by
 `app.modules.accounts.service` (`current_user`, `require_capability`,
@@ -73,6 +74,7 @@ erDiagram
   users ||--o{ user_blocks : blocks
   users ||--o{ reports : files
   reports ||--o{ moderation_actions : leads_to
+  users ||--o| profile_pictures : shows
   users ||--o{ reputation_events : earns
   badges ||--o{ user_badges : awarded
   users ||--o{ notifications : receives
