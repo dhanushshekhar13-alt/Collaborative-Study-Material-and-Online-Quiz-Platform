@@ -1,7 +1,9 @@
 """Public interface of the materials module."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.materials.models import ContentStatus, MaterialType, StudyMaterial
@@ -64,3 +66,34 @@ def set_removed(db: Session, material_id: int, removed: bool) -> None:
     if m is None:
         raise LookupError(f"material {material_id} not found")
     m.status = ContentStatus.REMOVED if removed else ContentStatus.ACTIVE
+
+
+@dataclass(frozen=True)
+class MaterialContribution:
+    """One material the user contributed, for their profile's history (S01.2)."""
+
+    id: int
+    title: str
+    created_at: datetime
+
+
+def count_uploaded_by(db: Session, user_id: int) -> int:
+    """How many materials the user contributed that are still active."""
+    return (
+        db.scalar(
+            select(func.count(StudyMaterial.id)).where(
+                StudyMaterial.uploader_id == user_id, StudyMaterial.status == ContentStatus.ACTIVE
+            )
+        )
+        or 0
+    )
+
+
+def recent_uploaded_by(db: Session, user_id: int, limit: int = 10) -> list[MaterialContribution]:
+    rows = db.scalars(
+        select(StudyMaterial)
+        .where(StudyMaterial.uploader_id == user_id, StudyMaterial.status == ContentStatus.ACTIVE)
+        .order_by(StudyMaterial.created_at.desc(), StudyMaterial.id.desc())
+        .limit(limit)
+    )
+    return [MaterialContribution(r.id, r.title, r.created_at) for r in rows]

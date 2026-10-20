@@ -13,6 +13,7 @@ dependencies = [
   "fastapi>=0.115,<1",
   "psycopg[binary]>=3.2,<4",
   "pydantic-settings>=2.6,<3",
+  "python-multipart>=0.0.18,<1",
   "sqlalchemy>=2.0,<3",
   "uvicorn[standard]>=0.32,<1",
 ]
@@ -39,6 +40,7 @@ select = ["E", "F", "I", "UP", "B"]
 # FastAPI declares dependencies as argument defaults by design; B008 does not apply.
 extend-immutable-calls = [
   "fastapi.Depends",
+  "fastapi.File",
   "fastapi.Header",
   "fastapi.Path",
   "fastapi.Query",

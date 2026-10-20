@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.questions import service as questions
@@ -122,3 +122,34 @@ def attempts_for_user(db: Session, user_id: int) -> list[AttemptResult]:
         .order_by(QuizAttempt.submitted_at)
     )
     return [get_attempt_result(db, a.id) for a in rows]
+
+
+@dataclass(frozen=True)
+class QuizContribution:
+    """One quiz the user contributed, for their profile's history (S01.2)."""
+
+    id: int
+    title: str
+    created_at: datetime
+
+
+def count_created_by(db: Session, user_id: int) -> int:
+    """How many published quizzes the user created; drafts and removed ones don't count."""
+    return (
+        db.scalar(
+            select(func.count(Quiz.id)).where(
+                Quiz.creator_id == user_id, Quiz.status == QuizStatus.PUBLISHED
+            )
+        )
+        or 0
+    )
+
+
+def recent_created_by(db: Session, user_id: int, limit: int = 10) -> list[QuizContribution]:
+    rows = db.scalars(
+        select(Quiz)
+        .where(Quiz.creator_id == user_id, Quiz.status == QuizStatus.PUBLISHED)
+        .order_by(Quiz.created_at.desc(), Quiz.id.desc())
+        .limit(limit)
+    )
+    return [QuizContribution(r.id, r.title, r.created_at) for r in rows]

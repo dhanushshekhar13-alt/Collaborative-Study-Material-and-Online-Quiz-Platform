@@ -16,14 +16,14 @@ only needs this module's public interface::
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import cache
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
-from app.modules.accounts.models import Role, User
+from app.modules.accounts.models import ProfilePicture, Role, User
 
 
 @dataclass(frozen=True)
@@ -177,6 +177,152 @@ def count_accounts(db: Session) -> int:
     return db.scalar(select(func.count(User.id))) or 0
 
 
+# --------------------------------------------------------------------------- #
+# S01.2 - profile fields and profile picture
+# --------------------------------------------------------------------------- #
+
+MAX_PICTURE_BYTES = 2 * 1024 * 1024
+
+# Wording shown to the user when an upload is refused.
+PICTURE_EMPTY_MESSAGE = "Choose an image to upload"
+PICTURE_TOO_LARGE_MESSAGE = "Profile picture must be 2 MB or smaller"
+PICTURE_WRONG_TYPE_MESSAGE = "Profile picture must be a JPEG, PNG, GIF or WebP image"
+
+
+@dataclass(frozen=True)
+class ProfileDetails:
+    """The editable, publicly visible part of an account. Email is not included."""
+
+    id: int
+    username: str | None
+    display_name: str
+    role: Role
+    bio: str | None
+    institution: str | None
+    created_at: datetime
+    picture_updated_at: datetime | None
+
+
+@dataclass(frozen=True)
+class ProfilePictureData:
+    content_type: str
+    data: bytes
+    updated_at: datetime
+
+
+class InvalidPictureError(Exception):
+    """An uploaded profile picture was refused; ``str(exc)`` is the user-facing reason."""
+
+    def __init__(self, message: str, *, too_large: bool = False) -> None:
+        self.too_large = too_large
+        super().__init__(message)
+
+
+def _profile(db: Session, user: User) -> ProfileDetails:
+    picture_updated_at = db.scalar(
+        select(ProfilePicture.updated_at).where(ProfilePicture.user_id == user.id)
+    )
+    return ProfileDetails(
+        id=user.id,
+        username=user.username,
+        display_name=user.display_name,
+        role=user.role,
+        bio=user.bio,
+        institution=user.institution,
+        created_at=user.created_at,
+        picture_updated_at=picture_updated_at,
+    )
+
+
+def get_profile(db: Session, user_id: int) -> ProfileDetails | None:
+    user = db.get(User, user_id)
+    return _profile(db, user) if user else None
+
+
+_UNCHANGED = object()
+
+
+def update_profile(
+    db: Session,
+    user_id: int,
+    *,
+    display_name: str | object = _UNCHANGED,
+    bio: str | None | object = _UNCHANGED,
+    institution: str | None | object = _UNCHANGED,
+) -> ProfileDetails:
+    """Change only the fields passed. Blank bio or institution clears it. Caller commits."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise LookupError(f"user {user_id} not found")
+    if display_name is not _UNCHANGED:
+        user.display_name = display_name.strip()
+    if bio is not _UNCHANGED:
+        user.bio = (bio or "").strip() or None
+    if institution is not _UNCHANGED:
+        user.institution = (institution or "").strip() or None
+    db.flush()
+    return _profile(db, user)
+
+
+def detect_image_type(data: bytes) -> str | None:
+    """The image type from the file's leading bytes, or ``None`` if it isn't one we accept.
+
+    The file's name and the client's Content-Type are ignored: a renamed script stays a
+    script. SVG is deliberately not accepted because it can carry JavaScript.
+    """
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def set_profile_picture(db: Session, user_id: int, data: bytes) -> ProfileDetails:
+    """Validate and store ``data`` as the user's picture, replacing any earlier one."""
+    if not data:
+        raise InvalidPictureError(PICTURE_EMPTY_MESSAGE)
+    if len(data) > MAX_PICTURE_BYTES:
+        raise InvalidPictureError(PICTURE_TOO_LARGE_MESSAGE, too_large=True)
+    content_type = detect_image_type(data)
+    if content_type is None:
+        raise InvalidPictureError(PICTURE_WRONG_TYPE_MESSAGE)
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise LookupError(f"user {user_id} not found")
+    picture = db.get(ProfilePicture, user_id)
+    if picture is None:
+        picture = ProfilePicture(user_id=user_id)
+        db.add(picture)
+    picture.content_type = content_type
+    picture.data = data
+    picture.updated_at = datetime.now(UTC)
+    db.flush()
+    return _profile(db, user)
+
+
+def remove_profile_picture(db: Session, user_id: int) -> ProfileDetails:
+    user = db.get(User, user_id)
+    if user is None:
+        raise LookupError(f"user {user_id} not found")
+    picture = db.get(ProfilePicture, user_id)
+    if picture is not None:
+        db.delete(picture)
+        db.flush()
+    return _profile(db, user)
+
+
+def get_profile_picture(db: Session, user_id: int) -> ProfilePictureData | None:
+    picture = db.get(ProfilePicture, user_id)
+    if picture is None:
+        return None
+    return ProfilePictureData(picture.content_type, picture.data, picture.updated_at)
+
+
 # Route guards and permissions, re-exported so other modules need only this interface.
 from app.modules.accounts.auth import (  # noqa: E402
     current_user,
@@ -189,6 +335,13 @@ __all__ = [
     "AccountDetails",
     "Capability",
     "DuplicateAccountError",
+    "InvalidPictureError",
+    "MAX_PICTURE_BYTES",
+    "PICTURE_EMPTY_MESSAGE",
+    "PICTURE_TOO_LARGE_MESSAGE",
+    "PICTURE_WRONG_TYPE_MESSAGE",
+    "ProfileDetails",
+    "ProfilePictureData",
     "UserSummary",
     "add_reputation",
     "authenticate",
@@ -196,12 +349,18 @@ __all__ = [
     "count_accounts",
     "create_user",
     "current_user",
+    "detect_image_type",
     "get_account",
+    "get_profile",
+    "get_profile_picture",
     "get_user",
     "get_user_by_email",
     "list_accounts",
     "register_account",
+    "remove_profile_picture",
     "require_capability",
     "require_roles",
+    "set_profile_picture",
     "set_suspended",
+    "update_profile",
 ]

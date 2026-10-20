@@ -63,6 +63,26 @@ against the endpoints the UI (UI-1 #62) will call. Styling is delivered as a
 Manually verified on a migrated, seeded SQLite database: UT_03, UT_04, ST_27 and ST_04
 behave as above alongside the seeded channels.
 
+## S01.2 (#19) — Profile with contribution history and reputation
+
+Test Plan cases are automated in `tests/test_profiles.py` under their case IDs, run
+against the endpoints the profile page (UI-1 #62) will call. "Logging out" is the
+client discarding its token; the test then signs in again for a fresh token.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `ST_01` | Edited bio and picture are saved and still correct after logout and login | `test_ST_01_edited_bio_and_picture_persist_after_logout_and_login`, `test_profile_fields_are_saved_in_the_database_not_only_returned`, `test_replacing_the_picture_changes_its_url_and_content` | Pass |
+| — | Invalid or oversized uploads are rejected with a clear message | `test_an_oversized_picture_is_rejected_with_a_clear_message`, `test_a_file_that_is_not_an_image_is_rejected_whatever_its_name`, `test_svg_is_rejected_because_it_can_carry_script`, `test_an_empty_file_is_rejected`, `test_a_rejected_upload_keeps_the_previous_picture` | Pass |
+| `ST_02` | Profile shows contribution count, reputation total and earned badges matching backend records | `test_ST_02_profile_shows_three_contributions_fifty_points_and_one_badge` (asserts against the owning services), `test_contribution_history_covers_materials_questions_and_quizzes`, `test_removed_drafted_and_unpublished_work_is_not_counted` | Pass |
+| `ST_02` | A user with three materials, fifty points and one badge sees exactly that | `test_ST_02_profile_shows_three_contributions_fifty_points_and_one_badge` | Pass |
+| — | Sections render an empty state for a brand new user | `test_a_brand_new_user_gets_empty_sections` (API returns zeros and empty lists; rendering is UI-1) | Pass (API) |
+
+Migration `0003` (profile pictures) upgrades and downgrades cleanly and matches the
+models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
+database with uvicorn: ST_01 via curl (bio and `profile2.jpg` intact after a second
+login, picture served as `image/jpeg`), a 3 MB upload refused with the 2 MB message,
+and the seeded student's profile shows its one material and 5 reputation points.
+
 ## S02.2 (#21) — Channel membership and member management
 
 Test Plan cases are automated in `tests/test_channel_membership.py` under their case

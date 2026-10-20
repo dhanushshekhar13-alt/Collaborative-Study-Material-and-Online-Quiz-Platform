@@ -123,6 +123,42 @@ def find_questions(
     return [_view(q) for q in db.scalars(stmt.order_by(Question.id).limit(limit))]
 
 
+@dataclass(frozen=True)
+class QuestionContribution:
+    """One question the user contributed, for their profile's history (S01.2)."""
+
+    id: int
+    title: str
+    created_at: datetime
+
+
+def count_authored_by(db: Session, user_id: int) -> int:
+    """How many published questions the user wrote; drafts and removed ones don't count."""
+    return (
+        db.scalar(
+            select(func.count(Question.id)).where(
+                Question.author_id == user_id, Question.status == QuestionStatus.PUBLISHED
+            )
+        )
+        or 0
+    )
+
+
+def recent_authored_by(db: Session, user_id: int, limit: int = 10) -> list[QuestionContribution]:
+    rows = db.scalars(
+        select(Question)
+        .where(Question.author_id == user_id, Question.status == QuestionStatus.PUBLISHED)
+        .order_by(Question.created_at.desc(), Question.id.desc())
+        .limit(limit)
+    )
+    return [QuestionContribution(r.id, _headline(r.text), r.created_at) for r in rows]
+
+
+def _headline(text: str, limit: int = 80) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"
+
+
 # --------------------------------------------------------------------------- #
 # S05.1 - question bank contribution and discovery
 # --------------------------------------------------------------------------- #

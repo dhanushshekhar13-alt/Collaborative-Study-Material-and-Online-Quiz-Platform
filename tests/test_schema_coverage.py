@@ -4,7 +4,11 @@ import app.models  # noqa: F401
 from app.core.database import Base
 
 ENTITIES_BY_REQUIREMENT = {
-    "FR-01 accounts, profiles, contribution history": {"users", "reputation_events"},
+    "FR-01 accounts, profiles, contribution history": {
+        "users",
+        "profile_pictures",
+        "reputation_events",
+    },
     "FR-02 channels and membership": {"channels", "channel_memberships"},
     "FR-03 authorized vs normal channel content": {"channels", "study_materials", "quizzes"},
     "FR-04 materials, ratings, reviews, reports": {
