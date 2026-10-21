@@ -5,6 +5,8 @@ file). Nothing secret has a default value, so a fresh checkout contains no
 credentials and a missing secret is reported instead of silently replaced.
 """
 
+from typing import Literal
+
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,6 +29,10 @@ class Settings(BaseSettings):
 
     # Study material uploads (materials module, S04.1).
     material_max_upload_mb: int = 20
+
+    # Quiz attempts (S06.1): what happens when someone submits with unanswered
+    # questions. "warn" asks them to confirm first; "block" refuses until all are answered.
+    quiz_unanswered_rule: Literal["warn", "block"] = "warn"
 
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = ""

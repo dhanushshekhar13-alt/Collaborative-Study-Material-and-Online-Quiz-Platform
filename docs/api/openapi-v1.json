@@ -47,6 +47,112 @@
         "title": "AccountResponse",
         "type": "object"
       },
+      "AnswerOutcomeResponse": {
+        "properties": {
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct Answer"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "points": {
+            "title": "Points",
+            "type": "number"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnswerStatus"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "response",
+          "status",
+          "score",
+          "points",
+          "correct_answer",
+          "explanation"
+        ],
+        "title": "AnswerOutcomeResponse",
+        "type": "object"
+      },
+      "AnswerStatus": {
+        "enum": [
+          "correct",
+          "incorrect",
+          "unattempted",
+          "pending_evaluation"
+        ],
+        "title": "AnswerStatus",
+        "type": "string"
+      },
+      "AnswersRequest": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Question id \u2192 response. A blank or null response clears it.",
+            "title": "Answers",
+            "type": "object"
+          }
+        },
+        "title": "AnswersRequest",
+        "type": "object"
+      },
       "ApprovalStatus": {
         "enum": [
           "pending",
@@ -54,6 +160,186 @@
           "rejected"
         ],
         "title": "ApprovalStatus",
+        "type": "string"
+      },
+      "AttemptQuestionResponse": {
+        "properties": {
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "points": {
+            "title": "Points",
+            "type": "number"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_type": {
+            "title": "Question Type",
+            "type": "string"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "text",
+          "question_type",
+          "options",
+          "points",
+          "response"
+        ],
+        "title": "AttemptQuestionResponse",
+        "type": "object"
+      },
+      "AttemptResponse": {
+        "properties": {
+          "answered_count": {
+            "title": "Answered Count",
+            "type": "integer"
+          },
+          "auto_submitted": {
+            "title": "Auto Submitted",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for an untimed quiz",
+            "title": "Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "integer"
+          },
+          "quiz_title": {
+            "title": "Quiz Title",
+            "type": "string"
+          },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttemptStatus"
+          },
+          "unanswered_count": {
+            "title": "Unanswered Count",
+            "type": "integer"
+          },
+          "unanswered_question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unanswered Question Ids",
+            "type": "array"
+          },
+          "unanswered_rule": {
+            "title": "Unanswered Rule",
+            "type": "string"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For example \"2 questions are unanswered\"",
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "id",
+          "quiz_id",
+          "quiz_title",
+          "status",
+          "started_at",
+          "expires_at",
+          "remaining_seconds",
+          "auto_submitted",
+          "unanswered_rule",
+          "answered_count",
+          "unanswered_count",
+          "unanswered_question_ids",
+          "warning",
+          "questions",
+          "result"
+        ],
+        "title": "AttemptResponse",
+        "type": "object"
+      },
+      "AttemptStatus": {
+        "enum": [
+          "in_progress",
+          "submitted"
+        ],
+        "title": "AttemptStatus",
         "type": "string"
       },
       "BadgeResponse": {
@@ -2077,6 +2363,77 @@
         "title": "ReportResponse",
         "type": "object"
       },
+      "ResultResponse": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerOutcomeResponse"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "display": {
+            "description": "For example \"4/5 (80%)\"",
+            "title": "Display",
+            "type": "string"
+          },
+          "incorrect": {
+            "title": "Incorrect",
+            "type": "integer"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "number"
+          },
+          "pending_evaluation": {
+            "description": "Descriptive answers awaiting S08.1",
+            "title": "Pending Evaluation",
+            "type": "integer"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "unattempted": {
+            "title": "Unattempted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "max_score",
+          "percentage",
+          "display",
+          "correct",
+          "incorrect",
+          "unattempted",
+          "pending_evaluation",
+          "submitted_at",
+          "answers"
+        ],
+        "title": "ResultResponse",
+        "type": "object"
+      },
       "ReviewListResponse": {
         "properties": {
           "items": {
@@ -2213,6 +2570,33 @@
         "title": "Role",
         "type": "string"
       },
+      "SubmitRequest": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Question id \u2192 response. A blank or null response clears it.",
+            "title": "Answers",
+            "type": "object"
+          },
+          "confirm": {
+            "default": false,
+            "description": "Submit even though some questions are unanswered (only under \"warn\")",
+            "title": "Confirm",
+            "type": "boolean"
+          }
+        },
+        "title": "SubmitRequest",
+        "type": "object"
+      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -2239,6 +2623,41 @@
           "account"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "UnansweredResponse": {
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptResponse"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "unanswered_count": {
+            "title": "Unanswered Count",
+            "type": "integer"
+          },
+          "unanswered_question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unanswered Question Ids",
+            "type": "array"
+          },
+          "unanswered_rule": {
+            "title": "Unanswered Rule",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "unanswered_count",
+          "unanswered_question_ids",
+          "unanswered_rule",
+          "attempt"
+        ],
+        "title": "UnansweredResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -2488,6 +2907,180 @@
         "tags": [
           "accounts",
           "operations"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}": {
+      "get": {
+        "description": "The attempt with its time left; reading it after the time limit auto-submits it\nwith the answers saved so far (ST_11) and returns the result.",
+        "operationId": "read_attempt_api_v1_attempts__attempt_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "title": "Attempt Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Attempt",
+        "tags": [
+          "quiz attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/answers": {
+      "put": {
+        "description": "Save answers as the user goes, so they count if the timer runs out.\n\nAfter the time limit nothing more is saved: the attempt is auto-submitted with\nwhat was saved before it and the result is returned.",
+        "operationId": "save_answers_api_v1_attempts__attempt_id__answers_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "title": "Attempt Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Answers",
+        "tags": [
+          "quiz attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/submit": {
+      "post": {
+        "description": "Submit the attempt and get the score straight away (UT_11).\n\nObjective questions are scored deterministically, without the LLM. If questions\nare unanswered the response names how many, e.g. \"2 questions are unanswered\"\n(UT_12): under the ``warn`` rule submission waits for ``confirm: true`` (409 until\nthen); under ``block`` it is refused (422) until they are answered. Answers in the\nrequest are saved either way. Once the time limit has passed the attempt is\nauto-submitted regardless of the rule; only answered questions are scored and the\nrest are marked unattempted (ST_11).",
+        "operationId": "submit_attempt_api_v1_attempts__attempt_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "title": "Attempt Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnansweredResponse"
+                }
+              }
+            },
+            "description": "Unanswered questions under the \"warn\" rule: confirm to submit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnansweredResponse"
+                }
+              }
+            },
+            "description": "Unanswered questions under the \"block\" rule"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Attempt",
+        "tags": [
+          "quiz attempts"
         ]
       }
     },
@@ -4481,6 +5074,57 @@
         "summary": "Read Quiz",
         "tags": [
           "quizzes"
+        ]
+      }
+    },
+    "/api/v1/quizzes/{quiz_id}/attempts": {
+      "post": {
+        "description": "Start the quiz; the timer starts now and ``remaining_seconds`` counts it down.\n\nIf the caller already has a running attempt at this quiz it is resumed (200) with\nits answers and remaining time, so reloading the page does not restart the clock.\nNon-members cannot attempt a channel quiz (403).",
+        "operationId": "start_attempt_api_v1_quizzes__quiz_id__attempts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_id",
+            "required": true,
+            "schema": {
+              "title": "Quiz Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumed the caller's attempt that is still running"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Attempt",
+        "tags": [
+          "quiz attempts"
         ]
       }
     },
