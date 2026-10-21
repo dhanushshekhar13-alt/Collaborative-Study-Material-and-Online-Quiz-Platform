@@ -12,7 +12,7 @@ ALLOWED_DEPENDENCIES: dict[str, set[str]] = {
     "channels": {"accounts"},
     "materials": {"accounts", "channels", "moderation"},
     "questions": {"accounts", "channels", "moderation"},
-    "quizzes": {"questions"},
+    "quizzes": {"accounts", "channels", "questions"},
     "llm": {"questions", "quizzes"},
     "chat": set(),
     "analytics": {"quizzes"},

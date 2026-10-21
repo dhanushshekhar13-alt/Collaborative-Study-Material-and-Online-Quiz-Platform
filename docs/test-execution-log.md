@@ -167,3 +167,21 @@ Migration `0005` (optional review rating) upgrades and downgrades cleanly and ma
 the models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
 database: rating, review listing, helpful marking and reporting behave as above on the
 seeded materials.
+
+## S05.2 (#25) — Quiz assembly and publishing
+
+Test Plan cases are automated in `tests/test_quiz_building.py` under their case IDs,
+run against the endpoints the UI (UI-2 #63) will call (`/api/v1/quizzes`, see
+`app/modules/quizzes/router.py`). A quiz is saved as a draft and published in a separate
+step, as in the Create Quiz use case.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_10` | A quiz is generated with the requested count, difficulty and timer | `test_IT_10_quiz_is_built_with_requested_count_difficulty_and_timer`, `test_preview_picks_matching_questions_without_saving`, `test_reviewed_question_set_is_saved_in_the_given_order`, `test_reviewed_set_must_match_the_requested_count`, `test_count_duration_and_difficulty_are_validated` | Pass |
+| `ST_10` | A newly contributed question is immediately selectable when building a quiz | `test_ST_10_new_question_is_immediately_selectable_for_a_quiz`, `test_unpublished_llm_drafts_and_unknown_questions_cannot_be_used` | Pass |
+| — | The request fails gracefully when the bank has too few matching questions | `test_too_few_matching_questions_fails_gracefully`, `test_empty_bank_reports_zero_available` | Pass |
+| `ST_09` | A published quiz appears under the channel's Quizzes tab | `test_ST_09_published_quiz_appears_in_channel_quizzes_tab_for_all_members`, `test_published_general_quiz_is_listed_for_everyone`, `test_a_quiz_is_published_once_and_only_by_its_author` | Pass |
+| `ST_09` | It is visible to all channel members | `test_ST_09_published_quiz_appears_in_channel_quizzes_tab_for_all_members`, `test_members_do_not_see_the_answer_key`, `test_non_members_cannot_see_a_channels_quizzes`, `test_publishing_to_a_channel_needs_membership`, `test_only_authorized_users_publish_to_authorized_channels`, `test_channel_bank_questions_stay_in_their_channel` | Pass |
+| — | An unpublished quiz remains private to its author | `test_unpublished_quiz_is_private_to_its_author`, `test_profile_counts_only_published_quizzes` | Pass |
+
+No schema change: `quizzes` and `quiz_questions` already exist (migration `0001`).
