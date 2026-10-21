@@ -496,6 +496,29 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HelpfulResponse": {
+        "properties": {
+          "helpful_count": {
+            "title": "Helpful Count",
+            "type": "integer"
+          },
+          "marked_helpful": {
+            "title": "Marked Helpful",
+            "type": "boolean"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "material_id",
+          "helpful_count",
+          "marked_helpful"
+        ],
+        "title": "HelpfulResponse",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "password": {
@@ -590,6 +613,78 @@
         "title": "MaterialListResponse",
         "type": "object"
       },
+      "MaterialReportRequest": {
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\"duplicate\" is the \"Duplicate content\" report"
+          }
+        },
+        "title": "MaterialReportRequest",
+        "type": "object"
+      },
+      "MaterialReportResponse": {
+        "properties": {
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "reported_at": {
+            "format": "date-time",
+            "title": "Reported At",
+            "type": "string"
+          },
+          "reporter_id": {
+            "title": "Reporter Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "material_id",
+          "reason",
+          "reporter_id",
+          "reported_at",
+          "status",
+          "message"
+        ],
+        "title": "MaterialReportResponse",
+        "type": "object"
+      },
       "MaterialResponse": {
         "properties": {
           "channel_id": {
@@ -647,6 +742,10 @@
               }
             ]
           },
+          "helpful_count": {
+            "title": "Helpful Count",
+            "type": "integer"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -655,8 +754,34 @@
             "title": "Is Official",
             "type": "boolean"
           },
+          "marked_helpful": {
+            "title": "Marked Helpful",
+            "type": "boolean"
+          },
           "material_type": {
             "$ref": "#/components/schemas/MaterialType"
+          },
+          "my_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Rating"
+          },
+          "my_review": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Review"
           },
           "preview_url": {
             "anyOf": [
@@ -668,6 +793,25 @@
               }
             ],
             "title": "Preview Url"
+          },
+          "rating_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating Average"
+          },
+          "rating_count": {
+            "title": "Rating Count",
+            "type": "integer"
+          },
+          "review_count": {
+            "title": "Review Count",
+            "type": "integer"
           },
           "semester": {
             "anyOf": [
@@ -762,7 +906,14 @@
           "url",
           "file",
           "preview_url",
-          "download_url"
+          "download_url",
+          "rating_average",
+          "rating_count",
+          "review_count",
+          "helpful_count",
+          "my_rating",
+          "my_review",
+          "marked_helpful"
         ],
         "title": "MaterialResponse",
         "type": "object"
@@ -1926,6 +2077,133 @@
         "title": "ReportResponse",
         "type": "object"
       },
+      "ReviewListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ReviewListResponse",
+        "type": "object"
+      },
+      "ReviewRequest": {
+        "properties": {
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 to 5 stars",
+            "title": "Rating"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional text",
+            "title": "Review"
+          }
+        },
+        "title": "ReviewRequest",
+        "type": "object"
+      },
+      "ReviewResponse": {
+        "properties": {
+          "author_id": {
+            "title": "Author Id",
+            "type": "integer"
+          },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "marked_helpful": {
+            "title": "Marked Helpful",
+            "type": "boolean"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "review": {
+            "title": "Review",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "author_id",
+          "author_name",
+          "rating",
+          "review",
+          "marked_helpful",
+          "created_at"
+        ],
+        "title": "ReviewResponse",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "student",
@@ -2955,7 +3233,7 @@
     },
     "/api/v1/materials/{material_id}": {
       "get": {
-        "description": "One material with all its tags and file details.",
+        "description": "One material with all its tags, file details and ratings.",
         "operationId": "read_material_api_v1_materials__material_id__get",
         "parameters": [
           {
@@ -3042,6 +3320,100 @@
         ]
       }
     },
+    "/api/v1/materials/{material_id}/helpful": {
+      "delete": {
+        "description": "Take back the caller's helpful mark.",
+        "operationId": "unmark_helpful_api_v1_materials__material_id__helpful_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpfulResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unmark Helpful",
+        "tags": [
+          "materials"
+        ]
+      },
+      "put": {
+        "description": "Mark a material helpful (ST_07). Repeating it never adds more than one.",
+        "operationId": "mark_helpful_api_v1_materials__material_id__helpful_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpfulResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Helpful",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
     "/api/v1/materials/{material_id}/preview": {
       "get": {
         "description": "The file for viewing in the browser (IT_08): PDFs, images and text only.",
@@ -3078,6 +3450,193 @@
           }
         ],
         "summary": "Preview Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/reports": {
+      "post": {
+        "description": "Report a material (for example \"Duplicate content\") to moderation (ST_08).\n\nA reason is required. The report is recorded with its timestamp and reporter and\nfiled as open in the moderation queue, scoped to the material's channel. Reporting\nthe same material again while the first report is open returns that report.",
+        "operationId": "report_material_api_v1_materials__material_id__reports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/review": {
+      "put": {
+        "description": "Rate a material 1-5 stars, optionally with review text (ST_07).\n\nThe response carries the updated ``rating_average``. Rating again replaces the\ncaller's earlier rating and review, so each user counts once. Uploaders cannot\nrate their own material.",
+        "operationId": "review_material_api_v1_materials__material_id__review_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/reviews": {
+      "get": {
+        "description": "Written reviews, newest first, each with its author's name.",
+        "operationId": "list_material_reviews_api_v1_materials__material_id__reviews_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Material Reviews",
         "tags": [
           "materials"
         ]

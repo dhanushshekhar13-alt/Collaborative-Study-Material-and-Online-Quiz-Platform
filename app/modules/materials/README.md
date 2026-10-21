@@ -1,9 +1,9 @@
 # Materials module
 
-Shared study resources. Implements the upload, search and download part of **FR-04**
-(story **S04.1**, issue #22). Rating, review and reporting is S04.2 (#23); official
-content in Authorized Channels is S03.1 (#26). Owns `study_materials`, `material_files`
-and `material_reviews`; module rules are in
+Shared study resources. Implements **FR-04**: upload, search and download (story
+**S04.1**, issue #22) and rating, review, helpful marks and reporting (**S04.2**,
+issue #23). Official content in Authorized Channels is S03.1 (#26). Owns
+`study_materials`, `material_files` and `material_reviews`; module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md).
 
 ## Tags
@@ -53,6 +53,35 @@ listings show them the same way everywhere (UT_07).
   official-content flow on top.
 - Removed materials (`status = removed`) are never listed or served.
 
+## Ratings, reviews and helpful marks (S04.2)
+
+- `material_reviews` holds **one row per (material, user)**: that user's 1–5 rating,
+  optional review text and helpful mark. Rating again replaces the earlier rating and
+  text, and marking helpful again changes nothing, so no user can count twice towards
+  the average or the helpful count.
+- Marking helpful does not need a rating: the row's `rating` is then NULL (migration
+  `0005`), which `AVG` and `COUNT(rating)` skip.
+- Every material response carries `rating_average` (unrounded; the UI shows one
+  decimal, e.g. 4.3), `rating_count`, `review_count`, `helpful_count`, and the caller's
+  own `my_rating`, `my_review`, `marked_helpful`. Listings compute these in one grouped
+  query per page.
+- A missing or out-of-range rating: **422** `Select a rating from 1 to 5 stars`.
+- Uploaders cannot rate or mark their own material (**403** `You can't rate or mark
+  your own material as helpful`), so nobody can lift their own work.
+- A blank review is stored as a rating only and not listed as a review.
+
+## Reporting (S04.2)
+
+- `POST /materials/{id}/reports` with a `reason`: `incorrect`, `inappropriate`,
+  `duplicate` ("Duplicate content"), `misleading`, `spam`, `other`, plus optional
+  `details`. No reason: **422** `Select a reason for reporting this material`.
+- The report is filed through `moderation.service.file_report` as an **open** report
+  on target `material`, scoped to the material's channel, so it is in the moderation
+  queue (`moderation.service.open_reports`, worked by S13.2 #43). The response carries
+  `report_id`, `reporter_id` and `reported_at`.
+- Reporting the same material again while the first report is open returns that
+  report instead of filing a duplicate (same as questions).
+
 ## Endpoints
 
 | Method | Path | Auth | Purpose |
@@ -62,6 +91,11 @@ listings show them the same way everywhere (UT_07).
 | `GET` | `/api/v1/materials/{id}` | signed in | One material with tags, uploader, file details, `preview_url`, `download_url`. |
 | `GET` | `/api/v1/materials/{id}/preview` | signed in | The file inline (PDF, images, text); **415** for other types. |
 | `GET` | `/api/v1/materials/{id}/download` | signed in | The file as an attachment. |
+| `PUT` | `/api/v1/materials/{id}/review` | `material:rate` | Save the caller's `rating` (1–5) and optional `review`; returns the material with updated ratings. |
+| `GET` | `/api/v1/materials/{id}/reviews` | signed in | Written reviews, newest first, each with `author_name`; `limit`, `offset`. |
+| `PUT` | `/api/v1/materials/{id}/helpful` | `material:rate` | Mark helpful (idempotent); returns `helpful_count`. |
+| `DELETE` | `/api/v1/materials/{id}/helpful` | `material:rate` | Take the helpful mark back. |
+| `POST` | `/api/v1/materials/{id}/reports` | `report:submit` | Report to moderation with a `reason`. |
 
 Without `channel_id`, search covers general materials plus those in the caller's
 channels; with it, that channel only.
@@ -78,15 +112,20 @@ Load testing under concurrent users is NFR-01 (#46).
 `app.modules.materials.service`: `create_material`, `get_material`, `set_removed`,
 `count_uploaded_by`, `recent_uploaded_by`, and from S04.1 `describe_material`,
 `search_materials` (`MaterialPage`), `validate_file`, `attach_file`,
-`get_material_file`. `MaterialSummary` gained optional fields (semester, uploader,
+`get_material_file`, and from S04.2 `feedback_for` (`MaterialFeedback`),
+`rate_material`, `set_helpful`, `list_reviews` (`MaterialReviewEntry`).
+`MaterialSummary` gained optional fields (semester, uploader,
 file, ...) with defaults, so existing callers are unchanged.
 
 ## Dependencies
 
-`accounts` (route guards, uploader names) and `channels` (visibility and membership).
+`accounts` (route guards, uploader and review author names), `channels` (visibility
+and membership) and `moderation` (filing reports).
 
 ## Tests
 
 `tests/test_materials.py` — Test Plan cases `UT_07`, `UT_08`, `IT_07`, `IT_08` under
 their IDs, plus file type and size, empty state, response time, and channel access
-tests.
+tests. `tests/test_material_feedback.py` — `ST_07`, `ST_08`, plus one test per S04.2
+acceptance criterion (average, helpful once per user, review author, reason required,
+moderation queue).
