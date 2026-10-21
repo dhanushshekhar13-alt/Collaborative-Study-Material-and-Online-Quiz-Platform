@@ -834,6 +834,29 @@
         "title": "MemberRole",
         "type": "string"
       },
+      "NotEnoughQuestionsResponse": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "integer"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "requested": {
+            "title": "Requested",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detail",
+          "available",
+          "requested"
+        ],
+        "title": "NotEnoughQuestionsResponse",
+        "type": "object"
+      },
       "PermissionsResponse": {
         "properties": {
           "capabilities": {
@@ -852,6 +875,72 @@
           "capabilities"
         ],
         "title": "PermissionsResponse",
+        "type": "object"
+      },
+      "PreviewResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "difficulty",
+          "question_count",
+          "duration_minutes",
+          "channel_id",
+          "questions"
+        ],
+        "title": "PreviewResponse",
         "type": "object"
       },
       "ProfileResponse": {
@@ -991,6 +1080,24 @@
           }
         },
         "title": "ProfileUpdate",
+        "type": "object"
+      },
+      "PublishRequest": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Channel whose Quizzes tab shows it; omit for general",
+            "title": "Channel Id"
+          }
+        },
+        "title": "PublishRequest",
         "type": "object"
       },
       "QuestionCreate": {
@@ -1267,6 +1374,419 @@
         ],
         "title": "QuestionType",
         "type": "string"
+      },
+      "QuizCreate": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also draw from this channel's bank (needs membership); the general bank is always included",
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "description": "Timer length in minutes",
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "description": "Number of questions",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "question_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reviewed question set, in order. Omit to let the system pick question_count matching questions.",
+            "title": "Question Ids"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "difficulty",
+          "question_count",
+          "duration_minutes"
+        ],
+        "title": "QuizCreate",
+        "type": "object"
+      },
+      "QuizCriteria": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also draw from this channel's bank (needs membership); the general bank is always included",
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "description": "Timer length in minutes",
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "description": "Number of questions",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "difficulty",
+          "question_count",
+          "duration_minutes"
+        ],
+        "title": "QuizCriteria",
+        "type": "object"
+      },
+      "QuizQuestionResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown to the quiz author only",
+            "title": "Correct Answer"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown to the quiz author only",
+            "title": "Explanation"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "text",
+          "subject",
+          "topic",
+          "difficulty",
+          "question_type",
+          "options",
+          "channel_id",
+          "correct_answer",
+          "explanation"
+        ],
+        "title": "QuizQuestionResponse",
+        "type": "object"
+      },
+      "QuizResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "creator_id": {
+            "title": "Creator Id",
+            "type": "integer"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuizStatus"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "topic",
+          "difficulty",
+          "duration_minutes",
+          "question_count",
+          "channel_id",
+          "creator_id",
+          "status",
+          "created_at",
+          "questions"
+        ],
+        "title": "QuizResponse",
+        "type": "object"
+      },
+      "QuizStatus": {
+        "enum": [
+          "draft",
+          "published",
+          "removed"
+        ],
+        "title": "QuizStatus",
+        "type": "string"
+      },
+      "QuizSummaryResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "creator_id": {
+            "title": "Creator Id",
+            "type": "integer"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuizStatus"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "topic",
+          "difficulty",
+          "duration_minutes",
+          "question_count",
+          "channel_id",
+          "creator_id",
+          "status",
+          "created_at"
+        ],
+        "title": "QuizSummaryResponse",
+        "type": "object"
       },
       "RatingRequest": {
         "properties": {
@@ -3169,6 +3689,297 @@
         "summary": "Report Question",
         "tags": [
           "questions"
+        ]
+      }
+    },
+    "/api/v1/quizzes": {
+      "get": {
+        "description": "Published quizzes in a channel's Quizzes tab (members only), the general list\n(no ``channel_id``), or with ``mine=true`` the caller's own drafts and quizzes.",
+        "operationId": "list_quizzes_api_v1_quizzes_get",
+        "parameters": [
+          {
+            "description": "The channel's Quizzes tab",
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The channel's Quizzes tab",
+              "title": "Channel Id"
+            }
+          },
+          {
+            "description": "The caller's own quizzes, drafts too",
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "The caller's own quizzes, drafts too",
+              "title": "Mine",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuizSummaryResponse"
+                  },
+                  "title": "Response List Quizzes Api V1 Quizzes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Quizzes",
+        "tags": [
+          "quizzes"
+        ]
+      },
+      "post": {
+        "description": "Save a quiz with the requested count, difficulty and timer (IT_10) as a draft\nonly its author can see.\n\nWith ``question_ids`` the reviewed set is saved as given (any published question\nfrom the general bank or the ``channel_id`` bank, including one contributed a\nmoment ago, ST_10); without, the system picks matching questions. Publish it\nwith ``POST /quizzes/{id}/publish``.",
+        "operationId": "create_quiz_api_v1_quizzes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotEnoughQuestionsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Quiz",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
+    "/api/v1/quizzes/preview": {
+      "post": {
+        "description": "Pick ``question_count`` matching bank questions for the author to review\nbefore saving (use case Create Quiz, step 3). Nothing is saved.\n\nToo few matching questions answers 409 with how many are available, so the client\ncan offer to broaden the criteria.",
+        "operationId": "preview_quiz_api_v1_quizzes_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizCriteria"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotEnoughQuestionsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Quiz",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
+    "/api/v1/quizzes/{quiz_id}": {
+      "get": {
+        "description": "One quiz with its questions. The answer key is shown to its author only.",
+        "operationId": "read_quiz_api_v1_quizzes__quiz_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_id",
+            "required": true,
+            "schema": {
+              "title": "Quiz Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Quiz",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
+    "/api/v1/quizzes/{quiz_id}/publish": {
+      "post": {
+        "description": "Publish the caller's draft to a channel's Quizzes tab, visible to all its\nmembers (ST_09), or to the general list. Only the author can publish; to anyone\nelse the draft does not exist.",
+        "operationId": "publish_quiz_api_v1_quizzes__quiz_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_id",
+            "required": true,
+            "schema": {
+              "title": "Quiz Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Quiz",
+        "tags": [
+          "quizzes"
         ]
       }
     },

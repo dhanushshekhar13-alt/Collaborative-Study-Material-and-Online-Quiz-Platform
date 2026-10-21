@@ -296,3 +296,37 @@ def rate_question(db: Session, question_id: int, user_id: int, rating: int) -> B
         existing.rating = rating
     db.flush()
     return get_bank_question(db, question_id, user_id)
+
+
+# --------------------------------------------------------------------------- #
+# S05.2 - choosing questions for a quiz
+# --------------------------------------------------------------------------- #
+
+
+def quiz_candidates(
+    db: Session,
+    *,
+    subject: str | None = None,
+    topic: str | None = None,
+    difficulty: Difficulty | None = None,
+    channel_id: int | None = None,
+) -> list[BankQuestion]:
+    """Published questions a quiz may use, oldest first.
+
+    The general bank is always included; with ``channel_id`` that channel's bank is
+    too. Subject and topic match whole values ignoring case. A question is usable the
+    moment it is contributed: there is no cache or index to refresh (ST_10).
+    """
+    stmt = select(Question).where(Question.status == QuestionStatus.PUBLISHED)
+    if channel_id is None:
+        stmt = stmt.where(Question.channel_id.is_(None))
+    else:
+        stmt = stmt.where(or_(Question.channel_id.is_(None), Question.channel_id == channel_id))
+    if subject and subject.strip():
+        stmt = stmt.where(func.lower(Question.subject) == subject.strip().lower())
+    if topic and topic.strip():
+        stmt = stmt.where(func.lower(Question.topic) == topic.strip().lower())
+    if difficulty is not None:
+        stmt = stmt.where(Question.difficulty == difficulty)
+    rows = list(db.scalars(stmt.order_by(Question.id)))
+    return _bank(db, rows, None)
