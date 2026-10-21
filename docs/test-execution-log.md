@@ -146,3 +146,24 @@ written down as: search or filter answers within 1 second with 1,000 materials.
 Migration `0004` (material files) upgrades and downgrades cleanly and matches the
 models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
 database: UT_07, UT_08, IT_07 and IT_08 behave as above alongside the seeded materials.
+
+## S04.2 (#23) — Rate, review and report materials
+
+Test Plan cases are automated in `tests/test_material_feedback.py` under their case
+IDs, run against the endpoints the UI (UI-2 #63) will call. ST_07's precondition
+(an average of 4.0 from two ratings) is set up through the API; the plan's
+"Duplicate content" reason is `reason: duplicate`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `ST_07` | Submitting a rating updates the material's average rating correctly (4.0 from 2 ratings + 5 stars → 4.3) | `test_ST_07_rating_updates_the_average_and_helpful_counts_once`, `test_submitting_a_rating_updates_the_average_correctly`, `test_rating_again_replaces_the_earlier_rating`, `test_a_rating_from_1_to_5_is_required` | Pass |
+| `ST_07` | The helpful count increments by one per user and cannot be inflated by repeating | `test_ST_07_rating_updates_the_average_and_helpful_counts_once`, `test_the_helpful_count_cannot_be_inflated_by_repeating`, `test_marking_helpful_does_not_need_or_add_a_rating`, `test_uploaders_cannot_rate_or_mark_their_own_material` | Pass |
+| `ST_07` | Review text is displayed with its author | `test_review_text_is_displayed_with_its_author` | Pass |
+| `ST_08` | The report is recorded with timestamp and reporter id | `test_ST_08_report_is_recorded_and_appears_in_the_moderation_queue` | Pass |
+| `ST_08` | The report appears in the moderation queue for review | `test_ST_08_report_is_recorded_and_appears_in_the_moderation_queue`, `test_channel_material_reports_go_to_that_channels_queue`, `test_reporting_again_while_open_does_not_duplicate` | Pass |
+| — | A reason must be selected before submitting | `test_a_reason_must_be_selected_before_submitting`, `test_an_unknown_reason_is_refused` | Pass |
+
+Migration `0005` (optional review rating) upgrades and downgrades cleanly and matches
+the models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
+database: rating, review listing, helpful marking and reporting behave as above on the
+seeded materials.

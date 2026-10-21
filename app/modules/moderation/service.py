@@ -1,5 +1,6 @@
 """Public interface of the moderation module (reports and admin actions)."""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -36,6 +37,38 @@ def file_report(
     db.add(report)
     db.flush()
     return report.id
+
+
+@dataclass(frozen=True)
+class ReportSummary:
+    """A report as filed: what was reported, by whom, why and when."""
+
+    id: int
+    reporter_id: int
+    target_type: ReportTarget
+    target_id: int
+    reason: ReportReason
+    details: str | None
+    channel_id: int | None
+    status: ReportStatus
+    created_at: datetime
+
+
+def get_report(db: Session, report_id: int) -> ReportSummary | None:
+    r = db.get(Report, report_id)
+    if r is None:
+        return None
+    return ReportSummary(
+        r.id,
+        r.reporter_id,
+        r.target_type,
+        r.target_id,
+        r.reason,
+        r.details,
+        r.channel_id,
+        r.status,
+        r.created_at,
+    )
 
 
 def find_open_report(
