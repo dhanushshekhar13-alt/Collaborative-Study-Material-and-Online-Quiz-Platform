@@ -4,8 +4,8 @@
 later change to the quiz cannot lengthen or shorten a running attempt.
 ``auto_submitted`` records that the server closed the attempt at its time limit.
 
-Revision ID: 0005
-Revises: 0004
+Revision ID: 0006
+Revises: 0005
 Create Date: 2026-10-21
 """
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0005"
-down_revision: str | None = "0004"
+revision: str = "0006"
+down_revision: str | None = "0005"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

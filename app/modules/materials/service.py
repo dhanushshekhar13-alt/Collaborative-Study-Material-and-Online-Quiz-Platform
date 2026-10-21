@@ -6,10 +6,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePosixPath, PureWindowsPath
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.modules.materials.models import ContentStatus, MaterialFile, MaterialType, StudyMaterial
+from app.modules.materials.models import (
+    ContentStatus,
+    MaterialFile,
+    MaterialReview,
+    MaterialType,
+    StudyMaterial,
+)
 
 
 @dataclass(frozen=True)
@@ -364,3 +370,148 @@ def search_materials(
     )
     files = _file_info(db, [m.id for m in rows])
     return MaterialPage([_summary(m, files.get(m.id)) for m in rows], total)
+
+
+# --------------------------------------------------------------------------- #
+# S04.2 - rate, review and mark helpful
+# --------------------------------------------------------------------------- #
+# One ``material_reviews`` row per (material, user) holds that user's rating, review
+# text and helpful mark, so a user can never count twice towards the average or the
+# helpful count. The rating is optional on the row: marking a material helpful
+# without rating it leaves ``rating`` NULL, which AVG and COUNT(rating) ignore.
+
+
+@dataclass(frozen=True)
+class MaterialFeedback:
+    """A material's rating summary, plus the viewer's own feedback when known."""
+
+    rating_average: float | None = None
+    rating_count: int = 0
+    review_count: int = 0
+    helpful_count: int = 0
+    my_rating: int | None = None
+    my_review: str | None = None
+    marked_helpful: bool = False
+
+
+@dataclass(frozen=True)
+class MaterialReviewEntry:
+    """One user's written review of a material."""
+
+    id: int
+    user_id: int
+    rating: int | None
+    review: str
+    marked_helpful: bool
+    created_at: datetime | None
+
+
+def feedback_for(
+    db: Session, material_ids: Collection[int], viewer_id: int | None = None
+) -> dict[int, MaterialFeedback]:
+    """Rating average and count, review count and helpful count per material.
+
+    Every requested id is in the result; materials nobody rated get empty feedback.
+    """
+    ids = list(material_ids)
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(
+            MaterialReview.material_id,
+            func.avg(MaterialReview.rating),
+            func.count(MaterialReview.rating),
+            func.count(MaterialReview.review),
+            func.coalesce(func.sum(case((MaterialReview.is_helpful, 1), else_=0)), 0),
+        )
+        .where(MaterialReview.material_id.in_(ids))
+        .group_by(MaterialReview.material_id)
+    )
+    totals = {r[0]: (float(r[1]) if r[1] is not None else None, r[2], r[3], r[4]) for r in rows}
+    mine: dict[int, MaterialReview] = {}
+    if viewer_id is not None:
+        mine = {
+            r.material_id: r
+            for r in db.scalars(
+                select(MaterialReview).where(
+                    MaterialReview.material_id.in_(ids), MaterialReview.user_id == viewer_id
+                )
+            )
+        }
+    result = {}
+    for material_id in ids:
+        average, ratings, reviews, helpful = totals.get(material_id, (None, 0, 0, 0))
+        own = mine.get(material_id)
+        result[material_id] = MaterialFeedback(
+            rating_average=average,
+            rating_count=ratings,
+            review_count=reviews,
+            helpful_count=int(helpful),
+            my_rating=own.rating if own else None,
+            my_review=own.review if own else None,
+            marked_helpful=bool(own.is_helpful) if own else False,
+        )
+    return result
+
+
+def _own_review(db: Session, material_id: int, user_id: int) -> MaterialReview:
+    row = db.scalar(
+        select(MaterialReview).where(
+            MaterialReview.material_id == material_id, MaterialReview.user_id == user_id
+        )
+    )
+    if row is None:
+        row = MaterialReview(material_id=material_id, user_id=user_id, is_helpful=False)
+        db.add(row)
+    return row
+
+
+def rate_material(
+    db: Session, material_id: int, user_id: int, rating: int, review: str | None = None
+) -> MaterialFeedback:
+    """Save the user's 1-5 rating and optional review text. Caller commits.
+
+    Rating again replaces the user's earlier rating and review, so each user counts
+    once towards the average. The helpful mark is left as it was.
+    """
+    if not 1 <= rating <= 5:
+        raise ValueError("rating must be between 1 and 5")
+    row = _own_review(db, material_id, user_id)
+    row.rating = rating
+    row.review = (review or "").strip() or None
+    db.flush()
+    return feedback_for(db, [material_id], user_id)[material_id]
+
+
+def set_helpful(db: Session, material_id: int, user_id: int, helpful: bool) -> MaterialFeedback:
+    """Mark (or unmark) the material helpful for this user. Caller commits.
+
+    Marking is idempotent: a user adds at most one to the helpful count however often
+    they mark it.
+    """
+    row = _own_review(db, material_id, user_id)
+    row.is_helpful = helpful
+    db.flush()
+    if not helpful and row.rating is None and row.review is None:
+        db.delete(row)
+        db.flush()
+    return feedback_for(db, [material_id], user_id)[material_id]
+
+
+def list_reviews(
+    db: Session, material_id: int, *, limit: int = 20, offset: int = 0
+) -> tuple[list[MaterialReviewEntry], int]:
+    """Written reviews of a material, newest first, and how many there are."""
+    where = and_(MaterialReview.material_id == material_id, MaterialReview.review.is_not(None))
+    total = db.scalar(select(func.count(MaterialReview.id)).where(where)) or 0
+    rows = db.scalars(
+        select(MaterialReview)
+        .where(where)
+        .order_by(MaterialReview.created_at.desc(), MaterialReview.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return [
+        MaterialReviewEntry(r.id, r.user_id, r.rating, r.review, bool(r.is_helpful), r.created_at)
+        for r in rows
+    ], total

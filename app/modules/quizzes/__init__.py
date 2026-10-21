@@ -2,5 +2,5 @@
 
 Owns tables: quizzes, quiz_questions, quiz_attempts, attempt_answers.
 Public interface: ``app.modules.quizzes.service``.
-May call the services of: ``questions``.
+May call the services of: ``accounts``, ``channels``, ``questions``.
 """

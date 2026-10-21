@@ -782,6 +782,29 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HelpfulResponse": {
+        "properties": {
+          "helpful_count": {
+            "title": "Helpful Count",
+            "type": "integer"
+          },
+          "marked_helpful": {
+            "title": "Marked Helpful",
+            "type": "boolean"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "material_id",
+          "helpful_count",
+          "marked_helpful"
+        ],
+        "title": "HelpfulResponse",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "password": {
@@ -876,6 +899,78 @@
         "title": "MaterialListResponse",
         "type": "object"
       },
+      "MaterialReportRequest": {
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\"duplicate\" is the \"Duplicate content\" report"
+          }
+        },
+        "title": "MaterialReportRequest",
+        "type": "object"
+      },
+      "MaterialReportResponse": {
+        "properties": {
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "reported_at": {
+            "format": "date-time",
+            "title": "Reported At",
+            "type": "string"
+          },
+          "reporter_id": {
+            "title": "Reporter Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "material_id",
+          "reason",
+          "reporter_id",
+          "reported_at",
+          "status",
+          "message"
+        ],
+        "title": "MaterialReportResponse",
+        "type": "object"
+      },
       "MaterialResponse": {
         "properties": {
           "channel_id": {
@@ -933,6 +1028,10 @@
               }
             ]
           },
+          "helpful_count": {
+            "title": "Helpful Count",
+            "type": "integer"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -941,8 +1040,34 @@
             "title": "Is Official",
             "type": "boolean"
           },
+          "marked_helpful": {
+            "title": "Marked Helpful",
+            "type": "boolean"
+          },
           "material_type": {
             "$ref": "#/components/schemas/MaterialType"
+          },
+          "my_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Rating"
+          },
+          "my_review": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Review"
           },
           "preview_url": {
             "anyOf": [
@@ -954,6 +1079,25 @@
               }
             ],
             "title": "Preview Url"
+          },
+          "rating_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating Average"
+          },
+          "rating_count": {
+            "title": "Rating Count",
+            "type": "integer"
+          },
+          "review_count": {
+            "title": "Review Count",
+            "type": "integer"
           },
           "semester": {
             "anyOf": [
@@ -1048,7 +1192,14 @@
           "url",
           "file",
           "preview_url",
-          "download_url"
+          "download_url",
+          "rating_average",
+          "rating_count",
+          "review_count",
+          "helpful_count",
+          "my_rating",
+          "my_review",
+          "marked_helpful"
         ],
         "title": "MaterialResponse",
         "type": "object"
@@ -1120,6 +1271,29 @@
         "title": "MemberRole",
         "type": "string"
       },
+      "NotEnoughQuestionsResponse": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "integer"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "requested": {
+            "title": "Requested",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detail",
+          "available",
+          "requested"
+        ],
+        "title": "NotEnoughQuestionsResponse",
+        "type": "object"
+      },
       "PermissionsResponse": {
         "properties": {
           "capabilities": {
@@ -1138,6 +1312,72 @@
           "capabilities"
         ],
         "title": "PermissionsResponse",
+        "type": "object"
+      },
+      "PreviewResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "difficulty",
+          "question_count",
+          "duration_minutes",
+          "channel_id",
+          "questions"
+        ],
+        "title": "PreviewResponse",
         "type": "object"
       },
       "ProfileResponse": {
@@ -1277,6 +1517,24 @@
           }
         },
         "title": "ProfileUpdate",
+        "type": "object"
+      },
+      "PublishRequest": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Channel whose Quizzes tab shows it; omit for general",
+            "title": "Channel Id"
+          }
+        },
+        "title": "PublishRequest",
         "type": "object"
       },
       "QuestionCreate": {
@@ -1554,6 +1812,419 @@
         "title": "QuestionType",
         "type": "string"
       },
+      "QuizCreate": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also draw from this channel's bank (needs membership); the general bank is always included",
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "description": "Timer length in minutes",
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "description": "Number of questions",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "question_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reviewed question set, in order. Omit to let the system pick question_count matching questions.",
+            "title": "Question Ids"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "difficulty",
+          "question_count",
+          "duration_minutes"
+        ],
+        "title": "QuizCreate",
+        "type": "object"
+      },
+      "QuizCriteria": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also draw from this channel's bank (needs membership); the general bank is always included",
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "description": "Timer length in minutes",
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "description": "Number of questions",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "difficulty",
+          "question_count",
+          "duration_minutes"
+        ],
+        "title": "QuizCriteria",
+        "type": "object"
+      },
+      "QuizQuestionResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown to the quiz author only",
+            "title": "Correct Answer"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown to the quiz author only",
+            "title": "Explanation"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "text",
+          "subject",
+          "topic",
+          "difficulty",
+          "question_type",
+          "options",
+          "channel_id",
+          "correct_answer",
+          "explanation"
+        ],
+        "title": "QuizQuestionResponse",
+        "type": "object"
+      },
+      "QuizResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "creator_id": {
+            "title": "Creator Id",
+            "type": "integer"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuizStatus"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "topic",
+          "difficulty",
+          "duration_minutes",
+          "question_count",
+          "channel_id",
+          "creator_id",
+          "status",
+          "created_at",
+          "questions"
+        ],
+        "title": "QuizResponse",
+        "type": "object"
+      },
+      "QuizStatus": {
+        "enum": [
+          "draft",
+          "published",
+          "removed"
+        ],
+        "title": "QuizStatus",
+        "type": "string"
+      },
+      "QuizSummaryResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "creator_id": {
+            "title": "Creator Id",
+            "type": "integer"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuizStatus"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "topic",
+          "difficulty",
+          "duration_minutes",
+          "question_count",
+          "channel_id",
+          "creator_id",
+          "status",
+          "created_at"
+        ],
+        "title": "QuizSummaryResponse",
+        "type": "object"
+      },
       "RatingRequest": {
         "properties": {
           "rating": {
@@ -1761,6 +2432,133 @@
           "answers"
         ],
         "title": "ResultResponse",
+        "type": "object"
+      },
+      "ReviewListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ReviewListResponse",
+        "type": "object"
+      },
+      "ReviewRequest": {
+        "properties": {
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 to 5 stars",
+            "title": "Rating"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional text",
+            "title": "Review"
+          }
+        },
+        "title": "ReviewRequest",
+        "type": "object"
+      },
+      "ReviewResponse": {
+        "properties": {
+          "author_id": {
+            "title": "Author Id",
+            "type": "integer"
+          },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "marked_helpful": {
+            "title": "Marked Helpful",
+            "type": "boolean"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "review": {
+            "title": "Review",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "author_id",
+          "author_name",
+          "rating",
+          "review",
+          "marked_helpful",
+          "created_at"
+        ],
+        "title": "ReviewResponse",
         "type": "object"
       },
       "Role": {
@@ -3028,7 +3826,7 @@
     },
     "/api/v1/materials/{material_id}": {
       "get": {
-        "description": "One material with all its tags and file details.",
+        "description": "One material with all its tags, file details and ratings.",
         "operationId": "read_material_api_v1_materials__material_id__get",
         "parameters": [
           {
@@ -3115,6 +3913,100 @@
         ]
       }
     },
+    "/api/v1/materials/{material_id}/helpful": {
+      "delete": {
+        "description": "Take back the caller's helpful mark.",
+        "operationId": "unmark_helpful_api_v1_materials__material_id__helpful_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpfulResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unmark Helpful",
+        "tags": [
+          "materials"
+        ]
+      },
+      "put": {
+        "description": "Mark a material helpful (ST_07). Repeating it never adds more than one.",
+        "operationId": "mark_helpful_api_v1_materials__material_id__helpful_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpfulResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Helpful",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
     "/api/v1/materials/{material_id}/preview": {
       "get": {
         "description": "The file for viewing in the browser (IT_08): PDFs, images and text only.",
@@ -3151,6 +4043,193 @@
           }
         ],
         "summary": "Preview Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/reports": {
+      "post": {
+        "description": "Report a material (for example \"Duplicate content\") to moderation (ST_08).\n\nA reason is required. The report is recorded with its timestamp and reporter and\nfiled as open in the moderation queue, scoped to the material's channel. Reporting\nthe same material again while the first report is open returns that report.",
+        "operationId": "report_material_api_v1_materials__material_id__reports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/review": {
+      "put": {
+        "description": "Rate a material 1-5 stars, optionally with review text (ST_07).\n\nThe response carries the updated ``rating_average``. Rating again replaces the\ncaller's earlier rating and review, so each user counts once. Uploaders cannot\nrate their own material.",
+        "operationId": "review_material_api_v1_materials__material_id__review_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/reviews": {
+      "get": {
+        "description": "Written reviews, newest first, each with its author's name.",
+        "operationId": "list_material_reviews_api_v1_materials__material_id__reviews_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Material Reviews",
         "tags": [
           "materials"
         ]
@@ -3765,6 +4844,239 @@
         ]
       }
     },
+    "/api/v1/quizzes": {
+      "get": {
+        "description": "Published quizzes in a channel's Quizzes tab (members only), the general list\n(no ``channel_id``), or with ``mine=true`` the caller's own drafts and quizzes.",
+        "operationId": "list_quizzes_api_v1_quizzes_get",
+        "parameters": [
+          {
+            "description": "The channel's Quizzes tab",
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The channel's Quizzes tab",
+              "title": "Channel Id"
+            }
+          },
+          {
+            "description": "The caller's own quizzes, drafts too",
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "The caller's own quizzes, drafts too",
+              "title": "Mine",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuizSummaryResponse"
+                  },
+                  "title": "Response List Quizzes Api V1 Quizzes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Quizzes",
+        "tags": [
+          "quizzes"
+        ]
+      },
+      "post": {
+        "description": "Save a quiz with the requested count, difficulty and timer (IT_10) as a draft\nonly its author can see.\n\nWith ``question_ids`` the reviewed set is saved as given (any published question\nfrom the general bank or the ``channel_id`` bank, including one contributed a\nmoment ago, ST_10); without, the system picks matching questions. Publish it\nwith ``POST /quizzes/{id}/publish``.",
+        "operationId": "create_quiz_api_v1_quizzes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotEnoughQuestionsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Quiz",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
+    "/api/v1/quizzes/preview": {
+      "post": {
+        "description": "Pick ``question_count`` matching bank questions for the author to review\nbefore saving (use case Create Quiz, step 3). Nothing is saved.\n\nToo few matching questions answers 409 with how many are available, so the client\ncan offer to broaden the criteria.",
+        "operationId": "preview_quiz_api_v1_quizzes_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizCriteria"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotEnoughQuestionsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Quiz",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
+    "/api/v1/quizzes/{quiz_id}": {
+      "get": {
+        "description": "One quiz with its questions. The answer key is shown to its author only.",
+        "operationId": "read_quiz_api_v1_quizzes__quiz_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_id",
+            "required": true,
+            "schema": {
+              "title": "Quiz Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Quiz",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
     "/api/v1/quizzes/{quiz_id}/attempts": {
       "post": {
         "description": "Start the quiz; the timer starts now and ``remaining_seconds`` counts it down.\n\nIf the caller already has a running attempt at this quiz it is resumed (200) with\nits answers and remaining time, so reloading the page does not restart the clock.\nNon-members cannot attempt a channel quiz (403).",
@@ -3813,6 +5125,64 @@
         "summary": "Start Attempt",
         "tags": [
           "quiz attempts"
+        ]
+      }
+    },
+    "/api/v1/quizzes/{quiz_id}/publish": {
+      "post": {
+        "description": "Publish the caller's draft to a channel's Quizzes tab, visible to all its\nmembers (ST_09), or to the general list. Only the author can publish; to anyone\nelse the draft does not exist.",
+        "operationId": "publish_quiz_api_v1_quizzes__quiz_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_id",
+            "required": true,
+            "schema": {
+              "title": "Quiz Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Quiz",
+        "tags": [
+          "quizzes"
         ]
       }
     },

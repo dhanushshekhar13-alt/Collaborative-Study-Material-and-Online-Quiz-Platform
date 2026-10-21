@@ -1,4 +1,4 @@
-"""HTTP surface of the materials module, mounted at ``/api/v1/materials`` (S04.1)."""
+"""HTTP surface of the materials module, mounted at ``/api/v1/materials`` (S04.1, S04.2)."""
 
 from datetime import datetime
 from pathlib import PurePosixPath
@@ -15,7 +15,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -32,6 +32,8 @@ from app.modules.channels import service as channels
 from app.modules.channels.service import ChannelType
 from app.modules.materials import service
 from app.modules.materials.models import MaterialType
+from app.modules.moderation import service as moderation
+from app.modules.moderation.service import ReportReason, ReportTarget
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -48,6 +50,10 @@ MEMBERS_ONLY_UPLOAD = "Join this channel to add materials"
 AUTHORIZED_ONLY_UPLOAD = "Only authorized users can add content to Authorized Channels"
 NO_FILE = "This material has no file to download"
 NOT_PREVIEWABLE = "Preview isn't available for this file type. Download it instead"
+RATING_REQUIRED = "Select a rating from 1 to 5 stars"
+REASON_REQUIRED = "Select a reason for reporting this material"
+OWN_MATERIAL = "You can't rate or mark your own material as helpful"
+REPORT_LOGGED = "Report submitted for moderation"
 EMPTY_STATE = (
     "No materials match your search. Try a broader subject or topic, "
     "or upload the first material for it."
@@ -89,6 +95,14 @@ class MaterialResponse(BaseModel):
     file: MaterialFileResponse | None
     preview_url: str | None
     download_url: str | None
+    # Ratings and the caller's own feedback (S04.2). The UI shows one decimal.
+    rating_average: float | None
+    rating_count: int
+    review_count: int
+    helpful_count: int
+    my_rating: int | None
+    my_review: str | None
+    marked_helpful: bool
 
 
 class MaterialListResponse(BaseModel):
@@ -105,7 +119,10 @@ def _is_admin(user: UserSummary) -> bool:
 
 
 def _response(
-    db: Session, m: service.MaterialSummary, names: dict[int, str] | None = None
+    db: Session,
+    m: service.MaterialSummary,
+    names: dict[int, str] | None = None,
+    feedback: service.MaterialFeedback | None = None,
 ) -> MaterialResponse:
     if names is not None and m.uploader_id in names:
         uploader_name = names[m.uploader_id]
@@ -117,7 +134,15 @@ def _response(
     type_label = TYPE_LABELS[m.material_type]
     base = f"/api/v1/materials/{m.id}"
     file = m.file
+    feedback = feedback or service.MaterialFeedback()
     return MaterialResponse(
+        rating_average=feedback.rating_average,
+        rating_count=feedback.rating_count,
+        review_count=feedback.review_count,
+        helpful_count=feedback.helpful_count,
+        my_rating=feedback.my_rating,
+        my_review=feedback.my_review,
+        marked_helpful=feedback.marked_helpful,
         id=m.id,
         title=m.title,
         description=m.description,
@@ -170,6 +195,12 @@ def _readable(db: Session, material_id: int, user: UserSummary) -> service.Mater
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND)
     _require_access(db, material.channel_id, user)
     return material
+
+
+def _detail(db: Session, material_id: int, user: UserSummary) -> MaterialResponse:
+    material = service.describe_material(db, material_id)
+    feedback = service.feedback_for(db, [material_id], user.id)[material_id]
+    return _response(db, material, feedback=feedback)
 
 
 def _blank(value: str | None) -> str | None:
@@ -265,7 +296,7 @@ async def upload_material(
     if data:
         service.attach_file(db, created.id, filename=filename, content_type=content_type, data=data)
     db.commit()
-    return _response(db, service.describe_material(db, created.id))
+    return _detail(db, created.id, user)
 
 
 @router.get("", response_model=MaterialListResponse)
@@ -309,8 +340,9 @@ def search_materials(
         offset=offset,
     )
     names: dict[int, str] = {}
+    feedback = service.feedback_for(db, [m.id for m in page.items], user.id)
     return MaterialListResponse(
-        items=[_response(db, m, names) for m in page.items],
+        items=[_response(db, m, names, feedback[m.id]) for m in page.items],
         total=page.total,
         limit=limit,
         offset=offset,
@@ -322,8 +354,9 @@ def search_materials(
 def read_material(
     material_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
 ) -> MaterialResponse:
-    """One material with all its tags and file details."""
-    return _response(db, _readable(db, material_id, user))
+    """One material with all its tags, file details and ratings."""
+    _readable(db, material_id, user)
+    return _detail(db, material_id, user)
 
 
 def _file_response(db: Session, material_id: int, user: UserSummary, *, inline: bool):
@@ -374,3 +407,192 @@ def download_material(
 ) -> Response:
     """The file as a download, under its original name (IT_08)."""
     return _file_response(db, material_id, user, inline=False)
+
+
+# --------------------------------------------------------------------------- #
+# S04.2 - rate, review, mark helpful and report
+# --------------------------------------------------------------------------- #
+
+
+class ReviewRequest(BaseModel):
+    # Optional in the schema so a missing rating gets the plain message below
+    # rather than a generic validation error.
+    rating: int | None = Field(default=None, description="1 to 5 stars")
+    review: str | None = Field(default=None, max_length=2000, description="Optional text")
+
+
+class ReviewResponse(BaseModel):
+    id: int
+    author_id: int
+    author_name: str | None
+    rating: int | None
+    review: str
+    marked_helpful: bool
+    created_at: datetime | None
+
+
+class ReviewListResponse(BaseModel):
+    items: list[ReviewResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class HelpfulResponse(BaseModel):
+    material_id: int
+    helpful_count: int
+    marked_helpful: bool
+
+
+class MaterialReportRequest(BaseModel):
+    # Optional in the schema so a missing reason gets REASON_REQUIRED (422).
+    reason: ReportReason | None = Field(
+        default=None, description='"duplicate" is the "Duplicate content" report'
+    )
+    details: str | None = Field(default=None, max_length=2000)
+
+
+class MaterialReportResponse(BaseModel):
+    report_id: int
+    material_id: int
+    reason: ReportReason
+    reporter_id: int
+    reported_at: datetime
+    status: str
+    message: str
+
+
+def _not_own(material: service.MaterialSummary, user: UserSummary) -> None:
+    if material.uploader_id == user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=OWN_MATERIAL)
+
+
+@router.put("/{material_id}/review", response_model=MaterialResponse)
+def review_material(
+    material_id: int,
+    payload: ReviewRequest,
+    user: UserSummary = Depends(require_capability(Capability.MATERIAL_RATE)),
+    db: Session = Depends(get_db),
+) -> MaterialResponse:
+    """Rate a material 1-5 stars, optionally with review text (ST_07).
+
+    The response carries the updated ``rating_average``. Rating again replaces the
+    caller's earlier rating and review, so each user counts once. Uploaders cannot
+    rate their own material.
+    """
+    material = _readable(db, material_id, user)
+    _not_own(material, user)
+    if payload.rating is None or not 1 <= payload.rating <= 5:
+        raise _invalid(RATING_REQUIRED)
+    service.rate_material(db, material_id, user.id, payload.rating, payload.review)
+    db.commit()
+    return _detail(db, material_id, user)
+
+
+@router.get("/{material_id}/reviews", response_model=ReviewListResponse)
+def list_material_reviews(
+    material_id: int,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ReviewListResponse:
+    """Written reviews, newest first, each with its author's name."""
+    _readable(db, material_id, user)
+    entries, total = service.list_reviews(db, material_id, limit=limit, offset=offset)
+    names: dict[int, str | None] = {}
+    items = []
+    for e in entries:
+        if e.user_id not in names:
+            author = accounts.get_user(db, e.user_id)
+            names[e.user_id] = author.display_name if author else None
+        items.append(
+            ReviewResponse(
+                id=e.id,
+                author_id=e.user_id,
+                author_name=names[e.user_id],
+                rating=e.rating,
+                review=e.review,
+                marked_helpful=e.marked_helpful,
+                created_at=e.created_at,
+            )
+        )
+    return ReviewListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+def _helpful(db: Session, material_id: int, user: UserSummary, helpful: bool) -> HelpfulResponse:
+    material = _readable(db, material_id, user)
+    _not_own(material, user)
+    feedback = service.set_helpful(db, material_id, user.id, helpful)
+    db.commit()
+    return HelpfulResponse(
+        material_id=material_id,
+        helpful_count=feedback.helpful_count,
+        marked_helpful=feedback.marked_helpful,
+    )
+
+
+@router.put("/{material_id}/helpful", response_model=HelpfulResponse)
+def mark_helpful(
+    material_id: int,
+    user: UserSummary = Depends(require_capability(Capability.MATERIAL_RATE)),
+    db: Session = Depends(get_db),
+) -> HelpfulResponse:
+    """Mark a material helpful (ST_07). Repeating it never adds more than one."""
+    return _helpful(db, material_id, user, True)
+
+
+@router.delete("/{material_id}/helpful", response_model=HelpfulResponse)
+def unmark_helpful(
+    material_id: int,
+    user: UserSummary = Depends(require_capability(Capability.MATERIAL_RATE)),
+    db: Session = Depends(get_db),
+) -> HelpfulResponse:
+    """Take back the caller's helpful mark."""
+    return _helpful(db, material_id, user, False)
+
+
+@router.post(
+    "/{material_id}/reports",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MaterialReportResponse,
+)
+def report_material(
+    material_id: int,
+    payload: MaterialReportRequest,
+    user: UserSummary = Depends(require_capability(Capability.REPORT_SUBMIT)),
+    db: Session = Depends(get_db),
+) -> MaterialReportResponse:
+    """Report a material (for example "Duplicate content") to moderation (ST_08).
+
+    A reason is required. The report is recorded with its timestamp and reporter and
+    filed as open in the moderation queue, scoped to the material's channel. Reporting
+    the same material again while the first report is open returns that report.
+    """
+    material = _readable(db, material_id, user)
+    if payload.reason is None:
+        raise _invalid(REASON_REQUIRED)
+    report_id = moderation.find_open_report(
+        db, reporter_id=user.id, target_type=ReportTarget.MATERIAL, target_id=material_id
+    )
+    if report_id is None:
+        report_id = moderation.file_report(
+            db,
+            reporter_id=user.id,
+            target_type=ReportTarget.MATERIAL,
+            target_id=material_id,
+            reason=payload.reason,
+            details=_blank(payload.details),
+            channel_id=material.channel_id,
+        )
+        db.commit()
+    report = moderation.get_report(db, report_id)
+    return MaterialReportResponse(
+        report_id=report.id,
+        material_id=material_id,
+        reason=report.reason,
+        reporter_id=report.reporter_id,
+        reported_at=report.created_at,
+        status=report.status.value,
+        message=REPORT_LOGGED,
+    )

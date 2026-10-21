@@ -11,6 +11,7 @@ from app.modules.materials.router import router as materials_router
 from app.modules.profiles.router import router as profiles_router
 from app.modules.questions.router import router as questions_router
 from app.modules.quizzes.attempts_router import router as quiz_attempts_router
+from app.modules.quizzes.router import router as quizzes_router
 
 API_PREFIX = "/api/v1"
 
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(materials_router, prefix=API_PREFIX)
     app.include_router(profiles_router, prefix=API_PREFIX)
     app.include_router(questions_router, prefix=API_PREFIX)
+    app.include_router(quizzes_router, prefix=API_PREFIX)
     app.include_router(quiz_attempts_router, prefix=API_PREFIX)
 
     return app
