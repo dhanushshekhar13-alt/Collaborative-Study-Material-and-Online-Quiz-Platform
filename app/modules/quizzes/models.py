@@ -78,6 +78,10 @@ class QuizAttempt(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     score: Mapped[float | None] = mapped_column(Float)
     max_score: Mapped[float | None] = mapped_column(Float)
+    # S06.1: the time limit fixed when the attempt starts (null = untimed), and whether
+    # the server closed the attempt because that limit passed.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    auto_submitted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class AttemptAnswer(Base):

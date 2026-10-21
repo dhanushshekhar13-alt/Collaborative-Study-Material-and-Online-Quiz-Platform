@@ -146,3 +146,30 @@ written down as: search or filter answers within 1 second with 1,000 materials.
 Migration `0004` (material files) upgrades and downgrades cleanly and matches the
 models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
 database: UT_07, UT_08, IT_07 and IT_08 behave as above alongside the seeded materials.
+
+## S06.1 (#28) — Quiz attempt with automatic scoring and timer
+
+Test Plan cases are automated in `tests/test_quiz_attempts.py` under their case IDs,
+against the attempt endpoints. Quizzes are built with the quizzes service until S05.2
+(#25) adds the quiz-building endpoints. The timer is tested by moving the attempt
+clock forward rather than waiting. The NFR-01 target for this path is 3 seconds for
+submission with result display; it is checked on a 50-question quiz.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_11` | A four-of-five attempt is scored 4/5 (80 percent) and displayed immediately | `test_UT_11_four_of_five_is_scored_80_percent_and_shown_immediately` | Pass |
+| — | Objective questions are scored deterministically without the LLM (NFR-06) | `test_objective_scoring_is_deterministic_and_never_uses_the_llm`, `test_true_false_and_short_answer_are_scored_too`, `test_descriptive_answers_are_stored_for_evaluation_not_scored` | Pass |
+| — | Submission and result generation complete within the response-time target (NFR-01) | `test_submission_and_result_stay_inside_the_response_time_target` | Pass |
+| `UT_12` | A warning names the number of unanswered questions before final submission | `test_UT_12_warning_names_the_unanswered_count_before_final_submission`, `test_the_warning_is_also_shown_while_answering`, `test_blank_answers_count_as_unanswered` | Pass |
+| `UT_12` | The configured rule decides whether submission is blocked or merely warned | `test_UT_12_warning_names_the_unanswered_count_before_final_submission` (warn), `test_UT_12_block_rule_refuses_submission_until_all_are_answered` (block), `test_a_complete_attempt_submits_without_any_warning` | Pass |
+| `ST_11` | The quiz auto-submits when the timer reaches zero | `test_ST_11_quiz_auto_submits_at_timeout_scoring_only_answered_questions`, `test_saving_after_the_limit_auto_submits`, `test_late_answers_are_not_counted_after_the_timer_ends`, `test_a_submit_arriving_just_after_zero_still_counts`, `test_the_time_limit_is_fixed_when_the_attempt_starts` | Pass |
+| `ST_11` | Only answered questions are scored; the rest are marked unattempted | `test_ST_11_quiz_auto_submits_at_timeout_scoring_only_answered_questions`, `test_UT_12_warning_names_the_unanswered_count_before_final_submission` | Pass |
+| — | The remaining time is visible throughout the attempt | `test_remaining_time_is_visible_throughout_the_attempt`, `test_reopening_a_running_quiz_resumes_the_same_timer` | Pass |
+| `IT_12` | An official quiz is attempted and scored identically to a peer-created quiz | `test_IT_12_official_quiz_is_attempted_and_scored_like_a_peer_quiz` | Pass |
+| — | Non-members cannot attempt a channel-scoped quiz | `test_non_members_cannot_attempt_a_channel_quiz`, `test_a_member_who_leaves_cannot_start_again`, `test_a_quiz_in_a_hidden_channel_is_not_revealed` | Pass |
+
+Migration `0005` (attempt timer) upgrades and downgrades cleanly and matches the
+models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
+database: the seeded student and faculty start "CPU scheduling basics" with 15 minutes
+on the clock, get "2 questions are unanswered" when submitting one answer, and see
+`1/3 (33.3%)` after confirming; the admin, not a member of that channel, is refused.
