@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StudyHub</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="api.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#/channels">StudyHub</a>
+      <nav id="nav" hidden>
+        <a href="#/channels" data-nav="channels">Channels</a>
+        <a href="#/my-channels" data-nav="my-channels">My Channels</a>
+        <a href="#/profile" data-nav="profile">Profile</a>
+        <span id="whoami" class="muted"></span>
+        <button id="logout" type="button" class="link">Log out</button>
+      </nav>
+    </header>
+    <main id="view" tabindex="-1">
+      <noscript>This app needs JavaScript.</noscript>
+    </main>
+  </body>
+</html>

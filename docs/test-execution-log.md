@@ -212,3 +212,27 @@ models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQL
 database: the seeded student and faculty start "CPU scheduling basics" with 15 minutes
 on the clock, get "2 questions are unanswered" when submitting one answer, and see
 `1/3 (33.3%)` after confirming; the admin, not a member of that channel, is refused.
+
+## UI-1 (#62) — Web UI foundation: auth, profile and channel screens
+
+The UI is static HTML/CSS/JS served at `/app/`. Each acceptance criterion is checked in
+a real browser (Playwright + Chromium) against a live server with the seeded data, in
+`tests/test_web_ui.py::test_UI_1_acceptance_criteria_in_the_browser`. That test runs
+locally and is skipped in CI, which has no browser. The other tests in the file run
+everywhere.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_01`, `UT_02` | Register creates an account and shows "Registration successful"; an invalid email shows "Enter a valid email address" | browser test, register steps | Pass (local) |
+| `IT_02` | Login signs the user in; wrong credentials show "Invalid username or password" | browser test, login steps | Pass (local) |
+| `ST_01` | Profile shows the user's details and saves an edited bio | browser test, profile steps | Pass (local) |
+| `UT_03`, `UT_04` | Create Channel makes a Normal channel; Authorized is disabled for users without the role (and enabled for an authorized user) | browser test, create-channel and faculty steps | Pass (local) |
+| `IT_03`, `IT_04` | Channels can be searched, joined and left; My Channels is shown | browser test, search/join/My Channels/leave steps | Pass (local) |
+| `ST_04` | Authorized and Normal labels in search results, lists and the channel page | browser test, label assertions on all three screens | Pass (local) |
+| — | Pages load only their own files under a strict CSP; server text is never parsed as HTML | `test_ui_files_are_served_with_a_strict_content_security_policy`, `test_the_page_loads_only_its_own_files`, `test_server_text_is_never_inserted_as_html` | Pass |
+| — | Every endpoint the UI calls exists in the API | `test_every_endpoint_the_ui_calls_exists` | Pass |
+| — | Usable at phone width (no horizontal scroll at 375 px) | browser test, phone step | Pass (local) |
+
+No API or schema change: `docs/api/openapi-v1.json` is unchanged, since the UI routes are
+excluded from the contract.
+

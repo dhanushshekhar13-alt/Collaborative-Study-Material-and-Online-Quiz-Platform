@@ -35,6 +35,10 @@ public service interface keeps its promises (NFR-07).
 | notifications | FR-14 | notifications, notification_preferences | – |
 | profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |
 
+The web UI (`app/web/`, UI-1) is not a module. It is static files served at `/app/`
+that call the public `/api/v1` endpoints like any other client, so it owns no tables and
+imports no module code. See `app/web/README.md`.
+
 Routes that need a signed-in user or a permission use the guards exported by
 `app.modules.accounts.service` (`current_user`, `require_capability`,
 `require_roles`); see `app/modules/accounts/README.md`. A module adding its first

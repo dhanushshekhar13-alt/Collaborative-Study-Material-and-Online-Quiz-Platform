@@ -30,8 +30,8 @@ python -m app.seed
 uvicorn app.main:app --reload
 ```
 
-The API is then at http://127.0.0.1:8000 and interactive docs at
-http://127.0.0.1:8000/docs. `python -m app.seed` loads one test user per role plus sample
+The web UI is then at http://127.0.0.1:8000/app/ (see `app/web/README.md`), the API
+at http://127.0.0.1:8000/api/v1 and interactive docs at http://127.0.0.1:8000/docs. `python -m app.seed` loads one test user per role plus sample
 content; set `SEED_USER_PASSWORD` first or note the password it prints. Run the checks
 CI runs with `ruff check . && pytest`.
 
