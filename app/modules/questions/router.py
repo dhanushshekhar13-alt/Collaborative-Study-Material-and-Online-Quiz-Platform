@@ -44,6 +44,9 @@ TRUE_FALSE_MESSAGE = "The correct answer must be True or False"
 QUESTION_NOT_FOUND = "Question not found"
 CHANNEL_NOT_FOUND = "Channel not found"
 NOT_A_MEMBER = "Join the channel to add questions to its bank"
+# S03.1: an Authorized Channel's bank is official content, the same rule as materials
+# and quizzes.
+AUTHORIZED_ONLY = "Only authorized users can add content to Authorized Channels"
 REPORT_LOGGED = "Report submitted for moderation"
 
 
@@ -175,11 +178,12 @@ def _is_admin(user: UserSummary) -> bool:
     return Capability.CHANNEL_APPROVE in capabilities_for(user.role)
 
 
-def _visible_channel(db: Session, channel_id: int, user: UserSummary) -> None:
+def _visible_channel(db: Session, channel_id: int, user: UserSummary) -> channels.ChannelSummary:
     """404 unless the caller may see the channel (its existence is not revealed)."""
     summary = channels.describe_channel(db, channel_id)
     if summary is None or not channels.is_visible_to(summary, user.id, _is_admin(user)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=CHANNEL_NOT_FOUND)
+    return summary
 
 
 def _readable(db: Session, question_id: int, user: UserSummary) -> service.BankQuestion:
@@ -215,12 +219,17 @@ def contribute_question(
 
     Submission is refused with "Please select the correct answer" when no correct
     answer is given (UT_10). With ``channel_id`` it goes to that channel's bank, which
-    needs channel membership; without it, to the general bank.
+    needs channel membership; without it, to the general bank. An Authorized Channel's
+    bank is official, so only its authorized users (and admins) add to it (S03.1).
     """
     if payload.channel_id is not None:
-        _visible_channel(db, payload.channel_id, user)
+        channel = _visible_channel(db, payload.channel_id, user)
         if not channels.is_member(db, payload.channel_id, user.id) and not _is_admin(user):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=NOT_A_MEMBER)
+        if channel.channel_type is channels.ChannelType.AUTHORIZED and (
+            Capability.OFFICIAL_CONTENT_MANAGE not in capabilities_for(user.role)
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=AUTHORIZED_ONLY)
     created = service.create_question(
         db,
         author_id=user.id,

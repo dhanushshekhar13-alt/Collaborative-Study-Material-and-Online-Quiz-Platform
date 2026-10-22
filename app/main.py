@@ -8,6 +8,7 @@ from app import __version__
 from app.core.config import settings
 from app.modules.accounts.router import router as accounts_router
 from app.modules.channels.router import router as channels_router
+from app.modules.llm.router import router as llm_router
 from app.modules.materials.router import router as materials_router
 from app.modules.profiles.router import router as profiles_router
 from app.modules.questions.router import router as questions_router
@@ -89,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(questions_router, prefix=API_PREFIX)
     app.include_router(quizzes_router, prefix=API_PREFIX)
     app.include_router(quiz_attempts_router, prefix=API_PREFIX)
+    app.include_router(llm_router, prefix=API_PREFIX)
 
     mount_web(app)
 
