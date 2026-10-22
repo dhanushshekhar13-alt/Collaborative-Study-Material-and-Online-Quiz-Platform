@@ -4,6 +4,7 @@
     GET  /attempts/{attempt_id}        questions, saved answers, time left, result
     PUT  /attempts/{attempt_id}/answers save answers while the timer runs
     POST /attempts/{attempt_id}/submit  final submission, scored immediately
+    GET  /attempts                     My Quiz History with aggregate accuracy (S06.2)
 
 The attempt routes live at ``/attempts`` so they never collide with the quiz-building
 routes under ``/quizzes/{quiz_id}`` (S05.2). Only the person taking the attempt can see
@@ -12,7 +13,7 @@ it; anyone else gets the same 404 as for an attempt that does not exist.
 
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -111,6 +112,34 @@ class UnansweredResponse(BaseModel):
     unanswered_question_ids: list[int]
     unanswered_rule: str
     attempt: AttemptResponse
+
+
+class HistoryEntryResponse(BaseModel):
+    attempt_id: int
+    quiz_id: int
+    quiz_title: str
+    subject: str
+    topic: str
+    started_at: datetime
+    submitted_at: datetime | None
+    auto_submitted: bool = Field(description="Closed by the timer rather than by the user")
+    score: float
+    max_score: float
+    percentage: float
+    display: str = Field(description='For example "4/5 (80%)"')
+
+
+class QuizHistoryResponse(BaseModel):
+    attempt_count: int
+    average_accuracy: float | None = Field(
+        description="Mean of the attempts' percentages (each attempt counts once); "
+        "null when there are no attempts. 60, 80, 100 and 90 give 82.5."
+    )
+    best_percentage: float | None
+    attempts: list[HistoryEntryResponse] = Field(
+        description="Submitted attempts, newest first. Open one with GET /attempts/{id} "
+        "for its per-question breakdown."
+    )
 
 
 def _response(state: attempts.AttemptState) -> AttemptResponse:
@@ -235,6 +264,30 @@ def start_attempt(
         attempt_id = attempts.start(db, quiz_id, user.id)
     db.commit()
     return _response(attempts.state(db, attempt_id))
+
+
+@router.get("/attempts", response_model=QuizHistoryResponse)
+def quiz_history(
+    quiz_id: int | None = Query(default=None, description="Only attempts at this quiz"),
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> QuizHistoryResponse:
+    """My Quiz History: every submitted attempt with its score and timestamp (IT_11).
+
+    Attempts whose timer ran out are closed first, so they appear with the answers saved
+    before the limit. ``average_accuracy`` updates with each attempt (ST_12).
+    """
+    if attempts.close_expired_for_user(db, user.id):
+        db.commit()
+    found = attempts.history(db, user.id, quiz_id)
+    return QuizHistoryResponse(
+        attempt_count=len(found.entries),
+        average_accuracy=found.average_accuracy,
+        best_percentage=found.best_percentage,
+        attempts=[
+            HistoryEntryResponse(**vars(entry), display=entry.display) for entry in found.entries
+        ],
+    )
 
 
 @router.get("/attempts/{attempt_id}", response_model=AttemptResponse)

@@ -424,3 +424,105 @@ def state(db: Session, attempt_id: int) -> AttemptState:
             else None
         ),
     )
+
+
+# --------------------------------------------------------------------------- #
+# My Quiz History (S06.2, FR-06, NFR-04)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class HistoryEntry:
+    """One submitted attempt as listed in My Quiz History."""
+
+    attempt_id: int
+    quiz_id: int
+    quiz_title: str
+    subject: str
+    topic: str
+    started_at: datetime
+    submitted_at: datetime | None
+    auto_submitted: bool
+    score: float
+    max_score: float
+    percentage: float
+
+    @property
+    def display(self) -> str:
+        return f"{self.score:g}/{self.max_score:g} ({self.percentage:g}%)"
+
+
+@dataclass(frozen=True)
+class QuizHistory:
+    """The user's submitted attempts, newest first, with their aggregate accuracy.
+
+    ``average_accuracy`` is the mean of the attempts' percentages, so every attempt
+    counts once whatever its quiz length: 60, 80, 100 and 90 percent give 82.5.
+    """
+
+    entries: tuple[HistoryEntry, ...]
+    average_accuracy: float | None
+    best_percentage: float | None
+
+
+def _percentage(score: float, max_score: float) -> float:
+    return score / max_score * 100 if max_score else 0.0
+
+
+def close_expired_for_user(db: Session, user_id: int) -> int:
+    """Auto-submit every attempt of the user whose timer has run out; returns how many.
+
+    The server owns the clock, so an attempt abandoned when its time ran out shows up
+    in the history with the answers saved before the limit, without being reopened.
+    """
+    now = utcnow()
+    rows = db.scalars(
+        select(QuizAttempt).where(
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.status == AttemptStatus.IN_PROGRESS,
+            QuizAttempt.expires_at.is_not(None),
+        )
+    ).all()
+    closed = 0
+    for attempt in rows:
+        if _expired(attempt, now):
+            _finalise(db, attempt, now, auto=True)
+            closed += 1
+    return closed
+
+
+def history(db: Session, user_id: int, quiz_id: int | None = None) -> QuizHistory:
+    """The user's submitted attempts (optionally at one quiz), newest first."""
+    query = (
+        select(QuizAttempt, Quiz)
+        .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
+        .where(QuizAttempt.user_id == user_id, QuizAttempt.status == AttemptStatus.SUBMITTED)
+        .order_by(QuizAttempt.submitted_at.desc(), QuizAttempt.id.desc())
+    )
+    if quiz_id is not None:
+        query = query.where(QuizAttempt.quiz_id == quiz_id)
+    entries = []
+    for attempt, quiz in db.execute(query):
+        score, max_score = attempt.score or 0.0, attempt.max_score or 0.0
+        entries.append(
+            HistoryEntry(
+                attempt_id=attempt.id,
+                quiz_id=quiz.id,
+                quiz_title=quiz.title,
+                subject=quiz.subject,
+                topic=quiz.topic,
+                started_at=_aware(attempt.started_at),
+                submitted_at=_aware(attempt.submitted_at),
+                auto_submitted=attempt.auto_submitted,
+                score=score,
+                max_score=max_score,
+                percentage=round(_percentage(score, max_score), 1),
+            )
+        )
+    rows = [(e.score, e.max_score) for e in entries]
+    exact = [_percentage(s, m) for s, m in rows]
+    return QuizHistory(
+        entries=tuple(entries),
+        average_accuracy=round(sum(exact) / len(exact), 1) if exact else None,
+        best_percentage=round(max(exact), 1) if exact else None,
+    )
