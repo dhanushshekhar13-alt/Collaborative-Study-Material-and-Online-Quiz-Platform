@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.accounts import service as accounts
 from app.modules.accounts.service import (
     Capability,
     UserSummary,
@@ -133,6 +134,8 @@ class QuestionResponse(BaseModel):
     channel_id: int | None
     bank: str
     author_id: int
+    # Who contributed it, so channel contributions are attributed (S03.2).
+    author_name: str | None = None
     source: QuestionSource
     status: QuestionStatus
     created_at: datetime | None
@@ -149,7 +152,19 @@ class ReportResponse(BaseModel):
     message: str
 
 
-def _response(item: service.BankQuestion) -> QuestionResponse:
+def _author_name(db: Session, user_id: int, names: dict[int, str | None] | None) -> str | None:
+    if names is not None and user_id in names:
+        return names[user_id]
+    author = accounts.get_user(db, user_id)
+    name = author.display_name if author else None
+    if names is not None:
+        names[user_id] = name
+    return name
+
+
+def _response(
+    item: service.BankQuestion, db: Session, names: dict[int, str | None] | None = None
+) -> QuestionResponse:
     q = item.question
     return QuestionResponse(
         id=q.id,
@@ -165,6 +180,7 @@ def _response(item: service.BankQuestion) -> QuestionResponse:
         channel_id=item.channel_id,
         bank="channel" if item.channel_id is not None else "general",
         author_id=item.author_id,
+        author_name=_author_name(db, item.author_id, names),
         source=item.source,
         status=item.status,
         created_at=item.created_at,
@@ -245,7 +261,7 @@ def contribute_question(
         channel_id=payload.channel_id,
     )
     db.commit()
-    return _response(service.get_bank_question(db, created.id, user.id))
+    return _response(service.get_bank_question(db, created.id, user.id), db)
 
 
 @router.get("", response_model=list[QuestionResponse])
@@ -277,7 +293,8 @@ def search_questions(
         limit=limit,
         offset=offset,
     )
-    return [_response(item) for item in found]
+    names: dict[int, str | None] = {}
+    return [_response(item, db, names) for item in found]
 
 
 @router.get("/{question_id}", response_model=QuestionResponse)
@@ -285,7 +302,7 @@ def read_question(
     question_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
 ) -> QuestionResponse:
     """One question with its average rating and the caller's own rating."""
-    return _response(_readable(db, question_id, user))
+    return _response(_readable(db, question_id, user), db)
 
 
 @router.put("/{question_id}/rating", response_model=QuestionResponse)
@@ -301,7 +318,7 @@ def rate_question(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=QUESTION_NOT_FOUND)
     rated = service.rate_question(db, question_id, user.id, payload.rating)
     db.commit()
-    return _response(rated)
+    return _response(rated, db)
 
 
 @router.post(

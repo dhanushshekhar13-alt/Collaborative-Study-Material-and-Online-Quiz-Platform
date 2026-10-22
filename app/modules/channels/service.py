@@ -1,7 +1,7 @@
 """Public interface of the channels module."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from app.modules.channels.models import (
     ApprovalStatus,
     Channel,
     ChannelMembership,
+    ChannelPost,
     ChannelType,
     MemberRole,
 )
@@ -280,3 +281,74 @@ def manages_official_content(
     if summary.approval_status is not ApprovalStatus.APPROVED:
         return False
     return is_admin or (has_capability and is_member)
+
+
+# --------------------------------------------------------------------------- #
+# S03.2 - discussion posts
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class PostSummary:
+    id: int
+    channel_id: int
+    author_id: int
+    body: str
+    created_at: datetime | None
+    edited_at: datetime | None
+
+    @property
+    def is_edited(self) -> bool:
+        return self.edited_at is not None
+
+
+def _post(p: ChannelPost) -> PostSummary:
+    return PostSummary(p.id, p.channel_id, p.author_id, p.body, p.created_at, p.edited_at)
+
+
+def create_post(db: Session, channel_id: int, author_id: int, body: str) -> PostSummary:
+    """Add a discussion post to a channel. Caller checks membership and commits."""
+    post = ChannelPost(channel_id=channel_id, author_id=author_id, body=body)
+    db.add(post)
+    db.flush()
+    db.refresh(post)
+    return _post(post)
+
+
+def get_post(db: Session, channel_id: int, post_id: int) -> PostSummary | None:
+    post = db.get(ChannelPost, post_id)
+    return _post(post) if post is not None and post.channel_id == channel_id else None
+
+
+def list_posts(
+    db: Session, channel_id: int, *, limit: int = 50, offset: int = 0
+) -> tuple[list[PostSummary], int]:
+    """A channel's posts, newest first, and how many there are."""
+    where = ChannelPost.channel_id == channel_id
+    total = db.scalar(select(func.count(ChannelPost.id)).where(where)) or 0
+    rows = db.scalars(
+        select(ChannelPost)
+        .where(where)
+        .order_by(ChannelPost.created_at.desc(), ChannelPost.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return [_post(p) for p in rows], total
+
+
+def edit_post(db: Session, post_id: int, body: str) -> PostSummary:
+    """Replace a post's text and mark it edited. Caller checks authorship and commits."""
+    post = db.get(ChannelPost, post_id)
+    if post is None:
+        raise LookupError(f"post {post_id} not found")
+    post.body = body
+    post.edited_at = datetime.now(UTC)
+    db.flush()
+    return _post(post)
+
+
+def delete_post(db: Session, post_id: int) -> None:
+    post = db.get(ChannelPost, post_id)
+    if post is not None:
+        db.delete(post)
+        db.flush()

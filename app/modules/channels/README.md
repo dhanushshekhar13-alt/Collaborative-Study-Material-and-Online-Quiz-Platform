@@ -1,7 +1,8 @@
 # Channels module
 
 Group spaces where collaborative activity happens. Implements **FR-02** (stories
-**S02.1**, issue #20, and **S02.2**, issue #21). Owns `channels` and `channel_memberships`; module rules are in
+**S02.1**, issue #20, and **S02.2**, issue #21) and the FR-03 discussion board (**S03.2**, issue #27). Owns
+`channels`, `channel_memberships` and `channel_posts`; module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md).
 
 ## Channel types
@@ -74,13 +75,43 @@ UI shows "Manage Official Content" only when it is true. The rule lives in
 so the option and the API's `Insufficient permissions` never disagree. Normal Channels
 hold no official content; members contribute there as peers.
 
+## Discussion posts (S03.2)
+
+Every channel has a discussion board (`channel_posts`, migration `0008`): standing,
+editable topics such as "Share your DBMS normalization notes here". It is separate from
+chat (FR-10, S10.1 #36), which is the live message stream.
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/channels/{id}/posts` | member | Post `body` (1–5000 characters); any member, not only the creator (IT_05). |
+| `GET` | `/api/v1/channels/{id}/posts` | member or admin | The board, newest first; `limit`, `offset`. |
+| `PATCH` | `/api/v1/channels/{id}/posts/{post_id}` | author | Replace the text; the post then has `is_edited: true` and `edited_at`. |
+| `DELETE` | `/api/v1/channels/{id}/posts/{post_id}?confirm=true` | author | Delete after confirming. |
+
+Rules:
+
+- Each post carries `author_id` and `author_name`, and `can_edit` (true for its
+  author only) so the UI shows Edit and Delete to the author alone.
+- Only the author edits or deletes a post, not even the channel creator: **403**
+  `Only the author can edit or delete this post`.
+- Deleting without `confirm=true` is **400** `Confirm deletion of this post`, so the API
+  cannot skip the UI's confirm step.
+- Posting needs membership (**403** `Join this channel to post`); reading the board is
+  channel-restricted like other content (`Join this channel to view its content`),
+  with admins allowed to read for moderation. A blank post is **422**
+  `Write something to post`.
+- Members contribute materials, bank questions and quizzes through those modules with
+  `channel_id`; every one is attributed (`uploader_name`, `author_name`,
+  `creator_name`) and can be rated and reported by other members.
+
 ## Service interface for other modules
 
 `app.modules.channels.service`: `create_channel`, `get_channel`, `describe_channel`,
 `list_channels`, `pending_requests`, `set_approval`, `is_visible_to`, `add_member`,
 `member_role`, `is_member`, and from S02.2 `remove_member`, `list_members`
 (`MemberSummary`), `channels_for_member`, `can_manage_members`, `can_remove`, and from S03.1
-`manages_official_content`. All
+`manages_official_content`, and from S03.2 `create_post`, `get_post`, `list_posts`
+(`PostSummary`), `edit_post`, `delete_post`. All
 return dataclasses or plain values. Use `is_member` to gate channel-scoped content
 (materials, quizzes, chat).
 
@@ -91,3 +122,6 @@ their IDs, plus visibility, search and validation tests.
 
 `tests/test_channel_membership.py` — `IT_03`, `IT_04`, `ST_03` under their IDs, plus a
 test per S02.2 acceptance criterion and the role rules above.
+
+`tests/test_peer_contribution.py` — `IT_05`, `IT_06`, `ST_05` under their IDs, plus a
+test per S03.2 acceptance criterion.

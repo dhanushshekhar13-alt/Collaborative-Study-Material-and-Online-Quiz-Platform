@@ -1,4 +1,5 @@
-"""Channel data (FR-02, FR-03): normal and authorized channels and their members."""
+"""Channel data (FR-02, FR-03): normal and authorized channels, their members and
+discussion posts."""
 
 import enum
 from datetime import datetime
@@ -57,3 +58,23 @@ class ChannelMembership(Base):
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ChannelPost(CreatedAtMixin, Base):
+    """A discussion post on a channel's board (S03.2), e.g. "Share your DBMS
+    normalization notes here". Only its author edits or deletes it.
+
+    Separate from chat messages (FR-10): a post is a standing, editable topic on the
+    channel page, while chat is the live message stream.
+    """
+
+    __tablename__ = "channel_posts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    channel_id: Mapped[int] = mapped_column(
+        ForeignKey("channels.id", ondelete="CASCADE"), index=True
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    # Set on every edit, so the UI can show "edited".
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

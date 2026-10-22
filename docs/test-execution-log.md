@@ -337,3 +337,28 @@ function, `app.modules.llm.adaptive.level_after`, tested in isolation.
 
 Migration `0007` (`adaptive_sessions`) upgrades and downgrades cleanly and matches the
 models (`tests/test_migrations.py`).
+
+## S03.2 (#27) — Peer contribution, rating and reporting in Normal Channels
+
+Test Plan cases are automated in `tests/test_peer_contribution.py` under their case
+IDs, run against the endpoints the UI will call. IT_05's discussion post is the new
+channel board (`/api/v1/channels/{id}/posts`); IT_06 and ST_05 use the existing
+materials, questions and quizzes endpoints with `channel_id`. The plan's "Duplicate"
+reason is `reason: duplicate`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_05` | A post can be created, edited and deleted by its author | `test_IT_05_creator_creates_edits_and_deletes_a_post`, `test_any_member_can_post_not_only_the_creator`, `test_only_the_author_edits_or_deletes_a_post`, `test_posts_are_for_channel_members`, `test_a_post_needs_text`, `test_a_post_from_another_channel_is_not_found` | Pass |
+| `IT_05` | Deletion asks for confirmation | `test_deleting_a_post_needs_confirmation` | Pass |
+| `IT_05` | Edited posts show an edited indicator | `test_IT_05_creator_creates_edits_and_deletes_a_post`, `test_edited_posts_show_an_edited_indicator` | Pass |
+| `IT_06` | A non-creator member can upload a material, add a bank question and create a quiz | `test_IT_06_any_member_contributes_material_question_and_quiz` | Pass |
+| `IT_06` | All three contributions are visible to other channel members | `test_IT_06_any_member_contributes_material_question_and_quiz` | Pass |
+| — | Contributions are attributed to their author | `test_contributions_are_attributed_to_their_author` | Pass |
+| `ST_05` | A submitted rating updates the item's average rating | `test_ST_05_peers_rate_and_report_channel_content`, `test_a_rating_updates_the_items_average` | Pass |
+| `ST_05` | A report with a reason such as Duplicate is logged and routed to moderators | `test_ST_05_peers_rate_and_report_channel_content`, `test_a_duplicate_report_on_a_question_reaches_moderators` | Pass |
+
+Migration `0008` (`channel_posts`) upgrades and downgrades cleanly and matches the
+models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQLite
+database (including downgrade to `0007` and back): the seeded student creates, edits
+(shown as edited) and deletes a post, deletion without confirmation is refused, and
+channel quizzes and questions carry their author's name.
