@@ -45,7 +45,7 @@ All settings come from environment variables or a git-ignored `.env` file (see
 | `DATABASE_URL` | SQLAlchemy URL; SQLite locally, PostgreSQL in deployment |
 | `AUTH_TOKEN_SECRET` | Signing secret for access tokens (at least 32 bytes) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, default 30 |
-| `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | LLM integration; `LLM_PROVIDER=none` disables it |
+| `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | LLM integration (`anthropic` or `openai`); `LLM_PROVIDER=none` disables it |
 | `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
 | `MATERIAL_MAX_UPLOAD_MB` | Largest study material upload accepted, in MB (default 20) |
 | `QUIZ_UNANSWERED_RULE` | Submitting a quiz with unanswered questions: `warn` (confirm first, default) or `block` |

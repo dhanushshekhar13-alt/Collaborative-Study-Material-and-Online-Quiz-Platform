@@ -2,5 +2,5 @@
 
 Owns tables: llm_requests.
 Public interface: ``app.modules.llm.service``.
-May call the services of: ``questions``, ``quizzes``.
+May call the services of: ``accounts``, ``channels``, ``questions``, ``quizzes``.
 """

@@ -769,6 +769,102 @@
         "title": "Difficulty",
         "type": "string"
       },
+      "EvaluationRequest": {
+        "properties": {
+          "answer": {
+            "maxLength": 5000,
+            "title": "Answer",
+            "type": "string"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "question_id",
+          "answer"
+        ],
+        "title": "EvaluationRequest",
+        "type": "object"
+      },
+      "EvaluationResponse": {
+        "properties": {
+          "covered_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Concepts",
+            "type": "array"
+          },
+          "display": {
+            "description": "For example \"5/10\"",
+            "title": "Display",
+            "type": "string"
+          },
+          "evaluator": {
+            "description": "\"llm\", or \"concept-match\" when no LLM is configured or the LLM failed",
+            "title": "Evaluator",
+            "type": "string"
+          },
+          "max_score": {
+            "description": "Always 10",
+            "title": "Max Score",
+            "type": "number"
+          },
+          "missing_concepts": {
+            "description": "Each missing concept named individually",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Concepts",
+            "type": "array"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "score": {
+            "description": "0 to 10 in steps of 0.5",
+            "title": "Score",
+            "type": "number"
+          },
+          "strengths": {
+            "description": "At least one",
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "weaknesses": {
+            "description": "At least one",
+            "items": {
+              "type": "string"
+            },
+            "title": "Weaknesses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_id",
+          "score",
+          "max_score",
+          "display",
+          "covered_concepts",
+          "missing_concepts",
+          "strengths",
+          "weaknesses",
+          "summary",
+          "evaluator"
+        ],
+        "title": "EvaluationResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3613,6 +3709,53 @@
         "summary": "Reject Channel",
         "tags": [
           "channels"
+        ]
+      }
+    },
+    "/api/v1/evaluations/descriptive": {
+      "post": {
+        "description": "Score a written answer 0-10 against the question's expected concepts (FR-08).\n\nThe feedback names each covered and missing concept and lists at least one\nstrength and one weakness. A blank answer is refused with \"Answer cannot be empty\"\n(422) and nothing is sent to the LLM. Without a configured LLM, or if the LLM call\nfails, the answer is scored by deterministic concept matching (``evaluator``).",
+        "operationId": "evaluate_descriptive_api_v1_evaluations_descriptive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evaluate Descriptive",
+        "tags": [
+          "descriptive evaluation"
         ]
       }
     },
