@@ -254,3 +254,29 @@ def channels_for_member(db: Session, user_id: int) -> list[tuple[ChannelSummary,
         .order_by(Channel.name, Channel.id)
     )
     return [(_summary(c, _member_count(db, c.id)), role) for c, role in rows]
+
+
+# --------------------------------------------------------------------------- #
+# S03.1 - official content in Authorized Channels
+# --------------------------------------------------------------------------- #
+
+
+def manages_official_content(
+    summary: ChannelSummary,
+    *,
+    is_member: bool,
+    has_capability: bool,
+    is_admin: bool = False,
+) -> bool:
+    """Whether a user may add, edit and remove official content in this channel.
+
+    Only an approved Authorized Channel holds official content. Inside it, admins
+    manage everything; otherwise the user needs ``official_content:manage`` (an
+    authorized user) and membership of the channel. Regular members never do, so
+    the UI hides "Manage Official Content" for them and the API refuses them.
+    """
+    if summary.channel_type is not ChannelType.AUTHORIZED:
+        return False
+    if summary.approval_status is not ApprovalStatus.APPROVED:
+        return False
+    return is_admin or (has_capability and is_member)

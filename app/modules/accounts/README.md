@@ -75,6 +75,10 @@ sign-in cannot be used to discover which accounts exist.
 | `channel:create_authorized`, `official_content:manage` | | ✓ | ✓ |
 | `channel:approve`, `report:resolve`, `user:manage` | | | ✓ |
 
+`official_content:manage` lets a member of an approved Authorized Channel add, edit and
+remove its official materials, questions and quizzes (S03.1); outside one it grants
+nothing extra.
+
 Self-registration always produces a Student; a `role` in the request is ignored.
 
 `/me/permissions` lets the UI hide controls a user cannot use. That is a convenience,

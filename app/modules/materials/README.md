@@ -2,7 +2,8 @@
 
 Shared study resources. Implements **FR-04**: upload, search and download (story
 **S04.1**, issue #22) and rating, review, helpful marks and reporting (**S04.2**,
-issue #23). Official content in Authorized Channels is S03.1 (#26). Owns
+issue #23), and official content in Authorized Channels (**S03.1**, issue #26,
+FR-03). Owns
 `study_materials`, `material_files` and `material_reviews`; module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md).
 
@@ -49,9 +50,28 @@ listings show them the same way everywhere (UT_07).
   removals at once. A hidden (pending) channel answers **404**.
 - Uploading into a channel needs membership (`Join this channel to add materials`).
   Authorized Channels take uploads only from users with `official_content:manage`
-  (`Only authorized users can add content to Authorized Channels`); S03.1 builds the
-  official-content flow on top.
+  (`Only authorized users can add content to Authorized Channels`); see below.
 - Removed materials (`status = removed`) are never listed or served.
+
+## Official content (S03.1)
+
+- Everything published in an approved **Authorized Channel** is official: only users
+  with `official_content:manage` (authorized users) and admins can add it, and it is
+  stored with `is_official = true`. Sending `is_official=true` anywhere else is
+  **422** `Official content can only be published in an Authorized Channel`.
+- Responses carry `content_label` (`Official/Verified` or `Peer`) and `content_style`
+  (`content-official` / `content-peer`), and an official material's `tags` start with
+  `Official/Verified` (UT_05), so it stands out the same way on every screen. Search
+  takes `official=true|false`.
+- `can_manage` tells the caller whether to show edit and remove. Official content is
+  managed by the channel's authorized members and admins
+  (`channels.service.manages_official_content`, the same rule behind the channel's
+  `can_manage_official_content`). Peer content is managed by its uploader and admins;
+  S03.2 (#27) covers peer management in Normal Channels.
+- Anyone else gets **403** `Insufficient permissions` (UT_06). Editing never changes
+  the type, file, channel or official flag, and cannot blank a required tag.
+- Removing sets `status = removed`: the material leaves listings, its page, preview
+  and download (404) at once.
 
 ## Ratings, reviews and helpful marks (S04.2)
 
@@ -96,6 +116,8 @@ listings show them the same way everywhere (UT_07).
 | `PUT` | `/api/v1/materials/{id}/helpful` | `material:rate` | Mark helpful (idempotent); returns `helpful_count`. |
 | `DELETE` | `/api/v1/materials/{id}/helpful` | `material:rate` | Take the helpful mark back. |
 | `POST` | `/api/v1/materials/{id}/reports` | `report:submit` | Report to moderation with a `reason`. |
+| `PATCH` | `/api/v1/materials/{id}` | `can_manage` (S03.1) | Edit `title`, `description`, `subject`, `topic`, `semester`, `url` (links); only the fields sent change. |
+| `DELETE` | `/api/v1/materials/{id}` | `can_manage` (S03.1) | Remove the material. |
 
 Without `channel_id`, search covers general materials plus those in the caller's
 channels; with it, that channel only.
@@ -113,7 +135,8 @@ Load testing under concurrent users is NFR-01 (#46).
 `count_uploaded_by`, `recent_uploaded_by`, and from S04.1 `describe_material`,
 `search_materials` (`MaterialPage`), `validate_file`, `attach_file`,
 `get_material_file`, and from S04.2 `feedback_for` (`MaterialFeedback`),
-`rate_material`, `set_helpful`, `list_reviews` (`MaterialReviewEntry`).
+`rate_material`, `set_helpful`, `list_reviews` (`MaterialReviewEntry`), and from
+S03.1 `update_material` and the `is_official` filter on `search_materials`.
 `MaterialSummary` gained optional fields (semester, uploader,
 file, ...) with defaults, so existing callers are unchanged.
 
@@ -128,4 +151,5 @@ and membership) and `moderation` (filing reports).
 their IDs, plus file type and size, empty state, response time, and channel access
 tests. `tests/test_material_feedback.py` — `ST_07`, `ST_08`, plus one test per S04.2
 acceptance criterion (average, helpful once per user, review author, reason required,
-moderation queue).
+moderation queue). `tests/test_official_content.py` — `UT_05`, `UT_06`, `ST_06`, plus
+one test per S03.1 acceptance criterion.

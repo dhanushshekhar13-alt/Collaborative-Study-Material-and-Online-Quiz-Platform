@@ -236,3 +236,26 @@ everywhere.
 No API or schema change: `docs/api/openapi-v1.json` is unchanged, since the UI routes are
 excluded from the contract.
 
+
+## S03.1 (#26) — Official content management in Authorized Channels
+
+Test Plan cases are automated in `tests/test_official_content.py` under their case
+IDs, run against the endpoints the UI will call. "Manage Official Content" is shown
+when the channel response's `can_manage_official_content` is true (and per material,
+`can_manage`); the API applies the same rule, so a direct request is refused whatever
+the UI shows.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_05` | Published material is tagged 'Official/Verified' within the channel | `test_UT_05_authorized_user_publishes_official_material`, `test_everything_published_in_an_authorized_channel_is_official`, `test_official_cannot_be_claimed_outside_an_authorized_channel` | Pass |
+| `ST_06` | An authorized user can edit and remove official content | `test_ST_06_privileges_differ_between_authorized_and_normal_channels`, `test_authorized_user_can_edit_official_content`, `test_editing_keeps_required_tags`, `test_authorized_user_can_remove_official_content`, `test_admins_can_manage_official_content`, `test_official_flag_survives_edits` | Pass |
+| — | Official content is visually distinguished from peer content | `test_official_content_is_distinguished_from_peer_content` (`content_label` / `content_style`, `official` filter) | Pass |
+| `UT_06` | The Manage Official Content option is hidden or disabled for a regular member | `test_UT_06_regular_member_cannot_manage_official_content`, `test_manage_option_is_shown_only_to_authorized_users`, `test_authorized_user_outside_the_channel_cannot_manage_it` | Pass |
+| `UT_06` | A direct request is rejected with 'Insufficient permissions' | `test_UT_06_regular_member_cannot_manage_official_content`, `test_peer_material_is_managed_by_its_uploader_only` | Pass |
+| `ST_06` | The same regular member can still contribute normally in a Normal Channel | `test_ST_06_privileges_differ_between_authorized_and_normal_channels`, `test_regular_member_still_contributes_in_a_normal_channel` | Pass |
+
+No schema change: `study_materials.is_official` already exists (migration `0001`).
+Manually verified on a migrated, seeded SQLite database: the seeded authorized user
+publishes, edits and removes official material in the seeded Authorized Channel, and
+the seeded student sees `can_manage_official_content: false` and gets
+`Insufficient permissions` on edit.
