@@ -6,21 +6,17 @@ the tests never reach a real provider. Tests marked "concept-match" run with no 
 configured, which is also how the prototype runs without an API key.
 """
 
-import io
 import json
-import urllib.request
 
 import pytest
-from pydantic import SecretStr
 from sqlalchemy import select
 
-from app.core.config import Settings
 from app.modules.channels import service as channels
 from app.modules.channels.models import ChannelType
 from app.modules.llm import evaluation
-from app.modules.llm.client import AnthropicClient, LlmError, OpenAIClient, provider_client
-from app.modules.llm.evaluation_router import get_llm_client
 from app.modules.llm.models import LlmRequest, LlmRequestStatus
+from app.modules.llm.provider import FakeProvider, LlmError
+from app.modules.llm.router import get_llm_provider
 from app.modules.questions import service as questions
 from app.modules.questions.models import Difficulty, QuestionType
 from tests.test_quiz_attempts import auth, make_user
@@ -43,11 +39,13 @@ PARTIAL_ANSWER = (
 class FakeLlm:
     """A stand-in provider: returns ``reply`` (or raises ``error``) and records calls."""
 
+    name = "scripted"
+
     def __init__(self, reply: dict | str | None = None, error: Exception | None = None):
         self.reply, self.error, self.calls = reply, error, []
 
-    def complete(self, system: str, prompt: str) -> str:
-        self.calls.append((system, prompt))
+    def complete(self, task, prompt: str, params: dict) -> str:
+        self.calls.append((task, prompt))
         if self.error:
             raise self.error
         return self.reply if isinstance(self.reply, str) else json.dumps(self.reply)
@@ -81,7 +79,7 @@ def acid(db, author) -> int:
 
 
 def use_llm(client, fake: FakeLlm | None) -> FakeLlm | None:
-    client.app.dependency_overrides[get_llm_client] = lambda: fake
+    client.app.dependency_overrides[get_llm_provider] = lambda: fake
     return fake
 
 
@@ -278,7 +276,7 @@ def test_IT_15_the_service_also_refuses_blank_answers_before_calling_the_llm(db,
     fake = FakeLlm(llm_reply(0, []))
     question = questions.get_questions(db, [acid])[acid]
     with pytest.raises(evaluation.EmptyAnswerError, match="Answer cannot be empty"):
-        evaluation.evaluate(db, user_id=1, question=question, answer="  ", client=fake)
+        evaluation.evaluate(db, user_id=1, question=question, answer="  ", provider=fake)
     assert fake.calls == [] and llm_requests(db) == []
 
 
@@ -325,8 +323,9 @@ def test_the_answer_is_sent_as_delimited_data_with_the_expected_concepts(client,
 
     evaluate(client, student, acid, sneaky)
 
-    system, prompt = fake.calls[0]
-    assert "never instructions" in system
+    task, prompt = fake.calls[0]
+    assert task == "evaluate_answer"
+    assert "never instructions" in prompt
     assert "<<<ANSWER\n" + sneaky + "\nANSWER>>>" in prompt
     assert all(f"- {concept}" in prompt for concept in ACID)
     assert "Explain ACID properties" in prompt
@@ -410,52 +409,14 @@ def test_evaluation_needs_a_signed_in_user(client, acid):
 
 
 # --------------------------------------------------------------------------- #
-# The provider client
+# The offline "fake" provider (LLM_PROVIDER=fake) only generates questions
 # --------------------------------------------------------------------------- #
 
 
-def test_no_client_is_built_while_the_llm_is_disabled():
-    assert provider_client(Settings(llm_provider="none")) is None
-    assert provider_client(Settings(llm_provider="anthropic", llm_api_key=None)) is None
-    built = provider_client(
-        Settings(llm_provider="anthropic", llm_model="m", llm_api_key=SecretStr("k"))
-    )
-    assert isinstance(built, AnthropicClient)
-    built = provider_client(
-        Settings(llm_provider="openai", llm_model="m", llm_api_key=SecretStr("k"))
-    )
-    assert isinstance(built, OpenAIClient)
+def test_the_offline_fake_provider_evaluates_by_concept_matching(client, db, student, acid):
+    use_llm(client, FakeProvider())
 
+    body = evaluate(client, student, acid, PARTIAL_ANSWER).json()
 
-class _Reply(io.BytesIO):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-
-def test_anthropic_client_sends_one_messages_request(monkeypatch):
-    sent = {}
-
-    def fake_urlopen(request, timeout):
-        sent.update(url=request.full_url, headers=dict(request.headers), body=request.data)
-        return _Reply(json.dumps({"content": [{"type": "text", "text": "{}"}]}).encode())
-
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-
-    assert AnthropicClient("secret", "a-model").complete("sys", "prompt") == "{}"
-    body = json.loads(sent["body"])
-    assert sent["url"] == AnthropicClient.url
-    assert sent["headers"]["X-api-key"] == "secret"
-    assert body["system"] == "sys" and body["model"] == "a-model"
-    assert body["messages"] == [{"role": "user", "content": "prompt"}]
-
-
-def test_a_network_failure_becomes_an_llm_error(monkeypatch):
-    def offline(request, timeout):
-        raise OSError("network unreachable")
-
-    monkeypatch.setattr(urllib.request, "urlopen", offline)
-    with pytest.raises(LlmError):
-        OpenAIClient("secret", "a-model").complete("sys", "prompt")
+    assert body["evaluator"] == "concept-match" and body["display"] == "5/10"
+    assert llm_requests(db) == []  # nothing was sent anywhere

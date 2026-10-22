@@ -52,6 +52,9 @@ subject/topic/difficulty tags) before anything is stored, and generated question
 stored as drafts that no bank, search or quiz can see until their requester approves
 them. The llm module guards its routes with accounts and checks channel-bank
 membership with channels; neither path reaches chat.
+Descriptive answer evaluation (S08.1, `evaluation.py`) uses the same provider and
+validates the model's score and concept lists against the question before returning
+them; with no real model it falls back to deterministic concept matching.
 
 Quiz scoring lives in `app/modules/quizzes/scoring.py` as pure functions. No module
 that quizzes depends on can reach chat, so a change to chat can never require a change

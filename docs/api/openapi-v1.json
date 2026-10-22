@@ -1163,7 +1163,7 @@
             "type": "string"
           },
           "evaluator": {
-            "description": "\"llm\", or \"concept-match\" when no LLM is configured or the LLM failed",
+            "description": "\"llm\", or \"concept-match\" when no real LLM is configured or it failed",
             "title": "Evaluator",
             "type": "string"
           },

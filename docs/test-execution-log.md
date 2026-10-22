@@ -252,6 +252,7 @@ the deterministic `concept-match` evaluator.
 | `IT_15` | A blank submission is blocked with "Answer cannot be empty" | `test_IT_15_blank_answer_is_blocked_and_nothing_is_sent_to_the_llm`, `test_an_answer_addressing_no_concept_scores_zero` | Pass |
 | `IT_15` | No empty request is sent to the LLM | `test_IT_15_blank_answer_is_blocked_and_nothing_is_sent_to_the_llm`, `test_IT_15_the_service_also_refuses_blank_answers_before_calling_the_llm` | Pass |
 | — (NFR-06) | LLM output is validated; failures fall back to deterministic scoring and are audited | `test_an_llm_failure_falls_back_to_concept_matching`, `test_the_answer_is_sent_as_delimited_data_with_the_expected_concepts` | Pass |
+| — | With the offline `fake` provider, evaluation uses concept matching and records nothing | `test_the_offline_fake_provider_evaluates_by_concept_matching` | Pass |
 | — | Only descriptive questions the caller can read are evaluated; sign-in required | `test_objective_questions_are_not_evaluated_this_way`, `test_a_question_without_concepts_needs_the_llm`, `test_a_question_in_a_hidden_channel_is_not_revealed`, `test_evaluation_needs_a_signed_in_user` | Pass |
 
 No real provider was called. A run against a live LLM needs `LLM_PROVIDER`,

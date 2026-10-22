@@ -2,6 +2,9 @@
 
     POST /evaluations/descriptive   score a written answer against expected concepts
 
+It sits beside the S07.x routes in ``router.py`` and shares their provider dependency,
+``get_llm_provider``, so one test override fakes the LLM for every AI route.
+
 The caller must be able to read the question: a question in a channel they cannot see,
 or a draft that is not theirs, is a 404 exactly as in the question bank.
 """
@@ -10,12 +13,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.database import get_db
 from app.modules.accounts.service import Capability, UserSummary, capabilities_for, current_user
 from app.modules.channels import service as channels
 from app.modules.llm import evaluation
-from app.modules.llm.client import LlmClient, provider_client
+from app.modules.llm.provider import LlmProvider
+from app.modules.llm.router import get_llm_provider
 from app.modules.questions import service as questions
 
 router = APIRouter(tags=["descriptive evaluation"])
@@ -23,11 +26,6 @@ router = APIRouter(tags=["descriptive evaluation"])
 QUESTION_NOT_FOUND = "Question not found"
 NOT_DESCRIPTIVE = "Only descriptive questions can be evaluated"
 MAX_ANSWER_LENGTH = 5000
-
-
-def get_llm_client() -> LlmClient | None:
-    """The configured LLM client, or ``None`` when the LLM is disabled (overridable)."""
-    return provider_client(get_settings())
 
 
 class EvaluationRequest(BaseModel):
@@ -53,7 +51,7 @@ class EvaluationResponse(BaseModel):
     weaknesses: list[str] = Field(description="At least one")
     summary: str
     evaluator: str = Field(
-        description='"llm", or "concept-match" when no LLM is configured or the LLM failed'
+        description='"llm", or "concept-match" when no real LLM is configured or it failed'
     )
 
 
@@ -81,7 +79,7 @@ def evaluate_descriptive(
     payload: EvaluationRequest,
     user: UserSummary = Depends(current_user),
     db: Session = Depends(get_db),
-    client: LlmClient | None = Depends(get_llm_client),
+    provider: LlmProvider | None = Depends(get_llm_provider),
 ) -> EvaluationResponse:
     """Score a written answer 0-10 against the question's expected concepts (FR-08).
 
@@ -100,7 +98,7 @@ def evaluate_descriptive(
             user_id=user.id,
             question=question,
             answer=payload.answer,
-            client=client,
+            provider=provider,
             channel_id=item.channel_id,
         )
     except (evaluation.EmptyAnswerError, evaluation.NothingToEvaluateError) as problem:

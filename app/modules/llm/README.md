@@ -2,18 +2,16 @@
 
 Everything that talks to the LLM provider. Owns `llm_requests`, an audit record of
 every request with its output or error; module rules are in
-[`docs/architecture.md`](../../../docs/architecture.md). Question generation and
-adaptive quizzes (S07.1, S07.2) use `provider.py`, `generation.py`, `adaptive.py` and
-`router.py` (`/ai`). This README covers **descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06).
+[`docs/architecture.md`](../../../docs/architecture.md). This README covers
+**descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06).
 
-## Provider client (`client.py`)
+## Provider
 
-`LLM_PROVIDER` picks `anthropic` or `openai`; `LLM_MODEL` is that provider's model
-name and `LLM_API_KEY` its key (environment only, never committed). With
-`LLM_PROVIDER=none` or no key, `provider_client` returns `None` and the features fall
-back as described below. The client uses only the standard library (one HTTPS POST,
-20 s timeout); every failure becomes `LlmError`. Routes get the client through the
-`get_llm_client` dependency (`evaluation_router.py`), which tests override with a fake.
+Providers live in `provider.py` (S07.1): `LLM_PROVIDER` picks `openai`, `anthropic`,
+the offline deterministic `fake` (question generation only) or `none`. Routes get the
+provider through `router.get_llm_provider`, which tests override with a fake. The
+question generation and adaptive routes (`/ai/generations`, `/ai/adaptive-quizzes`) are
+described in `router.py`.
 
 ## Descriptive answer evaluation
 
@@ -40,12 +38,13 @@ recorded or sent, so no empty request reaches the LLM (IT_15).
   (NFR-06). The score is clamped and rounded to the scale. Concepts are matched back to the
   question's list. Any expected concept it does not confirm as covered is reported missing.
   With no concept covered the score is 0. Empty strengths or weaknesses are filled in.
-  The student's answer is sent between markers, and the system prompt tells the model
-  to treat it as data, never instructions.
+  The grading instructions travel in the prompt itself (the shared provider's system
+  prompt is generic). The student's answer is sent between markers, and the instructions tell
+  the model to treat it as data, never instructions.
 - `concept-match`: deterministic. The score is the share of expected concepts the
   answer mentions (word stems, so "isolated" counts for Isolation). Strengths and
   weaknesses come from the concepts covered and missed and from whether the answer
-  gives examples. It is used when no LLM is configured, so the prototype works offline. It
+  gives examples. It is used when no LLM is configured and with `LLM_PROVIDER=fake`, so the prototype works offline. It
   is also used when the LLM call fails or replies with something unusable (the failed
   request is still recorded).
 
