@@ -461,3 +461,31 @@ def test_generating_into_a_channel_bank_needs_membership(client, db, student):
 
 def test_generation_requires_sign_in(client):
     assert client.post(API, json=DBMS).status_code == 401
+
+
+def test_only_authorized_users_generate_into_an_authorized_channel_bank(client, db, student):
+    """S03.1: an Authorized Channel's bank is official content, AI questions included."""
+    from app.modules.channels import service as channels
+    from app.modules.channels.models import ApprovalStatus, ChannelType
+
+    faculty = make_user(db, "gen_faculty", Role.AUTHORIZED_USER)
+    member = accounts.get_user_by_email(db, "gen_student@test.com")
+    official = channels.create_channel(
+        db,
+        name="DBMS (official)",
+        subject="DBMS",
+        created_by=faculty.id,
+        channel_type=ChannelType.AUTHORIZED,
+    )
+    channels.set_approval(db, official.id, ApprovalStatus.APPROVED)
+    channels.add_member(db, official.id, member.id)
+    db.commit()
+
+    refused = generate(client, student, channel_id=official.id)
+    assert refused.status_code == 403
+    assert (
+        refused.json()["detail"] == "Only authorized users can add content to Authorized Channels"
+    )
+
+    allowed = generate(client, auth(client, "gen_faculty"), channel_id=official.id)
+    assert allowed.status_code == 201, allowed.text
