@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     llm_provider: str = "none"
     llm_model: str = ""
     llm_api_key: SecretStr | None = None
+    # Optional base URL for an OpenAI-compatible endpoint (blank = the provider default).
+    llm_base_url: str = ""
+    # Seconds to wait for the provider before reporting a timeout (S07.1, NFR-06).
+    llm_timeout_seconds: float = 30.0
 
     # Study material uploads (materials module, S04.1).
     material_max_upload_mb: int = 20
@@ -43,6 +47,10 @@ class Settings(BaseSettings):
 
     @property
     def llm_enabled(self) -> bool:
+        # "fake" is the built-in deterministic generator for demos and tests; it needs
+        # no key and never calls the network.
+        if self.llm_provider == "fake":
+            return True
         return self.llm_provider != "none" and self.llm_api_key is not None
 
 

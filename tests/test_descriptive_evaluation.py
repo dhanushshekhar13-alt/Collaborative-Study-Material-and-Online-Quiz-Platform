@@ -19,8 +19,8 @@ from app.modules.channels import service as channels
 from app.modules.channels.models import ChannelType
 from app.modules.llm import evaluation
 from app.modules.llm.client import AnthropicClient, LlmError, OpenAIClient, provider_client
+from app.modules.llm.evaluation_router import get_llm_client
 from app.modules.llm.models import LlmRequest, LlmRequestStatus
-from app.modules.llm.router import get_llm_client
 from app.modules.questions import service as questions
 from app.modules.questions.models import Difficulty, QuestionType
 from tests.test_quiz_attempts import auth, make_user

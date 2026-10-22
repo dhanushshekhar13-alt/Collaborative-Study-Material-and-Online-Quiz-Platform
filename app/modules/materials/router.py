@@ -1,4 +1,8 @@
-"""HTTP surface of the materials module, mounted at ``/api/v1/materials`` (S04.1, S04.2)."""
+"""HTTP surface of the materials module, mounted at ``/api/v1/materials``.
+
+S04.1 upload, search and download; S04.2 rate, review and report; S03.1 official
+content in Authorized Channels (tagging, edit and remove).
+"""
 
 from datetime import datetime
 from pathlib import PurePosixPath
@@ -54,6 +58,12 @@ RATING_REQUIRED = "Select a rating from 1 to 5 stars"
 REASON_REQUIRED = "Select a reason for reporting this material"
 OWN_MATERIAL = "You can't rate or mark your own material as helpful"
 REPORT_LOGGED = "Report submitted for moderation"
+# S03.1. "Insufficient permissions" is the Test Plan wording (UT_06).
+INSUFFICIENT_PERMISSIONS = "Insufficient permissions"
+OFFICIAL_ONLY_IN_AUTHORIZED = "Official content can only be published in an Authorized Channel"
+NOTHING_TO_CHANGE = "Change at least one detail"
+OFFICIAL_LABEL = "Official/Verified"
+PEER_LABEL = "Peer"
 EMPTY_STATE = (
     "No materials match your search. Try a broader subject or topic, "
     "or upload the first material for it."
@@ -88,6 +98,13 @@ class MaterialResponse(BaseModel):
     tags: list[str]
     channel_id: int | None
     is_official: bool
+    # S03.1: shown the same way on every endpoint so official content always stands
+    # out from peer content. The UI maps ``content_style`` to its styling.
+    content_label: str
+    content_style: str
+    # Whether the caller may edit and remove this material (hidden for regular
+    # members on official content; the API refuses them the same way).
+    can_manage: bool
     uploader_id: int | None
     uploader_name: str | None
     created_at: datetime | None
@@ -123,6 +140,7 @@ def _response(
     m: service.MaterialSummary,
     names: dict[int, str] | None = None,
     feedback: service.MaterialFeedback | None = None,
+    can_manage: bool = False,
 ) -> MaterialResponse:
     if names is not None and m.uploader_id in names:
         uploader_name = names[m.uploader_id]
@@ -151,10 +169,14 @@ def _response(
         semester=m.semester,
         material_type=m.material_type,
         type_label=type_label,
-        tags=[t for t in (m.subject, m.topic, m.semester and f"Semester {m.semester}") if t]
+        tags=([OFFICIAL_LABEL] if m.is_official else [])
+        + [t for t in (m.subject, m.topic, m.semester and f"Semester {m.semester}") if t]
         + [type_label],
         channel_id=m.channel_id,
         is_official=m.is_official,
+        content_label=OFFICIAL_LABEL if m.is_official else PEER_LABEL,
+        content_style="content-official" if m.is_official else "content-peer",
+        can_manage=can_manage,
         uploader_id=m.uploader_id,
         uploader_name=uploader_name,
         created_at=m.created_at,
@@ -197,10 +219,46 @@ def _readable(db: Session, material_id: int, user: UserSummary) -> service.Mater
     return material
 
 
+def _manages_official(
+    db: Session,
+    channel_id: int | None,
+    user: UserSummary,
+    cache: dict[int, bool] | None = None,
+) -> bool:
+    """Whether the caller manages official content in this channel (S03.1)."""
+    if channel_id is None:
+        return False
+    if cache is not None and channel_id in cache:
+        return cache[channel_id]
+    summary = channels.describe_channel(db, channel_id)
+    result = summary is not None and channels.manages_official_content(
+        summary,
+        is_member=channels.is_member(db, channel_id, user.id),
+        has_capability=Capability.OFFICIAL_CONTENT_MANAGE in capabilities_for(user.role),
+        is_admin=_is_admin(user),
+    )
+    if cache is not None:
+        cache[channel_id] = result
+    return result
+
+
+def _can_manage(
+    db: Session,
+    m: service.MaterialSummary,
+    user: UserSummary,
+    cache: dict[int, bool] | None = None,
+) -> bool:
+    """Official content: authorized users of its channel (and admins). Peer content:
+    its uploader (and admins); S03.2 covers peer contribution in Normal Channels."""
+    if m.is_official:
+        return _manages_official(db, m.channel_id, user, cache)
+    return m.uploader_id == user.id or _is_admin(user)
+
+
 def _detail(db: Session, material_id: int, user: UserSummary) -> MaterialResponse:
     material = service.describe_material(db, material_id)
     feedback = service.feedback_for(db, [material_id], user.id)[material_id]
-    return _response(db, material, feedback=feedback)
+    return _response(db, material, feedback=feedback, can_manage=_can_manage(db, material, user))
 
 
 def _blank(value: str | None) -> str | None:
@@ -224,6 +282,9 @@ async def upload_material(
     description: str | None = Form(default=None, max_length=5000),
     channel_id: int | None = Form(default=None),
     url: str | None = Form(default=None, max_length=1000),
+    is_official: bool | None = Form(
+        default=None, description="Mark as official; Authorized Channels only (S03.1)"
+    ),
     user: UserSummary = Depends(require_capability(Capability.MATERIAL_UPLOAD)),
     db: Session = Depends(get_db),
 ) -> MaterialResponse:
@@ -234,6 +295,10 @@ async def upload_material(
     supported type and the size limit before anything is saved. A ``link`` material
     carries a URL instead of a file. With ``channel_id`` the material is channel-scoped
     and only that channel's members can see it.
+
+    Everything published in an Authorized Channel is official: only authorized users
+    may add it, and it is tagged ``Official/Verified`` (UT_05). ``is_official`` outside
+    an Authorized Channel is refused.
     """
     subject, topic, semester = _blank(subject), _blank(topic), _blank(semester)
     if subject is None:
@@ -247,6 +312,7 @@ async def upload_material(
     except ValueError:
         raise _invalid(TYPE_REQUIRED) from None
 
+    official = False
     if channel_id is not None:
         channel = _channel_for(db, channel_id, user)
         if not channels.is_member(db, channel_id, user.id) and not _is_admin(user):
@@ -257,6 +323,9 @@ async def upload_material(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail=AUTHORIZED_ONLY_UPLOAD
             )
+        official = channel.channel_type is ChannelType.AUTHORIZED
+    if is_official and not official:
+        raise _invalid(OFFICIAL_ONLY_IN_AUTHORIZED)
 
     link = _blank(url)
     filename = content_type = data = None
@@ -292,6 +361,7 @@ async def upload_material(
         channel_id=channel_id,
         url=link,
         description=_blank(description),
+        is_official=official,
     )
     if data:
         service.attach_file(db, created.id, filename=filename, content_type=content_type, data=data)
@@ -307,6 +377,9 @@ def search_materials(
     semester: str | None = Query(default=None, max_length=20),
     material_type: MaterialType | None = Query(default=None, alias="type"),
     channel_id: int | None = Query(default=None),
+    official: bool | None = Query(
+        default=None, description="true: official only; false: peer only (S03.1)"
+    ),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user: UserSummary = Depends(current_user),
@@ -336,13 +409,18 @@ def search_materials(
         topic=topic,
         semester=semester,
         material_type=material_type,
+        is_official=official,
         limit=limit,
         offset=offset,
     )
     names: dict[int, str] = {}
+    managed: dict[int, bool] = {}
     feedback = service.feedback_for(db, [m.id for m in page.items], user.id)
     return MaterialListResponse(
-        items=[_response(db, m, names, feedback[m.id]) for m in page.items],
+        items=[
+            _response(db, m, names, feedback[m.id], _can_manage(db, m, user, managed))
+            for m in page.items
+        ],
         total=page.total,
         limit=limit,
         offset=offset,
@@ -596,3 +674,88 @@ def report_material(
         status=report.status.value,
         message=REPORT_LOGGED,
     )
+
+
+# --------------------------------------------------------------------------- #
+# S03.1 - edit and remove (official content in Authorized Channels)
+# --------------------------------------------------------------------------- #
+
+
+class MaterialUpdate(BaseModel):
+    """Only the fields sent are changed. Subject, topic and semester cannot be blanked."""
+
+    title: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
+    subject: str | None = Field(default=None, max_length=100)
+    topic: str | None = Field(default=None, max_length=100)
+    semester: str | None = Field(default=None, max_length=20)
+    url: str | None = Field(default=None, max_length=1000)
+
+
+def _managed(db: Session, material_id: int, user: UserSummary) -> service.MaterialSummary:
+    """The material if the caller may manage it, else 403 ``Insufficient permissions``."""
+    material = _readable(db, material_id, user)
+    if not _can_manage(db, material, user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=INSUFFICIENT_PERMISSIONS)
+    return material
+
+
+@router.patch("/{material_id}", response_model=MaterialResponse)
+def edit_material(
+    material_id: int,
+    payload: MaterialUpdate,
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> MaterialResponse:
+    """Edit a material's details (S03.1).
+
+    Official content can be edited by the authorized users of its Authorized Channel
+    (and admins); a regular member gets **403** ``Insufficient permissions`` (UT_06).
+    Peer content can be edited by its uploader. The official tag cannot be changed.
+    """
+    material = _managed(db, material_id, user)
+    sent = payload.model_fields_set
+    if not sent:
+        raise _invalid(NOTHING_TO_CHANGE)
+    changes: dict[str, str | None] = {}
+    for field, message in (
+        ("subject", SUBJECT_REQUIRED),
+        ("topic", TOPIC_REQUIRED),
+        ("semester", SEMESTER_REQUIRED),
+    ):
+        if field in sent:
+            value = _blank(getattr(payload, field))
+            if value is None:
+                raise _invalid(message)
+            changes[field] = value
+    if "title" in sent:
+        title = _blank(payload.title)
+        if title is None:
+            raise _invalid("Enter a title")
+        changes["title"] = title
+    if "description" in sent:
+        changes["description"] = _blank(payload.description)
+    if "url" in sent:
+        link = _blank(payload.url)
+        if material.material_type is not MaterialType.LINK:
+            raise _invalid("Only link materials have a URL")
+        if link is None or not link.lower().startswith(("http://", "https://")):
+            raise _invalid(URL_REQUIRED)
+        changes["url"] = link
+    service.update_material(db, material_id, **changes)
+    db.commit()
+    return _detail(db, material_id, user)
+
+
+@router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_material(
+    material_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
+) -> None:
+    """Remove a material (S03.1): it is no longer listed, shown or downloadable.
+
+    Same rule as editing: official content by its channel's authorized users (and
+    admins), peer content by its uploader; anyone else gets ``Insufficient permissions``.
+    """
+    _managed(db, material_id, user)
+    service.set_removed(db, material_id, True)
+    db.commit()

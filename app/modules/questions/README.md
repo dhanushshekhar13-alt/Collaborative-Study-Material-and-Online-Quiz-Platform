@@ -10,7 +10,10 @@ it. Owns `questions` and `question_ratings`; module rules are in
 A question belongs to the **general bank** (`channel_id` null) or to one **channel
 bank**. Anyone signed in can browse the general bank. A channel bank can be browsed by
 anyone who can see the channel (a pending Authorized Channel answers 404, so it is not
-revealed) and contributed to by its members and admins.
+revealed) and contributed to by its members and admins. An Authorized Channel's bank
+is official content (S03.1): only members with `official_content:manage` and admins
+add to it; a regular member gets **403** `Only authorized users can add content to
+Authorized Channels`, as for materials and quizzes.
 
 Only `published` questions are listed or searched. LLM-generated questions start as
 `draft` and stay out of the bank until reviewed (FR-07); a draft is readable only by

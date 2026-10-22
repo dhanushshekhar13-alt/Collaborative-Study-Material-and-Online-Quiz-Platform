@@ -111,6 +111,28 @@ def set_removed(db: Session, material_id: int, removed: bool) -> None:
     m.status = ContentStatus.REMOVED if removed else ContentStatus.ACTIVE
 
 
+_EDITABLE = ("title", "description", "subject", "topic", "semester", "url")
+
+
+def update_material(db: Session, material_id: int, **changes: str | None) -> MaterialSummary:
+    """Change an active material's details (S03.1). Caller validates and commits.
+
+    Only the fields passed are changed: ``title``, ``description``, ``subject``,
+    ``topic``, ``semester`` and ``url``. The type, file, channel and official flag stay
+    as they were.
+    """
+    unknown = set(changes) - set(_EDITABLE)
+    if unknown:
+        raise ValueError(f"cannot edit {', '.join(sorted(unknown))}")
+    m = db.get(StudyMaterial, material_id)
+    if m is None or m.status is not ContentStatus.ACTIVE:
+        raise LookupError(f"material {material_id} not found")
+    for field, value in changes.items():
+        setattr(m, field, value)
+    db.flush()
+    return describe_material(db, material_id)
+
+
 @dataclass(frozen=True)
 class MaterialContribution:
     """One material the user contributed, for their profile's history (S01.2)."""
@@ -316,6 +338,7 @@ def search_materials(
     topic: str | None = None,
     semester: str | None = None,
     material_type: MaterialType | None = None,
+    is_official: bool | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> MaterialPage:
@@ -325,7 +348,8 @@ def search_materials(
     lists the channels whose materials may be returned (``None`` means every channel,
     for admins). Subject, topic and semester match exactly, ignoring case, so filtering
     by subject and topic returns only materials matching both (IT_07); ``query`` is a
-    keyword over title, description, subject and topic.
+    keyword over title, description, subject and topic. ``is_official`` keeps only
+    official (or only peer) materials (S03.1).
     """
     scope = []
     if include_general:
@@ -347,6 +371,8 @@ def search_materials(
             conditions.append(func.lower(column) == value.strip().lower())
     if material_type is not None:
         conditions.append(StudyMaterial.material_type == material_type)
+    if is_official is not None:
+        conditions.append(StudyMaterial.is_official.is_(is_official))
     if query and query.strip():
         needle = f"%{query.strip().lower()}%"
         conditions.append(

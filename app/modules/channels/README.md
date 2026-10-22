@@ -65,12 +65,22 @@ Rules:
 - There is no endpoint yet to promote a moderator; moderators are assigned with
   `add_member(..., MemberRole.MODERATOR)`.
 
+## Official content (S03.1)
+
+Channel responses carry `can_manage_official_content`: true only in an approved
+Authorized Channel, for its members with `official_content:manage` and for admins. The
+UI shows "Manage Official Content" only when it is true. The rule lives in
+`service.manages_official_content`, which materials (and the question bank) also use,
+so the option and the API's `Insufficient permissions` never disagree. Normal Channels
+hold no official content; members contribute there as peers.
+
 ## Service interface for other modules
 
 `app.modules.channels.service`: `create_channel`, `get_channel`, `describe_channel`,
 `list_channels`, `pending_requests`, `set_approval`, `is_visible_to`, `add_member`,
 `member_role`, `is_member`, and from S02.2 `remove_member`, `list_members`
-(`MemberSummary`), `channels_for_member`, `can_manage_members`, `can_remove`. All
+(`MemberSummary`), `channels_for_member`, `can_manage_members`, `can_remove`, and from S03.1
+`manages_official_content`. All
 return dataclasses or plain values. Use `is_member` to gate channel-scoped content
 (materials, quizzes, chat).
 

@@ -2,8 +2,9 @@
 
 Everything that talks to the LLM provider. Owns `llm_requests`, an audit record of
 every request with its output or error; module rules are in
-[`docs/architecture.md`](../../../docs/architecture.md). This README covers
-**descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06).
+[`docs/architecture.md`](../../../docs/architecture.md). Question generation and
+adaptive quizzes (S07.1, S07.2) use `provider.py`, `generation.py`, `adaptive.py` and
+`router.py` (`/ai`). This README covers **descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06).
 
 ## Provider client (`client.py`)
 
@@ -12,7 +13,7 @@ name and `LLM_API_KEY` its key (environment only, never committed). With
 `LLM_PROVIDER=none` or no key, `provider_client` returns `None` and the features fall
 back as described below. The client uses only the standard library (one HTTPS POST,
 20 s timeout); every failure becomes `LlmError`. Routes get the client through the
-`get_llm_client` dependency, which tests override with a fake.
+`get_llm_client` dependency (`evaluation_router.py`), which tests override with a fake.
 
 ## Descriptive answer evaluation
 

@@ -24,7 +24,12 @@ ENTITIES_BY_REQUIREMENT = {
         "quiz_questions",
     },
     "FR-06 attempts and results": {"quiz_attempts", "attempt_answers"},
-    "FR-07 LLM generation and adaptive quizzes": {"llm_requests", "questions", "attempt_answers"},
+    "FR-07 LLM generation and adaptive quizzes": {
+        "llm_requests",
+        "adaptive_sessions",
+        "questions",
+        "attempt_answers",
+    },
     "FR-08 descriptive answer evaluation": {"attempt_answers", "llm_requests"},
     "FR-09 LLM explanations and channel-scoped help": {"llm_requests"},
     "FR-10 channel chat with threads": {"channel_messages"},
