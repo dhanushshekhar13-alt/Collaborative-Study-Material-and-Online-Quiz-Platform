@@ -98,7 +98,7 @@ class Generation:
         return self.pending_count == 0 and bool(self.approved_ids)
 
 
-def _same(a: str, b: str) -> bool:
+def same_text(a: str, b: str) -> bool:
     return " ".join(a.split()).lower() == " ".join(b.split()).lower()
 
 
@@ -145,9 +145,9 @@ def validate_item(
     if not all(isinstance(v, str) and v.strip() for v in fields.values()):
         return None
     if not (
-        _same(fields["subject"], subject)
-        and _same(fields["topic"], topic)
-        and _same(fields["difficulty"], difficulty.value)
+        same_text(fields["subject"], subject)
+        and same_text(fields["topic"], topic)
+        and same_text(fields["difficulty"], difficulty.value)
     ):
         return None
     options = raw.get("options")
@@ -156,7 +156,7 @@ def validate_item(
     options = [" ".join(o.split()) for o in options if o.strip()]
     if len(options) < 2 or len({o.lower() for o in options}) != len(options):
         return None
-    match = [o for o in options if _same(o, fields["correct_answer"])]
+    match = [o for o in options if same_text(o, fields["correct_answer"])]
     if not match:
         return None
     return GeneratedItem(
