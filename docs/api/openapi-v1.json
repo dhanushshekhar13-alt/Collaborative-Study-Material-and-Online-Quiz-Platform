@@ -47,6 +47,349 @@
         "title": "AccountResponse",
         "type": "object"
       },
+      "AdaptiveAnswerRequest": {
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "response": {
+            "maxLength": 5000,
+            "title": "Response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "response"
+        ],
+        "title": "AdaptiveAnswerRequest",
+        "type": "object"
+      },
+      "AdaptiveFeedbackResponse": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "boolean"
+          },
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct Answer"
+          },
+          "current_difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "difficulty_change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "raised, lowered or null",
+            "title": "Difficulty Change"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "next_question_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Question Error"
+          },
+          "previous_difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "state": {
+            "$ref": "#/components/schemas/AdaptiveStateResponse"
+          }
+        },
+        "required": [
+          "correct",
+          "correct_answer",
+          "explanation",
+          "previous_difficulty",
+          "current_difficulty",
+          "difficulty_change",
+          "message",
+          "state"
+        ],
+        "title": "AdaptiveFeedbackResponse",
+        "type": "object"
+      },
+      "AdaptiveQuestionResponse": {
+        "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "source": {
+            "$ref": "#/components/schemas/QuestionSource",
+            "description": "peer (from the bank) or llm (generated)"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "text",
+          "question_type",
+          "options",
+          "subject",
+          "topic",
+          "difficulty",
+          "source"
+        ],
+        "title": "AdaptiveQuestionResponse",
+        "type": "object"
+      },
+      "AdaptiveStart": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also draw from this channel's bank (needs membership)",
+            "title": "Channel Id"
+          },
+          "question_count": {
+            "default": 10,
+            "maximum": 20.0,
+            "minimum": 5.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "start_difficulty": {
+            "$ref": "#/components/schemas/Difficulty",
+            "default": "medium"
+          },
+          "subject": {
+            "maxLength": 100,
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "maxLength": 100,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "topic"
+        ],
+        "title": "AdaptiveStart",
+        "type": "object"
+      },
+      "AdaptiveStateResponse": {
+        "properties": {
+          "answered_count": {
+            "title": "Answered Count",
+            "type": "integer"
+          },
+          "correct_streak": {
+            "title": "Correct Streak",
+            "type": "integer"
+          },
+          "current_difficulty": {
+            "$ref": "#/components/schemas/Difficulty",
+            "description": "The level the next question is at"
+          },
+          "current_difficulty_label": {
+            "title": "Current Difficulty Label",
+            "type": "string"
+          },
+          "current_question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdaptiveQuestionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ServedResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "incorrect_streak": {
+            "title": "Incorrect Streak",
+            "type": "integer"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "start_difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "topic",
+          "start_difficulty",
+          "question_count",
+          "answered_count",
+          "current_difficulty",
+          "current_difficulty_label",
+          "correct_streak",
+          "incorrect_streak",
+          "finished",
+          "current_question",
+          "history",
+          "outcome"
+        ],
+        "title": "AdaptiveStateResponse",
+        "type": "object"
+      },
+      "AddToQuizRequest": {
+        "properties": {
+          "duration_minutes": {
+            "default": 15,
+            "description": "Timer length",
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "AddToQuizRequest",
+        "type": "object"
+      },
+      "AddToQuizResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Question Ids",
+            "type": "array"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_id",
+          "question_ids",
+          "status",
+          "message"
+        ],
+        "title": "AddToQuizResponse",
+        "type": "object"
+      },
       "AnswerOutcomeResponse": {
         "properties": {
           "correct_answer": {
@@ -786,6 +1129,187 @@
         "title": "Difficulty",
         "type": "string"
       },
+      "GenerateRequest": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Channel bank approved questions go to; omit for general",
+            "title": "Channel Id"
+          },
+          "count": {
+            "default": 5,
+            "description": "How many questions to generate (5-10)",
+            "maximum": 10.0,
+            "minimum": 5.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "subject": {
+            "maxLength": 100,
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "maxLength": 100,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "difficulty"
+        ],
+        "title": "GenerateRequest",
+        "type": "object"
+      },
+      "GeneratedQuestionResponse": {
+        "properties": {
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct Answer"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "edited": {
+            "title": "Edited",
+            "type": "boolean"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "question_type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "review_status": {
+            "description": "pending, approved or rejected",
+            "title": "Review Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "subject",
+          "topic",
+          "difficulty",
+          "question_type",
+          "options",
+          "correct_answer",
+          "explanation",
+          "review_status",
+          "edited"
+        ],
+        "title": "GeneratedQuestionResponse",
+        "type": "object"
+      },
+      "GenerationResponse": {
+        "properties": {
+          "can_add_to_quiz": {
+            "description": "False until every question is approved or rejected (and one approved)",
+            "title": "Can Add To Quiz",
+            "type": "boolean"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/GeneratedQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "topic",
+          "difficulty",
+          "channel_id",
+          "questions",
+          "pending_count",
+          "can_add_to_quiz"
+        ],
+        "title": "GenerationResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1405,6 +1929,34 @@
         "title": "NotEnoughQuestionsResponse",
         "type": "object"
       },
+      "OutcomeResponse": {
+        "properties": {
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "number"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "max_score",
+          "percentage",
+          "display"
+        ],
+        "title": "OutcomeResponse",
+        "type": "object"
+      },
       "PermissionsResponse": {
         "properties": {
           "capabilities": {
@@ -1746,6 +2298,41 @@
           "question_type"
         ],
         "title": "QuestionCreate",
+        "type": "object"
+      },
+      "QuestionEdit": {
+        "properties": {
+          "correct_answer": {
+            "maxLength": 5000,
+            "title": "Correct Answer",
+            "type": "string"
+          },
+          "explanation": {
+            "maxLength": 5000,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Options",
+            "type": "array"
+          },
+          "text": {
+            "maxLength": 5000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "options",
+          "correct_answer",
+          "explanation"
+        ],
+        "title": "QuestionEdit",
         "type": "object"
       },
       "QuestionResponse": {
@@ -2681,6 +3268,45 @@
         "title": "Role",
         "type": "string"
       },
+      "ServedResponse": {
+        "properties": {
+          "correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "topic",
+          "difficulty",
+          "correct"
+        ],
+        "title": "ServedResponse",
+        "type": "object"
+      },
       "SubmitRequest": {
         "properties": {
           "answers": {
@@ -3018,6 +3644,522 @@
         "tags": [
           "accounts",
           "operations"
+        ]
+      }
+    },
+    "/api/v1/ai/adaptive-quizzes": {
+      "post": {
+        "description": "Start an adaptive quiz on one topic at the chosen level (default medium).\n\nThree correct answers in a row raise the next question's difficulty, two incorrect\nin a row lower it (IT_14, ST_13). Every question carries the selected topic (ST_14).",
+        "operationId": "start_adaptive_quiz_api_v1_ai_adaptive_quizzes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Adaptive Quiz",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/adaptive-quizzes/{session_id}": {
+      "get": {
+        "description": "The current difficulty, the question to answer now and the history so far.",
+        "operationId": "adaptive_quiz_state_api_v1_ai_adaptive_quizzes__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Adaptive Quiz State",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/adaptive-quizzes/{session_id}/answers": {
+      "post": {
+        "description": "Answer the current question. The answer is scored and saved first; the response\nsays whether the difficulty was raised or lowered and carries the next question.",
+        "operationId": "answer_adaptive_question_api_v1_ai_adaptive_quizzes__session_id__answers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveFeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Answer Adaptive Question",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/generations": {
+      "get": {
+        "description": "The caller's recent generated batches, newest first.",
+        "operationId": "my_generations_api_v1_ai_generations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GenerationResponse"
+                  },
+                  "title": "Response My Generations Api V1 Ai Generations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Generations",
+        "tags": [
+          "ai"
+        ]
+      },
+      "post": {
+        "description": "Generate 5-10 questions, each with options, a marked correct answer and an\nexplanation, for the selected subject, topic and difficulty (UT_13).\n\nThey are saved as drafts for the review screen and reach no bank or quiz until\napproved (UT_14). A provider error or timeout returns 502/504 with a clear message.",
+        "operationId": "generate_questions_api_v1_ai_generations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Questions",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/generations/{generation_id}": {
+      "get": {
+        "description": "The review screen: every question with its review status, and whether Add to\nQuiz is available yet.",
+        "operationId": "review_screen_api_v1_ai_generations__generation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generation_id",
+            "required": true,
+            "schema": {
+              "title": "Generation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Screen",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/generations/{generation_id}/questions/{question_id}": {
+      "put": {
+        "description": "Save a correction to a flawed question (IT_13). It stays pending until approved.",
+        "operationId": "edit_question_api_v1_ai_generations__generation_id__questions__question_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generation_id",
+            "required": true,
+            "schema": {
+              "title": "Generation Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "title": "Question Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Question",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/generations/{generation_id}/questions/{question_id}/approve": {
+      "post": {
+        "description": "Approve a question: it joins the general or channel bank.",
+        "operationId": "approve_question_api_v1_ai_generations__generation_id__questions__question_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generation_id",
+            "required": true,
+            "schema": {
+              "title": "Generation Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "title": "Question Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Question",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/generations/{generation_id}/questions/{question_id}/reject": {
+      "post": {
+        "description": "Reject a question: it is discarded and never appears in a bank or quiz (IT_13).",
+        "operationId": "reject_question_api_v1_ai_generations__generation_id__questions__question_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generation_id",
+            "required": true,
+            "schema": {
+              "title": "Generation Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "title": "Question Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject Question",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/generations/{generation_id}/quiz": {
+      "post": {
+        "description": "Add to Quiz: a draft quiz from the approved questions (publish it with\n``POST /quizzes/{id}/publish``). Refused with 409 while any question is still\npending review (UT_14).",
+        "operationId": "add_to_quiz_api_v1_ai_generations__generation_id__quiz_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generation_id",
+            "required": true,
+            "schema": {
+              "title": "Generation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToQuizRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddToQuizResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add To Quiz",
+        "tags": [
+          "ai"
         ]
       }
     },

@@ -236,7 +236,6 @@ everywhere.
 No API or schema change: `docs/api/openapi-v1.json` is unchanged, since the UI routes are
 excluded from the contract.
 
-
 ## S03.1 (#26) — Official content management in Authorized Channels
 
 Test Plan cases are automated in `tests/test_official_content.py` under their case
@@ -259,3 +258,43 @@ Manually verified on a migrated, seeded SQLite database: the seeded authorized u
 publishes, edits and removes official material in the seeded Authorized Channel, and
 the seeded student sees `can_manage_official_content: false` and gets
 `Insufficient permissions` on edit.
+
+## S07.1 (#30) — LLM question generation with mandatory review
+
+Test Plan cases are automated in `tests/test_llm_generation.py` under their case IDs,
+run against the `/api/v1/ai/generations` endpoints the UI will call. Every test uses
+the deterministic `FakeProvider` (`LLM_PROVIDER=fake`) or a scripted provider, so no
+key or network is needed; with `LLM_PROVIDER=none` the endpoints answer 503.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_13` | Five to ten questions are returned, each with options, a marked correct answer and an explanation | `test_UT_13_generates_questions_with_options_answer_and_explanation`, `test_the_requested_number_of_questions_is_returned`, `test_counts_outside_five_to_ten_are_refused` | Pass |
+| `UT_13` | Generated content matches the selected subject, topic and difficulty | `test_generated_content_matches_selected_subject_topic_and_difficulty`, `test_validate_item_rejects_off_topic_and_incomplete_items` | Pass |
+| — | An LLM failure or timeout surfaces a clear error rather than a blank screen | `test_a_provider_failure_returns_a_clear_error_and_is_logged`, `test_a_provider_timeout_returns_a_clear_error`, `test_unusable_output_after_every_retry_is_a_clear_error`, `test_with_no_provider_configured_the_feature_says_so`, `test_the_http_provider_maps_timeouts_and_errors` | Pass |
+| `UT_14` | Add to Quiz is unavailable until each question is approved or rejected in the review screen | `test_UT_14_add_to_quiz_is_unavailable_until_every_question_is_reviewed`, `test_nothing_approved_means_no_quiz` | Pass |
+| `IT_13` | A flawed question can be edited and saved with the correction, or rejected and discarded | `test_IT_13_a_flawed_question_can_be_edited_and_saved_with_the_correction`, `test_a_reviewed_question_cannot_be_reviewed_or_edited_again`, `test_an_edit_must_keep_the_question_answerable` | Pass |
+| `IT_13` | Rejected questions never appear in the bank or the quiz | `test_IT_13_a_rejected_question_is_discarded_and_never_reaches_bank_or_quiz` | Pass |
+| — | Batches are private; channel banks need membership | `test_a_batch_is_private_to_the_user_who_generated_it`, `test_a_question_from_another_batch_is_not_found`, `test_generating_into_a_channel_bank_needs_membership` | Pass |
+
+No schema change: generated questions are `questions` rows with `source=llm` and
+`status=draft` (already in the model), and each batch is its `llm_requests` audit row.
+
+## S07.2 (#31) — Adaptive difficulty constrained to the selected topic
+
+Test Plan cases are automated in `tests/test_adaptive_quiz.py` under their case IDs,
+run against the `/api/v1/ai/adaptive-quizzes` endpoints with the deterministic
+`FakeProvider` (or a wrapper that answers off topic first). The rule itself is a pure
+function, `app.modules.llm.adaptive.level_after`, tested in isolation.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_14` | Three consecutive correct answers raise the next question's difficulty | `test_IT_14_three_correct_answers_raise_the_next_questions_difficulty`, `test_level_after_follows_the_adaptation_rule` | Pass |
+| `ST_13` | Two consecutive incorrect answers lower the next question's difficulty | `test_ST_13_two_incorrect_answers_lower_the_next_questions_difficulty`, `test_level_after_follows_the_adaptation_rule`, `test_streaks_restart_after_a_change` | Pass |
+| — | The current difficulty level is discoverable by the user | `test_the_current_difficulty_is_discoverable` (`current_difficulty`, `current_difficulty_label`, per-answer "Difficulty raised to Hard" message) | Pass |
+| `ST_14` | All questions across a full adaptive attempt carry the selected topic tag | `test_ST_14_every_question_in_a_full_adaptive_quiz_keeps_the_topic` | Pass |
+| — | A generated question outside the topic is rejected and regenerated | `test_an_off_topic_generated_question_is_rejected_and_regenerated` | Pass |
+| `ST_14` | Topic containment holds at every difficulty level reached | `test_topic_containment_holds_at_every_difficulty_reached` | Pass |
+| — | Bank first, AI drafts never reach the bank; answers survive provider failures | `test_bank_questions_are_used_first_and_ai_drafts_never_reach_the_bank`, `test_without_an_llm_the_bank_alone_runs_the_quiz_until_it_runs_out`, `test_a_failed_next_question_never_loses_the_answer` | Pass |
+
+Migration `0007` (`adaptive_sessions`) upgrades and downgrades cleanly and matches the
+models (`tests/test_migrations.py`).

@@ -6,7 +6,13 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modules.quizzes import attempts
+from app.modules.quizzes import adaptive, attempts
+from app.modules.quizzes.adaptive import (  # noqa: F401 - re-exported for callers
+    AdaptiveAnswer,
+    AdaptiveAnswerError,
+    ServedQuestion,
+)
+from app.modules.quizzes.attempts import AttemptOutcome
 from app.modules.quizzes.models import (
     AttemptStatus,
     Quiz,
@@ -38,6 +44,7 @@ def create_quiz(
     question_ids: list[int],
     channel_id: int | None = None,
     publish: bool = False,
+    adaptive: bool = False,
 ) -> int:
     """Create a quiz from question-bank questions in the given order; returns its id."""
     quiz = Quiz(
@@ -49,6 +56,7 @@ def create_quiz(
         duration_minutes=duration_minutes,
         channel_id=channel_id,
         status=QuizStatus.PUBLISHED if publish else QuizStatus.DRAFT,
+        is_adaptive=adaptive,
     )
     db.add(quiz)
     db.flush()
@@ -122,3 +130,36 @@ def recent_created_by(db: Session, user_id: int, limit: int = 10) -> list[QuizCo
         .limit(limit)
     )
     return [QuizContribution(r.id, r.title, r.created_at) for r in rows]
+
+
+# --------------------------------------------------------------------------- #
+# S07.2 - adaptive attempts (driven by the LLM module)
+# --------------------------------------------------------------------------- #
+
+
+def add_quiz_question(db: Session, quiz_id: int, question_id: int) -> int:
+    """Append a question to an adaptive quiz as it is served; returns its position."""
+    return adaptive.add_question(db, quiz_id, question_id)
+
+
+def adaptive_history(db: Session, attempt_id: int) -> list[ServedQuestion]:
+    """Questions served so far with their difficulty and result, in serving order."""
+    return adaptive.served(db, attempt_id)
+
+
+def answer_adaptive(
+    db: Session, attempt_id: int, question_id: int, response: str
+) -> AdaptiveAnswer:
+    """Score the current question's answer immediately (deterministic scoring)."""
+    return adaptive.answer(db, attempt_id, question_id, response)
+
+
+def finish_attempt(db: Session, attempt_id: int) -> AttemptOutcome:
+    """Close the attempt and return its result."""
+    attempts.submit(db, attempt_id)
+    return attempts.state(db, attempt_id).outcome
+
+
+def attempt_outcome(db: Session, attempt_id: int) -> AttemptOutcome | None:
+    """The result of a submitted attempt, or ``None`` while it is still running."""
+    return attempts.state(db, attempt_id).outcome

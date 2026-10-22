@@ -27,7 +27,7 @@ public service interface keeps its promises (NFR-07).
 | materials | FR-04 | study_materials, material_files, material_reviews | accounts, channels, moderation |
 | questions | FR-05, FR-07 | questions, question_ratings | accounts, channels, moderation |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | accounts, channels, questions |
-| llm | FR-07, FR-08, FR-09 | llm_requests | questions, quizzes |
+| llm | FR-07, FR-08, FR-09 | llm_requests, adaptive_sessions | accounts, channels, questions, quizzes |
 | chat | FR-10, FR-11 | channel_messages, conversations, conversation_participants, direct_messages, user_blocks | – |
 | analytics | FR-12 | none (derived from quiz attempts) | quizzes |
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
@@ -44,6 +44,14 @@ Routes that need a signed-in user or a permission use the guards exported by
 `require_roles`); see `app/modules/accounts/README.md`. A module adding its first
 guarded route adds `accounts` to its `ALLOWED_DEPENDENCIES` entry. That keeps the
 dependency graph honest: chat's guard on accounts gives quizzes no path to chat.
+
+LLM features (S07.1 onward) go through `app/modules/llm/provider.py`. `LLM_PROVIDER`
+selects `openai`, `anthropic`, the offline deterministic `fake`, or `none` (features
+answer 503). Model output is validated in `generation.py` (shape, answer key and
+subject/topic/difficulty tags) before anything is stored, and generated questions are
+stored as drafts that no bank, search or quiz can see until their requester approves
+them. The llm module guards its routes with accounts and checks channel-bank
+membership with channels; neither path reaches chat.
 
 Quiz scoring lives in `app/modules/quizzes/scoring.py` as pure functions. No module
 that quizzes depends on can reach chat, so a change to chat can never require a change
@@ -72,6 +80,8 @@ erDiagram
   quizzes ||--o{ quiz_attempts : attempted
   quiz_attempts ||--o{ attempt_answers : records
   users ||--o{ llm_requests : makes
+  users ||--o{ adaptive_sessions : runs
+  quiz_attempts ||--o| adaptive_sessions : drives
   channels ||--o{ channel_messages : carries
   channel_messages ||--o{ channel_messages : replies
   conversations ||--o{ conversation_participants : between
