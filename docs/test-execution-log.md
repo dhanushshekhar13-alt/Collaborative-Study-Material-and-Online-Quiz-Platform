@@ -236,3 +236,23 @@ everywhere.
 No API or schema change: `docs/api/openapi-v1.json` is unchanged, since the UI routes are
 excluded from the contract.
 
+
+## S07.1 (#30) — LLM question generation with mandatory review
+
+Test Plan cases are automated in `tests/test_llm_generation.py` under their case IDs,
+run against the `/api/v1/ai/generations` endpoints the UI will call. Every test uses
+the deterministic `FakeProvider` (`LLM_PROVIDER=fake`) or a scripted provider, so no
+key or network is needed; with `LLM_PROVIDER=none` the endpoints answer 503.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_13` | Five to ten questions are returned, each with options, a marked correct answer and an explanation | `test_UT_13_generates_questions_with_options_answer_and_explanation`, `test_the_requested_number_of_questions_is_returned`, `test_counts_outside_five_to_ten_are_refused` | Pass |
+| `UT_13` | Generated content matches the selected subject, topic and difficulty | `test_generated_content_matches_selected_subject_topic_and_difficulty`, `test_validate_item_rejects_off_topic_and_incomplete_items` | Pass |
+| — | An LLM failure or timeout surfaces a clear error rather than a blank screen | `test_a_provider_failure_returns_a_clear_error_and_is_logged`, `test_a_provider_timeout_returns_a_clear_error`, `test_unusable_output_after_every_retry_is_a_clear_error`, `test_with_no_provider_configured_the_feature_says_so`, `test_the_http_provider_maps_timeouts_and_errors` | Pass |
+| `UT_14` | Add to Quiz is unavailable until each question is approved or rejected in the review screen | `test_UT_14_add_to_quiz_is_unavailable_until_every_question_is_reviewed`, `test_nothing_approved_means_no_quiz` | Pass |
+| `IT_13` | A flawed question can be edited and saved with the correction, or rejected and discarded | `test_IT_13_a_flawed_question_can_be_edited_and_saved_with_the_correction`, `test_a_reviewed_question_cannot_be_reviewed_or_edited_again`, `test_an_edit_must_keep_the_question_answerable` | Pass |
+| `IT_13` | Rejected questions never appear in the bank or the quiz | `test_IT_13_a_rejected_question_is_discarded_and_never_reaches_bank_or_quiz` | Pass |
+| — | Batches are private; channel banks need membership | `test_a_batch_is_private_to_the_user_who_generated_it`, `test_a_question_from_another_batch_is_not_found`, `test_generating_into_a_channel_bank_needs_membership` | Pass |
+
+No schema change: generated questions are `questions` rows with `source=llm` and
+`status=draft` (already in the model), and each batch is its `llm_requests` audit row.

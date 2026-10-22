@@ -330,3 +330,50 @@ def quiz_candidates(
         stmt = stmt.where(Question.difficulty == difficulty)
     rows = list(db.scalars(stmt.order_by(Question.id)))
     return _bank(db, rows, None)
+
+
+# --------------------------------------------------------------------------- #
+# S07.1 - reviewing LLM-generated drafts
+# --------------------------------------------------------------------------- #
+
+
+class NotADraftError(Exception):
+    """The question has already been reviewed (approved or rejected)."""
+
+
+def _draft(db: Session, question_id: int) -> Question:
+    q = db.get(Question, question_id)
+    if q is None:
+        raise LookupError(f"question {question_id} not found")
+    if q.status is not QuestionStatus.DRAFT:
+        raise NotADraftError("This question has already been reviewed")
+    return q
+
+
+def update_draft(
+    db: Session,
+    question_id: int,
+    *,
+    text: str,
+    options: list[str],
+    correct_answer: str,
+    explanation: str,
+) -> QuestionView:
+    """Save a reviewer's correction to a draft; it stays a draft until approved."""
+    q = _draft(db, question_id)
+    q.text, q.options, q.correct_answer, q.explanation = text, options, correct_answer, explanation
+    db.flush()
+    return _view(q)
+
+
+def publish_draft(db: Session, question_id: int) -> None:
+    """Approve a draft: it joins its bank and becomes usable in quizzes."""
+    _draft(db, question_id).status = QuestionStatus.PUBLISHED
+    db.flush()
+
+
+def discard_draft(db: Session, question_id: int) -> None:
+    """Reject a draft. It is kept only as a removed record and never reaches a bank,
+    a search result or a quiz, all of which use published questions only."""
+    _draft(db, question_id).status = QuestionStatus.REMOVED
+    db.flush()
