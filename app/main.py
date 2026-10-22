@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app import __version__
 from app.core.config import settings
@@ -48,6 +49,21 @@ async def _validation_error(request: Request, exc: RequestValidationError) -> JS
     )
 
 
+TEMPORARY_FAILURE = (
+    "Temporary problem saving your data. Nothing from this request was saved "
+    "and your earlier work is safe; please try again."
+)
+
+
+async def _temporary_failure(request: Request, exc: OperationalError) -> JSONResponse:
+    """A transient database failure (connection lost, lock timeout) is a 503 (NFR-04).
+
+    The request's transaction has already been rolled back by ``get_db``, so the client
+    can simply retry; attempts and answers committed before the failure are kept.
+    """
+    return JSONResponse(status_code=503, content={"detail": TEMPORARY_FAILURE})
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=__version__)
 
@@ -61,6 +77,7 @@ def create_app() -> FastAPI:
         )
 
     app.add_exception_handler(RequestValidationError, _validation_error)
+    app.add_exception_handler(OperationalError, _temporary_failure)
 
     @app.get("/health", tags=["operations"])
     def health() -> dict[str, str]:

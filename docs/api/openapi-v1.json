@@ -1442,6 +1442,85 @@
         "title": "HelpfulResponse",
         "type": "object"
       },
+      "HistoryEntryResponse": {
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "integer"
+          },
+          "auto_submitted": {
+            "description": "Closed by the timer rather than by the user",
+            "title": "Auto Submitted",
+            "type": "boolean"
+          },
+          "display": {
+            "description": "For example \"4/5 (80%)\"",
+            "title": "Display",
+            "type": "string"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "number"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "integer"
+          },
+          "quiz_title": {
+            "title": "Quiz Title",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "quiz_id",
+          "quiz_title",
+          "subject",
+          "topic",
+          "started_at",
+          "submitted_at",
+          "auto_submitted",
+          "score",
+          "max_score",
+          "percentage",
+          "display"
+        ],
+        "title": "HistoryEntryResponse",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "password": {
@@ -2759,6 +2838,53 @@
           "duration_minutes"
         ],
         "title": "QuizCriteria",
+        "type": "object"
+      },
+      "QuizHistoryResponse": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "attempts": {
+            "description": "Submitted attempts, newest first. Open one with GET /attempts/{id} for its per-question breakdown.",
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntryResponse"
+            },
+            "title": "Attempts",
+            "type": "array"
+          },
+          "average_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mean of the attempts' percentages (each attempt counts once); null when there are no attempts. 60, 80, 100 and 90 give 82.5.",
+            "title": "Average Accuracy"
+          },
+          "best_percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Percentage"
+          }
+        },
+        "required": [
+          "attempt_count",
+          "average_accuracy",
+          "best_percentage",
+          "attempts"
+        ],
+        "title": "QuizHistoryResponse",
         "type": "object"
       },
       "QuizQuestionResponse": {
@@ -4256,6 +4382,63 @@
         "summary": "Add To Quiz",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/attempts": {
+      "get": {
+        "description": "My Quiz History: every submitted attempt with its score and timestamp (IT_11).\n\nAttempts whose timer ran out are closed first, so they appear with the answers saved\nbefore the limit. ``average_accuracy`` updates with each attempt (ST_12).",
+        "operationId": "quiz_history_api_v1_attempts_get",
+        "parameters": [
+          {
+            "description": "Only attempts at this quiz",
+            "in": "query",
+            "name": "quiz_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only attempts at this quiz",
+              "title": "Quiz Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Quiz History",
+        "tags": [
+          "quiz attempts"
         ]
       }
     },
