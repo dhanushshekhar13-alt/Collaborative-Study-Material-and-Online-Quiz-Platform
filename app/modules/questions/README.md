@@ -41,6 +41,9 @@ answer the submission is refused with **`Please select the correct answer`** (UT
 | `PUT` | `/api/v1/questions/{id}/rating` | bearer | Save a 1–5 star rating; rating again replaces it. |
 | `POST` | `/api/v1/questions/{id}/reports` | `report:submit` | Report a question (`reason: incorrect` is "Incorrect answer"); logged as an open moderation report, scoped to the question's channel. A repeat while open returns the same report. |
 
+Every question response carries `author_name` with `author_id`, so contributions are
+attributed to their author (S03.2).
+
 ## Dependencies
 
 `accounts` (route guards), `channels` (bank visibility and membership) and

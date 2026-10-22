@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.accounts import service as accounts
 from app.modules.accounts.service import (
     Capability,
     UserSummary,
@@ -117,6 +118,8 @@ class QuizResponse(BaseModel):
     question_count: int
     channel_id: int | None
     creator_id: int
+    # Who built it, so channel contributions are attributed (S03.2).
+    creator_name: str | None = None
     status: QuizStatus
     created_at: datetime | None
     questions: list[QuizQuestionResponse]
@@ -132,6 +135,8 @@ class QuizSummaryResponse(BaseModel):
     question_count: int
     channel_id: int | None
     creator_id: int
+    # Who built it, so channel contributions are attributed (S03.2).
+    creator_name: str | None = None
     status: QuizStatus
     created_at: datetime | None
 
@@ -171,7 +176,19 @@ def _question(
     )
 
 
-def _summary(quiz: building.QuizDetails) -> QuizSummaryResponse:
+def _creator_name(db: Session, user_id: int, names: dict[int, str | None] | None) -> str | None:
+    if names is not None and user_id in names:
+        return names[user_id]
+    creator = accounts.get_user(db, user_id)
+    name = creator.display_name if creator else None
+    if names is not None:
+        names[user_id] = name
+    return name
+
+
+def _summary(
+    quiz: building.QuizDetails, db: Session, names: dict[int, str | None] | None = None
+) -> QuizSummaryResponse:
     return QuizSummaryResponse(
         id=quiz.id,
         title=quiz.title,
@@ -182,15 +199,16 @@ def _summary(quiz: building.QuizDetails) -> QuizSummaryResponse:
         question_count=quiz.question_count,
         channel_id=quiz.channel_id,
         creator_id=quiz.creator_id,
+        creator_name=_creator_name(db, quiz.creator_id, names),
         status=quiz.status,
         created_at=quiz.created_at,
     )
 
 
-def _response(quiz: building.QuizDetails, viewer: UserSummary) -> QuizResponse:
+def _response(quiz: building.QuizDetails, viewer: UserSummary, db: Session) -> QuizResponse:
     with_answers = quiz.creator_id == viewer.id
     return QuizResponse(
-        **_summary(quiz).model_dump(),
+        **_summary(quiz, db).model_dump(),
         questions=[
             _question(item, position, with_answers)
             for position, item in enumerate(quiz.questions, start=1)
@@ -336,7 +354,7 @@ def create_quiz(
         db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from None
     db.commit()
-    return _response(quiz, user)
+    return _response(quiz, user, db)
 
 
 @router.get("", response_model=list[QuizSummaryResponse])
@@ -348,14 +366,15 @@ def list_quizzes(
 ) -> list[QuizSummaryResponse]:
     """Published quizzes in a channel's Quizzes tab (members only), the general list
     (no ``channel_id``), or with ``mine=true`` the caller's own drafts and quizzes."""
+    names: dict[int, str | None] = {}
     if mine:
         found = building.list_by_creator(db, user.id)
         if channel_id is not None:
             found = [q for q in found if q.channel_id == channel_id]
-        return [_summary(q) for q in found]
+        return [_summary(q, db, names) for q in found]
     if channel_id is not None:
         _member_channel(db, channel_id, user, QUIZZES_MEMBERS_ONLY)
-    return [_summary(q) for q in building.list_published(db, channel_id)]
+    return [_summary(q, db, names) for q in building.list_published(db, channel_id)]
 
 
 @router.get("/{quiz_id}", response_model=QuizResponse)
@@ -363,7 +382,7 @@ def read_quiz(
     quiz_id: int, user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
 ) -> QuizResponse:
     """One quiz with its questions. The answer key is shown to its author only."""
-    return _response(_readable(db, quiz_id, user), user)
+    return _response(_readable(db, quiz_id, user), user, db)
 
 
 @router.post("/{quiz_id}/publish", response_model=QuizResponse)
@@ -393,4 +412,4 @@ def publish_quiz(
         db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from None
     db.commit()
-    return _response(published, user)
+    return _response(published, user, db)

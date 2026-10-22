@@ -7,6 +7,9 @@ is S05.2 (#25); this README covers **taking a quiz**, story **S06.1** (issue #28
 FR-06, NFR-01, NFR-06), and **My Quiz History**, story **S06.2** (issue #29, FR-06,
 NFR-04).
 
+Quiz responses carry `creator_name` with `creator_id`, so quizzes contributed in a
+channel are attributed to their author (S03.2).
+
 ## Taking a quiz
 
 | Method | Path | Auth | Purpose |

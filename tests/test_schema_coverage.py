@@ -10,7 +10,12 @@ ENTITIES_BY_REQUIREMENT = {
         "reputation_events",
     },
     "FR-02 channels and membership": {"channels", "channel_memberships"},
-    "FR-03 authorized vs normal channel content": {"channels", "study_materials", "quizzes"},
+    "FR-03 authorized vs normal channel content": {
+        "channels",
+        "channel_posts",
+        "study_materials",
+        "quizzes",
+    },
     "FR-04 materials, ratings, reviews, reports": {
         "study_materials",
         "material_files",

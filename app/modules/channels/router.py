@@ -1,4 +1,7 @@
-"""HTTP surface of the channels module, mounted at ``/api/v1/channels`` (S02.1, S02.2)."""
+"""HTTP surface of the channels module, mounted at ``/api/v1/channels``.
+
+S02.1 creation and approval, S02.2 membership, S03.2 discussion posts.
+"""
 
 from datetime import datetime
 
@@ -349,3 +352,165 @@ def remove_member(
 def _role(db: Session, channel_id: int, user_id: int) -> str | None:
     role = service.member_role(db, channel_id, user_id)
     return role.value if role else None
+
+
+# --------------------------------------------------------------------------- #
+# S03.2 - discussion posts
+# --------------------------------------------------------------------------- #
+
+POST_REQUIRED_MESSAGE = "Write something to post"
+POST_NOT_FOUND_MESSAGE = "Post not found"
+POST_MEMBERS_ONLY_MESSAGE = "Join this channel to post"
+POST_AUTHOR_ONLY_MESSAGE = "Only the author can edit or delete this post"
+CONFIRM_DELETE_POST_MESSAGE = "Confirm deletion of this post"
+
+
+class PostRequest(BaseModel):
+    body: str = Field(max_length=5000)
+
+
+class PostResponse(BaseModel):
+    id: int
+    channel_id: int
+    author_id: int
+    author_name: str | None
+    body: str
+    created_at: datetime | None
+    edited_at: datetime | None
+    # The UI shows "edited" when this is true.
+    is_edited: bool
+    # Whether the caller sees Edit and Delete (its author only).
+    can_edit: bool
+
+
+class PostListResponse(BaseModel):
+    items: list[PostResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+def _post_response(
+    db: Session,
+    post: service.PostSummary,
+    user: UserSummary,
+    names: dict[int, str | None] | None = None,
+) -> PostResponse:
+    if names is not None and post.author_id in names:
+        name = names[post.author_id]
+    else:
+        author = accounts.get_user(db, post.author_id)
+        name = author.display_name if author else None
+        if names is not None:
+            names[post.author_id] = name
+    return PostResponse(
+        id=post.id,
+        channel_id=post.channel_id,
+        author_id=post.author_id,
+        author_name=name,
+        body=post.body,
+        created_at=post.created_at,
+        edited_at=post.edited_at,
+        is_edited=post.is_edited,
+        can_edit=post.author_id == user.id,
+    )
+
+
+def _post_body(payload: PostRequest) -> str:
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=POST_REQUIRED_MESSAGE
+        )
+    return body
+
+
+def _board(db: Session, channel_id: int, user: UserSummary, refusal: str) -> None:
+    """The board is channel-restricted content: members (and admins, to read) only."""
+    _visible_channel(db, channel_id, user)
+    if not service.is_member(db, channel_id, user.id) and not _can(
+        user, Capability.CHANNEL_APPROVE
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=refusal)
+
+
+def _own_post(db: Session, channel_id: int, post_id: int, user: UserSummary) -> service.PostSummary:
+    _board(db, channel_id, user, MEMBERS_ONLY_MESSAGE)
+    post = service.get_post(db, channel_id, post_id)
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=POST_NOT_FOUND_MESSAGE)
+    if post.author_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=POST_AUTHOR_ONLY_MESSAGE)
+    return post
+
+
+@router.post(
+    "/{channel_id}/posts", status_code=status.HTTP_201_CREATED, response_model=PostResponse
+)
+def create_post(
+    channel_id: int,
+    payload: PostRequest,
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> PostResponse:
+    """Start a discussion on the channel's board (IT_05). Members only."""
+    _visible_channel(db, channel_id, user)
+    if not service.is_member(db, channel_id, user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=POST_MEMBERS_ONLY_MESSAGE)
+    post = service.create_post(db, channel_id, user.id, _post_body(payload))
+    db.commit()
+    return _post_response(db, post, user)
+
+
+@router.get("/{channel_id}/posts", response_model=PostListResponse)
+def list_posts(
+    channel_id: int,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> PostListResponse:
+    """The channel's discussion board, newest first, each post with its author."""
+    _board(db, channel_id, user, MEMBERS_ONLY_MESSAGE)
+    posts, total = service.list_posts(db, channel_id, limit=limit, offset=offset)
+    names: dict[int, str | None] = {}
+    return PostListResponse(
+        items=[_post_response(db, p, user, names) for p in posts],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.patch("/{channel_id}/posts/{post_id}", response_model=PostResponse)
+def edit_post(
+    channel_id: int,
+    post_id: int,
+    payload: PostRequest,
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> PostResponse:
+    """Edit your own post (IT_05); it then shows as edited."""
+    _own_post(db, channel_id, post_id, user)
+    post = service.edit_post(db, post_id, _post_body(payload))
+    db.commit()
+    return _post_response(db, post, user)
+
+
+@router.delete("/{channel_id}/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(
+    channel_id: int,
+    post_id: int,
+    confirm: bool = Query(default=False, description="Must be true: the UI's confirm step"),
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete your own post after confirming (IT_05). Without ``confirm=true`` it is
+    refused, so the API cannot skip the UI's confirm step."""
+    _own_post(db, channel_id, post_id, user)
+    if not confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=CONFIRM_DELETE_POST_MESSAGE
+        )
+    service.delete_post(db, post_id)
+    db.commit()

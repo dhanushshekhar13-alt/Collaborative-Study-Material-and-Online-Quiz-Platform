@@ -23,7 +23,7 @@ public service interface keeps its promises (NFR-07).
 | Module | Requirements | Owns tables | May call |
 | --- | --- | --- | --- |
 | accounts | FR-01 | users, profile_pictures | – |
-| channels | FR-02, FR-03 | channels, channel_memberships | accounts |
+| channels | FR-02, FR-03 | channels, channel_memberships, channel_posts | accounts |
 | materials | FR-04 | study_materials, material_files, material_reviews | accounts, channels, moderation |
 | questions | FR-05, FR-07 | questions, question_ratings | accounts, channels, moderation |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | accounts, channels, questions |
@@ -72,6 +72,8 @@ erDiagram
   users ||--o{ channel_memberships : joins
   channels ||--o{ channel_memberships : has
   users ||--o{ channels : creates
+  channels ||--o{ channel_posts : discusses
+  users ||--o{ channel_posts : writes
   channels ||--o{ study_materials : contains
   study_materials ||--o{ material_reviews : rated_by
   study_materials ||--o| material_files : stores
