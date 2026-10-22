@@ -58,6 +58,7 @@ QUESTION_NOT_FOUND = "Question not found in this set"
 ALREADY_REVIEWED = "This question has already been reviewed"
 CHANNEL_NOT_FOUND = "Channel not found"
 NOT_A_MEMBER = "Join the channel to add questions to its bank"
+AUTHORIZED_ONLY = "Only authorized users can add content to Authorized Channels"
 OPTIONS_MESSAGE = "Enter at least two different options"
 ANSWER_NOT_AN_OPTION = "The correct answer must be one of the options"
 
@@ -200,6 +201,12 @@ def check_channel_bank(db: Session, channel_id: int, user: UserSummary) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=CHANNEL_NOT_FOUND)
     if not channels.is_member(db, channel_id, user.id) and not _is_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=NOT_A_MEMBER)
+    # S03.1: an Authorized Channel's bank is official content, so only its authorized
+    # users (and admins) may add to it, generated questions included.
+    if summary.channel_type is channels.ChannelType.AUTHORIZED and (
+        Capability.OFFICIAL_CONTENT_MANAGE not in capabilities_for(user.role)
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=AUTHORIZED_ONLY)
 
 
 def failure(exc: generation.GenerationFailedError) -> HTTPException:

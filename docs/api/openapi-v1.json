@@ -759,6 +759,18 @@
             "description": "PDF, Word, PowerPoint, text, PNG or JPEG",
             "title": "File"
           },
+          "is_official": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mark as official; Authorized Channels only (S03.1)",
+            "title": "Is Official"
+          },
           "material_type": {
             "anyOf": [
               {
@@ -908,6 +920,11 @@
         "properties": {
           "approval_status": {
             "$ref": "#/components/schemas/ApprovalStatus"
+          },
+          "can_manage_official_content": {
+            "default": false,
+            "title": "Can Manage Official Content",
+            "type": "boolean"
           },
           "channel_type": {
             "$ref": "#/components/schemas/ChannelType"
@@ -1497,6 +1514,10 @@
       },
       "MaterialResponse": {
         "properties": {
+          "can_manage": {
+            "title": "Can Manage",
+            "type": "boolean"
+          },
           "channel_id": {
             "anyOf": [
               {
@@ -1507,6 +1528,14 @@
               }
             ],
             "title": "Channel Id"
+          },
+          "content_label": {
+            "title": "Content Label",
+            "type": "string"
+          },
+          "content_style": {
+            "title": "Content Style",
+            "type": "string"
           },
           "created_at": {
             "anyOf": [
@@ -1710,6 +1739,9 @@
           "tags",
           "channel_id",
           "is_official",
+          "content_label",
+          "content_style",
+          "can_manage",
           "uploader_id",
           "uploader_name",
           "created_at",
@@ -1738,6 +1770,85 @@
         ],
         "title": "MaterialType",
         "type": "string"
+      },
+      "MaterialUpdate": {
+        "description": "Only the fields sent are changed. Subject, topic and semester cannot be blanked.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "semester": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semester"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "MaterialUpdate",
+        "type": "object"
       },
       "MemberResponse": {
         "properties": {
@@ -4866,6 +4977,24 @@
             }
           },
           {
+            "description": "true: official only; false: peer only (S03.1)",
+            "in": "query",
+            "name": "official",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: official only; false: peer only (S03.1)",
+              "title": "Official"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -4922,7 +5051,7 @@
         ]
       },
       "post": {
-        "description": "Upload a tagged study material (UT_07).\n\nSubject, topic, semester and material type are all required; a blank one is refused\nwith its own message, e.g. ``Subject is required`` (UT_08). Files are checked for a\nsupported type and the size limit before anything is saved. A ``link`` material\ncarries a URL instead of a file. With ``channel_id`` the material is channel-scoped\nand only that channel's members can see it.",
+        "description": "Upload a tagged study material (UT_07).\n\nSubject, topic, semester and material type are all required; a blank one is refused\nwith its own message, e.g. ``Subject is required`` (UT_08). Files are checked for a\nsupported type and the size limit before anything is saved. A ``link`` material\ncarries a URL instead of a file. With ``channel_id`` the material is channel-scoped\nand only that channel's members can see it.\n\nEverything published in an Authorized Channel is official: only authorized users\nmay add it, and it is tagged ``Official/Verified`` (UT_05). ``is_official`` outside\nan Authorized Channel is refused.",
         "operationId": "upload_material_api_v1_materials_post",
         "requestBody": {
           "content": {
@@ -4967,6 +5096,45 @@
       }
     },
     "/api/v1/materials/{material_id}": {
+      "delete": {
+        "description": "Remove a material (S03.1): it is no longer listed, shown or downloadable.\n\nSame rule as editing: official content by its channel's authorized users (and\nadmins), peer content by its uploader; anyone else gets ``Insufficient permissions``.",
+        "operationId": "remove_material_api_v1_materials__material_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Material",
+        "tags": [
+          "materials"
+        ]
+      },
       "get": {
         "description": "One material with all its tags, file details and ratings.",
         "operationId": "read_material_api_v1_materials__material_id__get",
@@ -5009,6 +5177,62 @@
           }
         ],
         "summary": "Read Material",
+        "tags": [
+          "materials"
+        ]
+      },
+      "patch": {
+        "description": "Edit a material's details (S03.1).\n\nOfficial content can be edited by the authorized users of its Authorized Channel\n(and admins); a regular member gets **403** ``Insufficient permissions`` (UT_06).\nPeer content can be edited by its uploader. The official tag cannot be changed.",
+        "operationId": "edit_material_api_v1_materials__material_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Material",
         "tags": [
           "materials"
         ]
@@ -5777,7 +6001,7 @@
         ]
       },
       "post": {
-        "description": "Add a question with its subject, topic, difficulty and type tags (UT_09).\n\nSubmission is refused with \"Please select the correct answer\" when no correct\nanswer is given (UT_10). With ``channel_id`` it goes to that channel's bank, which\nneeds channel membership; without it, to the general bank.",
+        "description": "Add a question with its subject, topic, difficulty and type tags (UT_09).\n\nSubmission is refused with \"Please select the correct answer\" when no correct\nanswer is given (UT_10). With ``channel_id`` it goes to that channel's bank, which\nneeds channel membership; without it, to the general bank. An Authorized Channel's\nbank is official, so only its authorized users (and admins) add to it (S03.1).",
         "operationId": "contribute_question_api_v1_questions_post",
         "requestBody": {
           "content": {

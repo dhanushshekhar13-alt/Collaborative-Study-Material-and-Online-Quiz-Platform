@@ -72,10 +72,23 @@ class ChannelResponse(BaseModel):
     created_at: datetime | None
     member_count: int
     my_role: str | None = None
+    # S03.1: whether the caller sees "Manage Official Content" on this channel. False
+    # for regular members and in Normal Channels; the API enforces the same rule.
+    can_manage_official_content: bool = False
 
 
-def _response(summary: service.ChannelSummary, my_role: str | None = None) -> ChannelResponse:
+def _response(
+    summary: service.ChannelSummary,
+    my_role: str | None = None,
+    user: UserSummary | None = None,
+) -> ChannelResponse:
     authorized = summary.channel_type is ChannelType.AUTHORIZED
+    manages = user is not None and service.manages_official_content(
+        summary,
+        is_member=my_role is not None,
+        has_capability=_can(user, Capability.OFFICIAL_CONTENT_MANAGE),
+        is_admin=_can(user, Capability.CHANNEL_APPROVE),
+    )
     return ChannelResponse(
         id=summary.id,
         name=summary.name,
@@ -91,6 +104,7 @@ def _response(summary: service.ChannelSummary, my_role: str | None = None) -> Ch
         created_at=summary.created_at,
         member_count=summary.member_count,
         my_role=my_role,
+        can_manage_official_content=manages,
     )
 
 
@@ -127,7 +141,7 @@ def create_channel(
     if created.approval_status is ApprovalStatus.PENDING and _can(user, Capability.CHANNEL_APPROVE):
         service.set_approval(db, created.id, ApprovalStatus.APPROVED)
     db.commit()
-    return _response(service.describe_channel(db, created.id), my_role="owner")
+    return _response(service.describe_channel(db, created.id), "owner", user)
 
 
 @router.get("", response_model=list[ChannelResponse])
@@ -149,7 +163,7 @@ def list_channels(
         query=q,
         channel_type=channel_type,
     )
-    return [_response(s, _role(db, s.id, user.id)) for s in summaries]
+    return [_response(s, _role(db, s.id, user.id), user) for s in summaries]
 
 
 @router.get("/mine", response_model=list[ChannelResponse])
@@ -157,7 +171,7 @@ def my_channels(
     user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
 ) -> list[ChannelResponse]:
     """My Channels: every channel the caller belongs to, with their role (IT_03, IT_04)."""
-    return [_response(s, role.value) for s, role in service.channels_for_member(db, user.id)]
+    return [_response(s, role.value, user) for s, role in service.channels_for_member(db, user.id)]
 
 
 @router.get(
@@ -181,7 +195,7 @@ def read_channel(
         summary, user.id, _can(user, Capability.CHANNEL_APPROVE)
     ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MESSAGE)
-    return _response(summary, _role(db, channel_id, user.id))
+    return _response(summary, _role(db, channel_id, user.id), user)
 
 
 def _decide(db: Session, channel_id: int, decision: ApprovalStatus) -> ChannelResponse:
@@ -254,7 +268,7 @@ def join_channel(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ALREADY_MEMBER_MESSAGE)
     service.add_member(db, channel_id, user.id)
     db.commit()
-    return _response(service.describe_channel(db, channel_id), MemberRole.MEMBER.value)
+    return _response(service.describe_channel(db, channel_id), MemberRole.MEMBER.value, user)
 
 
 @router.post("/{channel_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
