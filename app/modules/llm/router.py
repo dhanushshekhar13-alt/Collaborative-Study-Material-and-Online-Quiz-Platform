@@ -10,7 +10,13 @@ S07.1 (FR-07) - question generation with mandatory review:
     POST /ai/generations/{id}/questions/{qid}/reject   reject: discarded for good
     POST /ai/generations/{id}/quiz                     Add to Quiz (only when fully reviewed)
 
-A batch is private to the user who generated it. Provider failures and timeouts come
+S07.2 (FR-07) - adaptive difficulty constrained to the selected topic:
+
+    POST /ai/adaptive-quizzes                          start; returns the first question
+    GET  /ai/adaptive-quizzes/{id}                     current level and question
+    POST /ai/adaptive-quizzes/{id}/answers             answer; the level adapts
+
+A batch or adaptive quiz is private to the user who started it. Provider failures and timeouts come
 back as 502/504 with a message the UI can show as is; with ``LLM_PROVIDER=none`` the
 endpoints answer 503.
 """
@@ -29,9 +35,14 @@ from app.modules.accounts.service import (
     require_capability,
 )
 from app.modules.channels import service as channels
-from app.modules.llm import generation
+from app.modules.llm import adaptive, generation
 from app.modules.llm.provider import LlmProvider, provider_from_settings
-from app.modules.questions.service import Difficulty, NotADraftError, QuestionType
+from app.modules.questions.service import (
+    Difficulty,
+    NotADraftError,
+    QuestionSource,
+    QuestionType,
+)
 from app.modules.quizzes import service as quizzes
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -357,4 +368,259 @@ def add_to_quiz(
         question_ids=ids,
         status="draft",
         message="Quiz draft created from the approved questions",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# S07.2 - adaptive quizzes
+# --------------------------------------------------------------------------- #
+
+ADAPTIVE_NOT_FOUND = "Adaptive quiz not found"
+NEXT_QUESTION_FAILED = (
+    "Your answer is saved, but the next question could not be prepared. "
+    "Open the quiz again to retry."
+)
+
+
+class AdaptiveStart(BaseModel):
+    subject: str = Field(max_length=100)
+    topic: str = Field(max_length=100)
+    start_difficulty: Difficulty = Difficulty.MEDIUM
+    question_count: int = Field(
+        default=adaptive.DEFAULT_LENGTH, ge=adaptive.MIN_LENGTH, le=adaptive.MAX_LENGTH
+    )
+    channel_id: int | None = Field(
+        default=None, description="Also draw from this channel's bank (needs membership)"
+    )
+
+    @model_validator(mode="after")
+    def tags_present(self) -> "AdaptiveStart":
+        self.subject = _required(self.subject, "Select a subject")
+        self.topic = _required(self.topic, "Select a topic")
+        return self
+
+
+class AdaptiveAnswerRequest(BaseModel):
+    question_id: int
+    response: str = Field(max_length=5000)
+
+    @model_validator(mode="after")
+    def answered(self) -> "AdaptiveAnswerRequest":
+        self.response = _required(self.response, "Choose an answer")
+        return self
+
+
+class AdaptiveQuestionResponse(BaseModel):
+    question_id: int
+    position: int
+    text: str
+    question_type: QuestionType
+    options: list[str]
+    subject: str
+    topic: str
+    difficulty: Difficulty
+    source: QuestionSource = Field(description="peer (from the bank) or llm (generated)")
+
+
+class ServedResponse(BaseModel):
+    question_id: int
+    position: int
+    topic: str
+    difficulty: Difficulty
+    correct: bool | None
+
+
+class OutcomeResponse(BaseModel):
+    score: float
+    max_score: float
+    percentage: float
+    display: str
+
+
+class AdaptiveStateResponse(BaseModel):
+    id: int
+    subject: str
+    topic: str
+    start_difficulty: Difficulty
+    question_count: int
+    answered_count: int
+    current_difficulty: Difficulty = Field(description="The level the next question is at")
+    current_difficulty_label: str
+    correct_streak: int
+    incorrect_streak: int
+    finished: bool
+    current_question: AdaptiveQuestionResponse | None
+    history: list[ServedResponse]
+    outcome: OutcomeResponse | None
+
+
+class AdaptiveFeedbackResponse(BaseModel):
+    correct: bool
+    correct_answer: str | None
+    explanation: str | None
+    previous_difficulty: Difficulty
+    current_difficulty: Difficulty
+    difficulty_change: str | None = Field(description="raised, lowered or null")
+    message: str
+    next_question_error: str | None = None
+    state: AdaptiveStateResponse
+
+
+def _adaptive_response(st: adaptive.AdaptiveState) -> AdaptiveStateResponse:
+    cur = st.current
+    return AdaptiveStateResponse(
+        id=st.id,
+        subject=st.subject,
+        topic=st.topic,
+        start_difficulty=st.start_difficulty,
+        question_count=st.question_count,
+        answered_count=st.answered_count,
+        current_difficulty=st.level.difficulty,
+        current_difficulty_label=f"Difficulty: {st.level.difficulty.value.title()}",
+        correct_streak=st.level.correct_streak,
+        incorrect_streak=st.level.incorrect_streak,
+        finished=st.finished,
+        current_question=(
+            AdaptiveQuestionResponse(
+                question_id=cur.question_id,
+                position=cur.position,
+                text=cur.text,
+                question_type=cur.question_type,
+                options=list(cur.options),
+                subject=cur.subject,
+                topic=cur.topic,
+                difficulty=cur.difficulty,
+                source=cur.source,
+            )
+            if cur
+            else None
+        ),
+        history=[
+            ServedResponse(
+                question_id=h.question_id,
+                position=h.position,
+                topic=h.topic,
+                difficulty=h.difficulty,
+                correct=h.correct,
+            )
+            for h in st.history
+        ],
+        outcome=(
+            OutcomeResponse(
+                score=st.outcome.score,
+                max_score=st.outcome.max_score,
+                percentage=st.outcome.percentage,
+                display=st.outcome.display,
+            )
+            if st.outcome
+            else None
+        ),
+    )
+
+
+def _own_session(db: Session, session_id: int, user: UserSummary) -> None:
+    if adaptive.owner_of(db, session_id) != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ADAPTIVE_NOT_FOUND)
+
+
+def _serve(db: Session, session_id: int, provider: LlmProvider | None) -> AdaptiveStateResponse:
+    try:
+        st = adaptive.state(db, session_id, serve=True, provider=provider)
+    except adaptive.NoQuestionAvailableError as exc:
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from None
+    except generation.GenerationFailedError as exc:
+        db.commit()  # keep the audit record and everything answered so far
+        raise failure(exc) from None
+    db.commit()
+    return _adaptive_response(st)
+
+
+@router.post(
+    "/adaptive-quizzes", status_code=status.HTTP_201_CREATED, response_model=AdaptiveStateResponse
+)
+def start_adaptive_quiz(
+    payload: AdaptiveStart,
+    user: UserSummary = Depends(require_capability(Capability.QUIZ_ATTEMPT)),
+    provider: LlmProvider | None = Depends(get_llm_provider),
+    db: Session = Depends(get_db),
+) -> AdaptiveStateResponse:
+    """Start an adaptive quiz on one topic at the chosen level (default medium).
+
+    Three correct answers in a row raise the next question's difficulty, two incorrect
+    in a row lower it (IT_14, ST_13). Every question carries the selected topic (ST_14).
+    """
+    if payload.channel_id is not None:
+        summary = channels.describe_channel(db, payload.channel_id)
+        if summary is None or not channels.is_visible_to(summary, user.id, _is_admin(user)):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=CHANNEL_NOT_FOUND)
+        if not channels.is_member(db, payload.channel_id, user.id) and not _is_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Join the channel to use its question bank",
+            )
+    session_id = adaptive.start(
+        db,
+        user_id=user.id,
+        subject=payload.subject,
+        topic=payload.topic,
+        start_difficulty=payload.start_difficulty,
+        question_count=payload.question_count,
+        channel_id=payload.channel_id,
+    )
+    db.commit()
+    return _serve(db, session_id, provider)
+
+
+@router.get("/adaptive-quizzes/{session_id}", response_model=AdaptiveStateResponse)
+def adaptive_quiz_state(
+    session_id: int,
+    user: UserSummary = Depends(current_user),
+    provider: LlmProvider | None = Depends(get_llm_provider),
+    db: Session = Depends(get_db),
+) -> AdaptiveStateResponse:
+    """The current difficulty, the question to answer now and the history so far."""
+    _own_session(db, session_id, user)
+    return _serve(db, session_id, provider)
+
+
+@router.post("/adaptive-quizzes/{session_id}/answers", response_model=AdaptiveFeedbackResponse)
+def answer_adaptive_question(
+    session_id: int,
+    payload: AdaptiveAnswerRequest,
+    user: UserSummary = Depends(current_user),
+    provider: LlmProvider | None = Depends(get_llm_provider),
+    db: Session = Depends(get_db),
+) -> AdaptiveFeedbackResponse:
+    """Answer the current question. The answer is scored and saved first; the response
+    says whether the difficulty was raised or lowered and carries the next question."""
+    _own_session(db, session_id, user)
+    try:
+        feedback = adaptive.answer(db, session_id, payload.question_id, payload.response)
+    except adaptive.AnswerRefusedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from None
+    db.commit()
+    next_error = None
+    try:
+        st = _serve(db, session_id, provider)
+    except HTTPException as exc:
+        next_error = f"{NEXT_QUESTION_FAILED} ({exc.detail})"
+        st = _adaptive_response(feedback.state)
+    level = st.current_difficulty.value.title()
+    message = {
+        "raised": f"Difficulty raised to {level}",
+        "lowered": f"Difficulty lowered to {level}",
+    }.get(feedback.change, f"Difficulty stays at {level}")
+    return AdaptiveFeedbackResponse(
+        correct=feedback.correct,
+        correct_answer=feedback.correct_answer,
+        explanation=feedback.explanation,
+        previous_difficulty=feedback.previous_difficulty,
+        current_difficulty=st.current_difficulty,
+        difficulty_change=feedback.change,
+        message="Quiz complete" if st.finished else message,
+        next_question_error=next_error,
+        state=st,
     )

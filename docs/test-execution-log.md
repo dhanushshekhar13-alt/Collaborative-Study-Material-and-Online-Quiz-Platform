@@ -256,3 +256,23 @@ key or network is needed; with `LLM_PROVIDER=none` the endpoints answer 503.
 
 No schema change: generated questions are `questions` rows with `source=llm` and
 `status=draft` (already in the model), and each batch is its `llm_requests` audit row.
+
+## S07.2 (#31) — Adaptive difficulty constrained to the selected topic
+
+Test Plan cases are automated in `tests/test_adaptive_quiz.py` under their case IDs,
+run against the `/api/v1/ai/adaptive-quizzes` endpoints with the deterministic
+`FakeProvider` (or a wrapper that answers off topic first). The rule itself is a pure
+function, `app.modules.llm.adaptive.level_after`, tested in isolation.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_14` | Three consecutive correct answers raise the next question's difficulty | `test_IT_14_three_correct_answers_raise_the_next_questions_difficulty`, `test_level_after_follows_the_adaptation_rule` | Pass |
+| `ST_13` | Two consecutive incorrect answers lower the next question's difficulty | `test_ST_13_two_incorrect_answers_lower_the_next_questions_difficulty`, `test_level_after_follows_the_adaptation_rule`, `test_streaks_restart_after_a_change` | Pass |
+| — | The current difficulty level is discoverable by the user | `test_the_current_difficulty_is_discoverable` (`current_difficulty`, `current_difficulty_label`, per-answer "Difficulty raised to Hard" message) | Pass |
+| `ST_14` | All questions across a full adaptive attempt carry the selected topic tag | `test_ST_14_every_question_in_a_full_adaptive_quiz_keeps_the_topic` | Pass |
+| — | A generated question outside the topic is rejected and regenerated | `test_an_off_topic_generated_question_is_rejected_and_regenerated` | Pass |
+| `ST_14` | Topic containment holds at every difficulty level reached | `test_topic_containment_holds_at_every_difficulty_reached` | Pass |
+| — | Bank first, AI drafts never reach the bank; answers survive provider failures | `test_bank_questions_are_used_first_and_ai_drafts_never_reach_the_bank`, `test_without_an_llm_the_bank_alone_runs_the_quiz_until_it_runs_out`, `test_a_failed_next_question_never_loses_the_answer` | Pass |
+
+Migration `0007` (`adaptive_sessions`) upgrades and downgrades cleanly and matches the
+models (`tests/test_migrations.py`).

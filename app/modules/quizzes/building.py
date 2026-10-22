@@ -167,7 +167,11 @@ def list_by_creator(db: Session, creator_id: int) -> list[QuizDetails]:
     """The author's own drafts and published quizzes, newest first."""
     ids = db.scalars(
         select(Quiz.id)
-        .where(Quiz.creator_id == creator_id, Quiz.status != QuizStatus.REMOVED)
+        .where(
+            Quiz.creator_id == creator_id,
+            Quiz.status != QuizStatus.REMOVED,
+            Quiz.is_adaptive.is_(False),  # adaptive runs (S07.2) are not authored quizzes
+        )
         .order_by(Quiz.created_at.desc(), Quiz.id.desc())
     ).all()
     return [get_quiz(db, qid) for qid in ids]
@@ -183,6 +187,8 @@ def publish(db: Session, quiz_id: int, channel_id: int | None) -> QuizDetails:
     quiz = db.get(Quiz, quiz_id)
     if quiz is None:
         raise LookupError(f"quiz {quiz_id} not found")
+    if quiz.is_adaptive:
+        raise UnusableQuestionError("An adaptive quiz is personal and cannot be published")
     if quiz.status is not QuizStatus.DRAFT:
         raise AlreadyPublishedError("This quiz is already published")
     question_ids = db.scalars(

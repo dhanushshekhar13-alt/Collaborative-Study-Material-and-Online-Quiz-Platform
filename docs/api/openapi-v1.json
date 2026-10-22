@@ -47,6 +47,292 @@
         "title": "AccountResponse",
         "type": "object"
       },
+      "AdaptiveAnswerRequest": {
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "response": {
+            "maxLength": 5000,
+            "title": "Response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "response"
+        ],
+        "title": "AdaptiveAnswerRequest",
+        "type": "object"
+      },
+      "AdaptiveFeedbackResponse": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "boolean"
+          },
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct Answer"
+          },
+          "current_difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "difficulty_change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "raised, lowered or null",
+            "title": "Difficulty Change"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "next_question_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Question Error"
+          },
+          "previous_difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "state": {
+            "$ref": "#/components/schemas/AdaptiveStateResponse"
+          }
+        },
+        "required": [
+          "correct",
+          "correct_answer",
+          "explanation",
+          "previous_difficulty",
+          "current_difficulty",
+          "difficulty_change",
+          "message",
+          "state"
+        ],
+        "title": "AdaptiveFeedbackResponse",
+        "type": "object"
+      },
+      "AdaptiveQuestionResponse": {
+        "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "source": {
+            "$ref": "#/components/schemas/QuestionSource",
+            "description": "peer (from the bank) or llm (generated)"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "text",
+          "question_type",
+          "options",
+          "subject",
+          "topic",
+          "difficulty",
+          "source"
+        ],
+        "title": "AdaptiveQuestionResponse",
+        "type": "object"
+      },
+      "AdaptiveStart": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also draw from this channel's bank (needs membership)",
+            "title": "Channel Id"
+          },
+          "question_count": {
+            "default": 10,
+            "maximum": 20.0,
+            "minimum": 5.0,
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "start_difficulty": {
+            "$ref": "#/components/schemas/Difficulty",
+            "default": "medium"
+          },
+          "subject": {
+            "maxLength": 100,
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "maxLength": 100,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "topic"
+        ],
+        "title": "AdaptiveStart",
+        "type": "object"
+      },
+      "AdaptiveStateResponse": {
+        "properties": {
+          "answered_count": {
+            "title": "Answered Count",
+            "type": "integer"
+          },
+          "correct_streak": {
+            "title": "Correct Streak",
+            "type": "integer"
+          },
+          "current_difficulty": {
+            "$ref": "#/components/schemas/Difficulty",
+            "description": "The level the next question is at"
+          },
+          "current_difficulty_label": {
+            "title": "Current Difficulty Label",
+            "type": "string"
+          },
+          "current_question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdaptiveQuestionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ServedResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "incorrect_streak": {
+            "title": "Incorrect Streak",
+            "type": "integer"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "start_difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "topic",
+          "start_difficulty",
+          "question_count",
+          "answered_count",
+          "current_difficulty",
+          "current_difficulty_label",
+          "correct_streak",
+          "incorrect_streak",
+          "finished",
+          "current_question",
+          "history",
+          "outcome"
+        ],
+        "title": "AdaptiveStateResponse",
+        "type": "object"
+      },
       "AddToQuizRequest": {
         "properties": {
           "duration_minutes": {
@@ -1532,6 +1818,34 @@
         "title": "NotEnoughQuestionsResponse",
         "type": "object"
       },
+      "OutcomeResponse": {
+        "properties": {
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "number"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "max_score",
+          "percentage",
+          "display"
+        ],
+        "title": "OutcomeResponse",
+        "type": "object"
+      },
       "PermissionsResponse": {
         "properties": {
           "capabilities": {
@@ -2843,6 +3157,45 @@
         "title": "Role",
         "type": "string"
       },
+      "ServedResponse": {
+        "properties": {
+          "correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "position",
+          "topic",
+          "difficulty",
+          "correct"
+        ],
+        "title": "ServedResponse",
+        "type": "object"
+      },
       "SubmitRequest": {
         "properties": {
           "answers": {
@@ -3180,6 +3533,159 @@
         "tags": [
           "accounts",
           "operations"
+        ]
+      }
+    },
+    "/api/v1/ai/adaptive-quizzes": {
+      "post": {
+        "description": "Start an adaptive quiz on one topic at the chosen level (default medium).\n\nThree correct answers in a row raise the next question's difficulty, two incorrect\nin a row lower it (IT_14, ST_13). Every question carries the selected topic (ST_14).",
+        "operationId": "start_adaptive_quiz_api_v1_ai_adaptive_quizzes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Adaptive Quiz",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/adaptive-quizzes/{session_id}": {
+      "get": {
+        "description": "The current difficulty, the question to answer now and the history so far.",
+        "operationId": "adaptive_quiz_state_api_v1_ai_adaptive_quizzes__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Adaptive Quiz State",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/adaptive-quizzes/{session_id}/answers": {
+      "post": {
+        "description": "Answer the current question. The answer is scored and saved first; the response\nsays whether the difficulty was raised or lowered and carries the next question.",
+        "operationId": "answer_adaptive_question_api_v1_ai_adaptive_quizzes__session_id__answers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveFeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Answer Adaptive Question",
+        "tags": [
+          "ai"
         ]
       }
     },
