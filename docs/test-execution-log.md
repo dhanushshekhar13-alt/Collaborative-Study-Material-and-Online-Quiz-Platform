@@ -236,3 +236,18 @@ everywhere.
 No API or schema change: `docs/api/openapi-v1.json` is unchanged, since the UI routes are
 excluded from the contract.
 
+
+## S06.2 (#29) — Attempt persistence and quiz history
+
+Executed 2026-10-22 with `python -m pytest tests/test_quiz_history.py` (SQLite; CI also
+runs the suite on PostgreSQL).
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `IT_11` | A submitted attempt is listed in My Quiz History and opens with an accurate breakdown | `test_IT_11_submitted_attempt_is_listed_and_opens_with_an_accurate_breakdown`, `test_history_lists_attempts_newest_first`, `test_an_attempt_whose_timer_ran_out_appears_auto_submitted` | Pass |
+| `ST_12` | Aggregate accuracy is computed correctly: 82.5 percent over 60, 80, 100 and 90 | `test_ST_12_average_accuracy_updates_to_82_5_after_a_fourth_attempt`, `test_each_attempt_counts_once_whatever_the_quiz_length`, `test_average_is_rounded_to_one_decimal` | Pass |
+| — (NFR-04) | No committed attempt is lost during a simulated transient failure | `test_NFR_04_no_committed_attempt_is_lost_when_a_submission_fails_midway`, `test_NFR_04_a_failed_commit_keeps_earlier_attempts_and_can_be_retried` | Pass |
+| — | History is private to its owner, excludes running attempts, filters by quiz and needs sign-in | `test_history_shows_only_the_callers_own_attempts`, `test_attempts_still_running_are_not_listed`, `test_history_can_be_filtered_to_one_quiz`, `test_history_needs_a_signed_in_user` | Pass |
+
+No schema change: attempts were already stored with score, timestamps and answers by
+S06.1. The new route is `GET /api/v1/attempts`; `docs/api/openapi-v1.json` is regenerated.

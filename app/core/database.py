@@ -21,9 +21,17 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 
 def get_db() -> Iterator[Session]:
-    """FastAPI dependency that yields a database session and always closes it."""
+    """FastAPI dependency that yields a database session and always closes it.
+
+    If the request fails, its uncommitted work is rolled back explicitly, so a
+    transient failure part-way through (NFR-04) never leaves half-written rows behind;
+    everything committed earlier is untouched.
+    """
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
