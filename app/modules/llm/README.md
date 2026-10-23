@@ -4,7 +4,8 @@ Everything that talks to the LLM provider. Owns `llm_requests`, an audit record 
 every request with its output or error; module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md). This README covers
 **descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06), and
-**Ask AI**, story **S09.1** (issue #34, FR-09).
+**Ask AI**, story **S09.1** (issue #34, FR-09), with its channel-scoped mode, story
+**S09.2** (issue #35, FR-09).
 
 ## Provider
 
@@ -110,9 +111,44 @@ answers 503 *"Ask AI is not available on this server right now."*; provider erro
 B-Trees, normalization, indexing and binary search trees, a topic-specific template
 otherwise), so the prototype works offline.
 
+## Ask AI in a channel (S09.2)
+
+`POST /api/v1/ai/ask` with `channel_id` is "Ask AI in this channel". The caller must be
+a member (admins too): otherwise **403** *"Join this channel to use Ask AI in it"*, and a
+channel they cannot see is **404**. The channel's **subject** (its topic if it has no
+subject) scopes everything:
+
+- **Quiz.** `assistant.request_channel_quiz` takes the channel bank's published peer
+  questions in that subject first (oldest first; only the named topic when the query
+  names one, e.g. "Quiz me on Keys"), then generates only the shortfall through
+  `generation.generate(..., min_count=shortfall)`, tagged with the channel's subject.
+  A ten-question request over a five-question bank gives those five plus five
+  generated ones (ST_17). "Generate a quiz for this channel", or no topic at all, uses
+  the channel's own topic (IT_18). Questions in other subjects, whether in this bank,
+  another channel or the general bank, are never used, and the provider is only
+  asked about the channel's subject.
+- **Composition.** `quiz.items` lists every question with `source` (`peer` or
+  `generated`), `author_id` / `author_name`, subject and topic; `quiz.peer_count` and
+  `quiz.generated_count` summarise it, so the reviewer can tell them apart. The
+  request record (`llm_requests`, `channel_id` set) keeps `peer_question_ids`.
+- **Review.** Generated questions are drafts, exactly as in S09.1: they join the
+  channel bank only when approved on `GET /ai/generations/{id}` (`generation_id`,
+  `review_required: true`). In an Authorized Channel, a requester without
+  `official_content:manage` gets drafts that belong to no channel bank, so their
+  approval cannot put content into an official bank (S03.1). When the bank fills the
+  quiz, nothing is generated (`generation_id: null`) and no LLM is needed; a shortfall
+  with no LLM configured is 503.
+- **Explanation.** The prompt tells the model the student is studying the channel's
+  subject and to keep unrelated subjects out; the request is recorded with the
+  channel.
+
+The quiz is the requester's private draft in that channel (2 minutes per question),
+started with `POST /ai/ask/{id}/start` like any topic quiz.
+
 ## Dependencies
 
-`accounts` (route guard), `channels` (question visibility), `questions` (the question
+`accounts` (route guard, author names), `channels` (question visibility, channel
+membership and type for S09.2), `questions` (the question
 and its expected concepts) and `quizzes`.
 
 ## Tests
@@ -126,3 +162,7 @@ evaluation route.
 
 `tests/test_ask_ai.py`: `UT_17`, `UT_18`, `ST_18` and `IT_17` (S09.1), plus validation,
 failure, review-gate and access tests.
+
+`tests/test_channel_ai.py`: Test Plan cases `IT_18` and `ST_17`, plus one test per S09.2
+acceptance criterion (subject scoping, named topics, full and empty banks,
+peer/generated labels, review gating, membership, Authorized Channels, no LLM).

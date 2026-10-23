@@ -414,3 +414,23 @@ started, while a bank search for the topic stayed empty until approval.
 No schema change: the `explain` and `generate_quiz` values of `llm_task` exist since
 migration `0001`. New routes `POST /api/v1/ai/ask` and `POST /api/v1/ai/ask/{ask_id}/start`;
 `docs/api/openapi-v1.json` is regenerated.
+
+## S09.2 (#35) — Channel-scoped AI blending peer and generated questions
+
+Test Plan cases are automated in `tests/test_channel_ai.py` under their case IDs, run
+against `POST /api/v1/ai/ask` with `channel_id` (the UI's "Ask AI in this channel") and
+the deterministic fake provider. ST_17's precondition (5 peer DBMS questions in the
+channel bank) is set up through the questions service.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_18` | A channel-scoped request returns content limited to that channel's topic and bank | `test_IT_18_channel_quiz_uses_the_channels_topic_and_bank`, `test_a_named_topic_stays_within_the_channels_subject`, `test_channel_explanations_are_scoped_to_the_channels_subject`, `test_ask_ai_in_a_channel_needs_membership` | Pass |
+| `IT_18` | Unrelated subjects do not appear in channel-scoped output | `test_IT_18_channel_quiz_uses_the_channels_topic_and_bank`, `test_unrelated_subjects_never_appear_in_channel_output` | Pass |
+| `ST_17` | A ten-question request over a five-question bank returns those five peer questions plus five generated ones | `test_ST_17_ten_questions_over_a_five_question_bank_blend_peer_and_generated`, `test_a_full_bank_needs_no_generation`, `test_an_empty_bank_is_filled_with_generated_questions`, `test_a_bank_that_fills_the_quiz_works_without_an_llm` | Pass |
+| `ST_17` | Every question is scoped to the channel's subject | `test_ST_17_ten_questions_over_a_five_question_bank_blend_peer_and_generated`, `test_unrelated_subjects_never_appear_in_channel_output` | Pass |
+| — | Peer and generated questions are distinguishable to the reviewer | `test_peer_and_generated_questions_are_distinguishable`, `test_generated_drafts_stay_out_of_the_bank_until_approved`, `test_students_generated_drafts_never_join_an_authorized_channel_bank` | Pass |
+
+No schema change: `llm_requests.channel_id` already exists. Manually verified on a
+migrated, seeded SQLite database with `LLM_PROVIDER=fake`: the seeded student's
+10-question channel quiz is all DBMS, starts with `POST /ai/ask/{id}/start`, and a
+channel explanation succeeds.

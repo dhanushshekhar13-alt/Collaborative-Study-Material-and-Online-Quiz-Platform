@@ -615,6 +615,18 @@
       },
       "AskRequest": {
         "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\"Ask AI in this channel\" (S09.2): scope the answer to the channel's subject and question bank. Needs membership.",
+            "title": "Channel Id"
+          },
           "difficulty": {
             "$ref": "#/components/schemas/Difficulty",
             "default": "medium",
@@ -662,6 +674,18 @@
       },
       "AskResponse": {
         "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The channel it was scoped to",
+            "title": "Channel Id"
+          },
           "explanation": {
             "anyOf": [
               {
@@ -3457,6 +3481,52 @@
         "title": "QuizHistoryResponse",
         "type": "object"
       },
+      "QuizItemResponse": {
+        "properties": {
+          "author_id": {
+            "title": "Author Id",
+            "type": "integer"
+          },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "source": {
+            "description": "\"peer\" (from the channel bank) or \"generated\" (AI)",
+            "title": "Source",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "source",
+          "author_id",
+          "author_name",
+          "subject",
+          "topic"
+        ],
+        "title": "QuizItemResponse",
+        "type": "object"
+      },
       "QuizQuestionResponse": {
         "properties": {
           "channel_id": {
@@ -4280,6 +4350,17 @@
       },
       "TopicQuizResponse": {
         "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
           "difficulty": {
             "$ref": "#/components/schemas/Difficulty"
           },
@@ -4287,9 +4368,33 @@
             "title": "Duration Minutes",
             "type": "integer"
           },
+          "generated_count": {
+            "default": 0,
+            "title": "Generated Count",
+            "type": "integer"
+          },
           "generation_id": {
-            "description": "Review these questions at GET /ai/generations/{id}; only approved ones join the question bank",
-            "title": "Generation Id",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Review the generated questions at GET /ai/generations/{id}; only approved ones join the question bank. None when no question was generated.",
+            "title": "Generation Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuizItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "peer_count": {
+            "default": 0,
+            "title": "Peer Count",
             "type": "integer"
           },
           "question_count": {
@@ -4301,7 +4406,7 @@
             "type": "integer"
           },
           "review_required": {
-            "description": "Always true: generated questions stay out of the bank until approved",
+            "description": "True when the quiz has generated questions: they stay out of the bank until approved",
             "title": "Review Required",
             "type": "boolean"
           },
@@ -4778,7 +4883,7 @@
     },
     "/api/v1/ai/ask": {
       "post": {
-        "description": "Ask the assistant to explain a concept or to generate a quiz on a topic.\n\n*Explanation* (UT_17, ST_18): a simplified explanation with at least one example,\nchecked to be about the concept asked. *Quiz* (IT_17): a private practice quiz on\nthe named topic, ready to start with ``POST /ai/ask/{id}/start``. Its questions are\ndrafts that join no bank until approved on the review screen (S07.1). A blank query\nis refused with \"Please enter a question\" and nothing is sent (UT_18).",
+        "description": "Ask the assistant to explain a concept or to generate a quiz on a topic.\n\n*Explanation* (UT_17, ST_18): a simplified explanation with at least one example,\nchecked to be about the concept asked. *Quiz* (IT_17): a private practice quiz on\nthe named topic, ready to start with ``POST /ai/ask/{id}/start``. Its questions are\ndrafts that join no bank until approved on the review screen (S07.1). A blank query\nis refused with \"Please enter a question\" and nothing is sent (UT_18).\n\n*In a channel* (``channel_id``, S09.2): the answer is scoped to the channel's\nsubject and bank. A quiz uses the bank's peer questions first and generates only the\nshortfall in the channel's subject (IT_18, ST_17); ``quiz.items`` marks each one\n``peer`` or ``generated``. \"Generate a quiz for this channel\" uses the channel's\nown topic.",
         "operationId": "ask_api_v1_ai_ask_post",
         "requestBody": {
           "content": {
@@ -4800,6 +4905,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "description": "Not a member of the channel"
+          },
+          "404": {
+            "description": "Channel not found"
           },
           "422": {
             "description": "Blank query (Please enter a question) or no quiz topic"
