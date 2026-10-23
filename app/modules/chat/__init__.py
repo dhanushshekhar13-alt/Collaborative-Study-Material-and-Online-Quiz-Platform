@@ -3,5 +3,6 @@
 Owns tables: channel_messages, conversations, conversation_participants,
 direct_messages, user_blocks.
 Public interface: ``app.modules.chat.service``.
-May call the services of: none.
+May call the services of: accounts (route guards, sender names), channels
+(visibility and membership checks).
 """

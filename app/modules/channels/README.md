@@ -79,7 +79,9 @@ hold no official content; members contribute there as peers.
 
 Every channel has a discussion board (`channel_posts`, migration `0008`): standing,
 editable topics such as "Share your DBMS normalization notes here". It is separate from
-chat (FR-10, S10.1 #36), which is the live message stream.
+chat (FR-10, S10.1 #36), which is the live message stream at
+`/api/v1/channels/{id}/messages`, owned by the chat module (see
+[`app/modules/chat/README.md`](../chat/README.md)).
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |

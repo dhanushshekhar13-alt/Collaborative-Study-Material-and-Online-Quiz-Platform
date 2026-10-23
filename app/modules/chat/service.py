@@ -51,18 +51,67 @@ def channel_history(db: Session, channel_id: int, limit: int = 50) -> list[Messa
         .order_by(ChannelMessage.created_at, ChannelMessage.id)
         .limit(limit)
     )
-    return [
-        MessageView(
-            m.id,
-            m.sender_id,
-            m.body,
-            m.parent_id,
-            m.shared_resource_type,
-            m.shared_resource_id,
-            m.created_at,
-        )
-        for m in rows
-    ]
+    return [_view(m) for m in rows]
+
+
+def _view(m: ChannelMessage) -> MessageView:
+    return MessageView(
+        m.id,
+        m.sender_id,
+        m.body,
+        m.parent_id,
+        m.shared_resource_type,
+        m.shared_resource_id,
+        m.created_at,
+    )
+
+
+def get_channel_message(db: Session, channel_id: int, message_id: int) -> MessageView | None:
+    """One message of a channel's chat, or None if it is not there (or was deleted)."""
+    m = db.get(ChannelMessage, message_id)
+    if m is None or m.channel_id != channel_id or m.is_deleted:
+        return None
+    return _view(m)
+
+
+def channel_messages_page(
+    db: Session,
+    channel_id: int,
+    *,
+    limit: int = 50,
+    before: int | None = None,
+    after: int | None = None,
+) -> tuple[list[MessageView], bool]:
+    """A page of a channel's chat in the order the server accepted the messages (S10.1).
+
+    Order is the message id, which the database assigns in commit order, so two
+    messages sent within the same second never swap places the way a timestamp sort
+    could. Every page is returned oldest first, ready to render top to bottom.
+
+    * neither cursor: the newest ``limit`` messages (opening the chat);
+    * ``before``: the ``limit`` messages just older than that id (scrolling up);
+    * ``after``: the ``limit`` messages just newer than that id (catching up).
+
+    The flag says whether more messages lie beyond the page in the direction read:
+    older ones for the first two, newer ones for ``after``.
+    """
+    if before is not None and after is not None:
+        raise ValueError("before and after cannot be combined")
+    query = select(ChannelMessage).where(
+        ChannelMessage.channel_id == channel_id, ChannelMessage.is_deleted.is_(False)
+    )
+    if after is not None:
+        query = query.where(ChannelMessage.id > after).order_by(ChannelMessage.id)
+    else:
+        if before is not None:
+            query = query.where(ChannelMessage.id < before)
+        query = query.order_by(ChannelMessage.id.desc())
+    rows = list(db.scalars(query.limit(limit + 1)))
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    if after is None:
+        rows.reverse()
+    return [_view(m) for m in rows], has_more
 
 
 def is_blocked(db: Session, sender_id: int, recipient_id: int) -> bool:

@@ -434,3 +434,28 @@ No schema change: `llm_requests.channel_id` already exists. Manually verified on
 migrated, seeded SQLite database with `LLM_PROVIDER=fake`: the seeded student's
 10-question channel quiz is all DBMS, starts with `POST /ai/ask/{id}/start`, and a
 channel explanation succeeds.
+
+## S10.1 (#36) — Channel messaging with persistence and history
+
+Test Plan cases are automated in `tests/test_channel_chat.py` under their case IDs,
+run against the `/api/v1/channels/{id}/messages` endpoints the UI will call. ST_19's
+"log out and back in" is a fresh login token; ST_20 seeds 520 messages and pages back
+through them 100 at a time with `before`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_19` | A sent message appears with the correct sender and timestamp for all members | `test_UT_19_a_member_sends_a_message_all_members_see_with_sender_and_time`, `test_a_sent_message_carries_the_server_sender_not_one_from_the_client` | Pass |
+| `UT_20` | An empty message cannot be sent; an error is shown | `test_UT_20_an_empty_message_is_refused_and_nothing_is_posted`, `test_a_message_is_stored_trimmed_and_too_long_ones_are_refused` | Pass |
+| `ST_19` | Messages persist and reload in the correct order | `test_ST_19_messages_keep_their_order_and_details_after_logout_and_login`, `test_messages_persist_and_reload_in_the_order_they_were_sent` | Pass |
+| `ST_20` | A large history loads progressively without missing messages | `test_ST_20_scrolling_back_through_500_messages_loads_every_one_in_order`, `test_opening_the_chat_shows_the_newest_messages_oldest_first`, `test_polling_after_the_newest_message_returns_only_new_ones`, `test_before_and_after_cannot_be_combined` | Pass |
+| — | The chat is for channel members only, checked on every request | `test_only_members_read_or_send_in_the_chat`, `test_access_follows_membership_on_every_request`, `test_the_chat_needs_a_signed_in_user`, `test_a_missing_or_hidden_channel_is_not_found` | Pass |
+| — | Other channels' and deleted messages never appear | `test_messages_from_other_channels_never_appear`, `test_deleted_messages_are_not_shown` | Pass |
+
+No schema change: messages are rows in `channel_messages` (already in the model since
+S00.2). The chat module now depends on accounts and channels; no module depends on
+chat (`tests/test_module_boundaries.py`).
+Manually verified on a migrated, seeded SQLite database: the seeded student reads the
+seeded message, sends one that comes back with their name and time, a blank one is
+refused with `Message cannot be empty`, the admin (not a member) is refused with
+`Join the channel to view this chat`, and paging with `limit=1` then `before` walks
+back through both messages in order.
