@@ -77,6 +77,11 @@ def start_attempt(db: Session, quiz_id: int, user_id: int) -> int:
     return attempts.start(db, quiz_id, user_id)
 
 
+def open_attempt_for(db: Session, quiz_id: int, user_id: int) -> int | None:
+    """The user's attempt at this quiz that is still running, if any (S09.1 resume)."""
+    return attempts.open_attempt_for(db, quiz_id, user_id)
+
+
 def submit_attempt(db: Session, attempt_id: int, responses: dict[int, str]) -> AttemptResult:
     """Store answers, score objective questions and close the attempt (FR-06).
 

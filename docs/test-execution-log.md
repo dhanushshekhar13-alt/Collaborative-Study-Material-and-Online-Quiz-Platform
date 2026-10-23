@@ -389,3 +389,28 @@ No schema change: the evaluation is stored in `attempt_answers.feedback` (JSON, 
 migration `0001`) and its scaled points in `attempt_answers.score`. New route
 `POST /api/v1/attempts/{attempt_id}/evaluate`; attempt results and history entries gain
 `breakdown`. `docs/api/openapi-v1.json` is regenerated.
+
+## S09.1 (#34) — Ask-AI explanations and topic quizzes
+
+Executed 2026-10-23 with `python -m pytest tests/test_ask_ai.py`. The LLM is the
+deterministic `FakeProvider` (wrapped as `SpyProvider` to record calls) or a scripted
+fake; nothing calls a real model.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `UT_17` | A concept query returns a relevant simplified explanation with at least one example | `test_UT_17_explain_b_trees_returns_a_simple_explanation_with_an_example`, `test_an_answer_without_an_example_is_requested_again`, `test_an_off_topic_or_unusable_answer_is_never_shown`, `test_the_concept_is_taken_from_the_query` | Pass |
+| `UT_18` | A blank query shows "Please enter a question" and sends nothing to the LLM | `test_UT_18_blank_query_shows_please_enter_a_question_and_sends_nothing` (3 variants), `test_UT_18_blank_query_is_refused_even_with_no_llm_configured`, `test_the_service_refuses_a_blank_query_before_recording_it` | Pass |
+| `ST_18` | Consecutive distinct queries return distinct, topic-relevant responses within the acceptable response time | `test_ST_18_consecutive_queries_are_relevant_distinct_and_timely`, `test_relevance_check_matches_topic_words` | Pass |
+| `IT_17` | A natural-language quiz request generates a quiz on that topic and offers it to start | `test_IT_17_quiz_request_generates_a_bst_quiz_offered_to_start`, `test_the_topic_quiz_can_be_answered_and_scored`, `test_starting_again_resumes_the_running_attempt`, `test_quiz_options_and_counts_in_the_query_are_used`, `test_the_quiz_topic_is_taken_from_the_request` | Pass |
+| — | The generated quiz respects the review gate where it would enter the bank | `test_generated_quiz_questions_stay_out_of_the_bank_until_approved`, `test_the_topic_quiz_cannot_be_published_while_questions_are_unapproved`, `test_other_users_cannot_attempt_the_private_topic_quiz` | Pass |
+| — (NFR-06) | Provider failures, timeouts and no-LLM are clear errors and are audited; prompts fence the user's text | `test_provider_failures_and_timeouts_give_clear_errors_and_are_recorded`, `test_with_no_llm_configured_ask_ai_says_so`, `test_a_failed_quiz_generation_is_a_clear_error_and_creates_nothing`, `test_the_prompt_asks_for_an_example_and_fences_the_users_text` | Pass |
+
+Manually verified on a migrated, seeded SQLite database with `LLM_PROVIDER=fake`: the
+seeded student asked "Explain B-Trees with an example" (explanation plus a node-split
+example), a blank query returned "Please enter a question", and "Give me a quiz on
+Binary Search Trees" produced a 5-question private quiz that `POST /ai/ask/2/start`
+started, while a bank search for the topic stayed empty until approval.
+
+No schema change: the `explain` and `generate_quiz` values of `llm_task` exist since
+migration `0001`. New routes `POST /api/v1/ai/ask` and `POST /api/v1/ai/ask/{ask_id}/start`;
+`docs/api/openapi-v1.json` is regenerated.

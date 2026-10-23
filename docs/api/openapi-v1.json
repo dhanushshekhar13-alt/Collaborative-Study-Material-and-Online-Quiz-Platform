@@ -613,6 +613,113 @@
         "title": "ApprovalStatus",
         "type": "string"
       },
+      "AskRequest": {
+        "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty",
+            "default": "medium",
+            "description": "Difficulty for a quiz request"
+          },
+          "query": {
+            "description": "For example \"Explain B-Trees with an example\" or \"Give me a quiz on Binary Search Trees\"",
+            "maxLength": 1000,
+            "title": "Query",
+            "type": "string"
+          },
+          "question_count": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 5.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quiz length (5-10); a number in the query such as '8 questions' is used when this is omitted; default 5",
+            "title": "Question Count"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subject tag for a quiz (default General)",
+            "title": "Subject"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "AskRequest",
+        "type": "object"
+      },
+      "AskResponse": {
+        "properties": {
+          "explanation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExplanationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "\"explanation\" or \"quiz\"",
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "quiz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicQuizResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "response_ms": {
+            "description": "Time the server spent answering, in milliseconds",
+            "title": "Response Ms",
+            "type": "integer"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "query",
+          "topic",
+          "message",
+          "response_ms"
+        ],
+        "title": "AskResponse",
+        "type": "object"
+      },
       "AttemptEvaluationResponse": {
         "properties": {
           "attempt_id": {
@@ -1508,6 +1615,29 @@
           "evaluator"
         ],
         "title": "EvaluationResponse",
+        "type": "object"
+      },
+      "ExplanationResponse": {
+        "properties": {
+          "examples": {
+            "description": "At least one example",
+            "items": {
+              "type": "string"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "text": {
+            "description": "A simplified explanation",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "examples"
+        ],
+        "title": "ExplanationResponse",
         "type": "object"
       },
       "GenerateRequest": {
@@ -4065,6 +4195,34 @@
         "title": "ServedResponse",
         "type": "object"
       },
+      "StartResponse": {
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "integer"
+          },
+          "attempt_path": {
+            "title": "Attempt Path",
+            "type": "string"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "integer"
+          },
+          "resumed": {
+            "title": "Resumed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "quiz_id",
+          "resumed",
+          "attempt_path"
+        ],
+        "title": "StartResponse",
+        "type": "object"
+      },
       "SubmitRequest": {
         "properties": {
           "answers": {
@@ -4118,6 +4276,66 @@
           "account"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "TopicQuizResponse": {
+        "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "generation_id": {
+            "description": "Review these questions at GET /ai/generations/{id}; only approved ones join the question bank",
+            "title": "Generation Id",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "integer"
+          },
+          "review_required": {
+            "description": "Always true: generated questions stay out of the bank until approved",
+            "title": "Review Required",
+            "type": "boolean"
+          },
+          "start_path": {
+            "description": "POST here to start the quiz",
+            "title": "Start Path",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_id",
+          "title",
+          "subject",
+          "topic",
+          "difficulty",
+          "question_count",
+          "duration_minutes",
+          "generation_id",
+          "review_required",
+          "start_path"
+        ],
+        "title": "TopicQuizResponse",
         "type": "object"
       },
       "UnansweredResponse": {
@@ -4555,6 +4773,106 @@
         "summary": "Answer Adaptive Question",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/ask": {
+      "post": {
+        "description": "Ask the assistant to explain a concept or to generate a quiz on a topic.\n\n*Explanation* (UT_17, ST_18): a simplified explanation with at least one example,\nchecked to be about the concept asked. *Quiz* (IT_17): a private practice quiz on\nthe named topic, ready to start with ``POST /ai/ask/{id}/start``. Its questions are\ndrafts that join no bank until approved on the review screen (S07.1). A blank query\nis refused with \"Please enter a question\" and nothing is sent (UT_18).",
+        "operationId": "ask_api_v1_ai_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Blank query (Please enter a question) or no quiz topic"
+          },
+          "502": {
+            "description": "The AI service failed"
+          },
+          "503": {
+            "description": "No LLM is configured"
+          },
+          "504": {
+            "description": "The AI service timed out"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask",
+        "tags": [
+          "ask ai"
+        ]
+      }
+    },
+    "/api/v1/ai/ask/{ask_id}/start": {
+      "post": {
+        "description": "Start the quiz generated by ``POST /ai/ask``; answer and submit it with the\nusual ``/attempts/{id}`` routes. Only the requester can start it (404 otherwise).",
+        "operationId": "start_topic_quiz_api_v1_ai_ask__ask_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ask_id",
+            "required": true,
+            "schema": {
+              "title": "Ask Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumed the caller's attempt that is still running"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Topic Quiz",
+        "tags": [
+          "ask ai"
         ]
       }
     },
