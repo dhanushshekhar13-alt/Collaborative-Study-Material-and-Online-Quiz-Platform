@@ -2081,6 +2081,97 @@
         "title": "MemberRole",
         "type": "string"
       },
+      "MessagePageResponse": {
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "has_more",
+          "limit"
+        ],
+        "title": "MessagePageResponse",
+        "type": "object"
+      },
+      "MessageRequest": {
+        "properties": {
+          "body": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "title": "MessageRequest",
+        "type": "object"
+      },
+      "MessageResponse": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "channel_id": {
+            "title": "Channel Id",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "sender_id": {
+            "title": "Sender Id",
+            "type": "integer"
+          },
+          "sender_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Name"
+          }
+        },
+        "required": [
+          "id",
+          "channel_id",
+          "sender_id",
+          "sender_name",
+          "body",
+          "created_at"
+        ],
+        "title": "MessageResponse",
+        "type": "object"
+      },
       "NotEnoughQuestionsResponse": {
         "properties": {
           "available": {
@@ -5251,6 +5342,160 @@
         "summary": "Remove Member",
         "tags": [
           "channels"
+        ]
+      }
+    },
+    "/api/v1/channels/{channel_id}/messages": {
+      "get": {
+        "description": "The channel chat, oldest first within each page (ST_19, ST_20).\n\nWith no cursor this is the newest ``limit`` messages. Scroll up with\n``before=<oldest id shown>`` until ``has_more`` is false; poll for new messages\nwith ``after=<newest id shown>``. Messages are stored, so they survive logout.",
+        "operationId": "read_messages_api_v1_channels__channel_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Older than this message id",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Older than this message id",
+              "title": "Before"
+            }
+          },
+          {
+            "description": "Newer than this message id",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Newer than this message id",
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagePageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Messages",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "description": "Send a message to the channel chat (UT_19). Members only.\n\nThe sender is always the signed-in user and the timestamp is the server's, so\nevery member sees the same sender and time. A blank message is refused (UT_20).",
+        "operationId": "send_message_api_v1_channels__channel_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Message",
+        "tags": [
+          "chat"
         ]
       }
     },
