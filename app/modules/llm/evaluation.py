@@ -17,18 +17,26 @@ Two evaluators produce the same ``DescriptiveEvaluation``:
 
 A blank answer is refused with ``Answer cannot be empty`` before anything is recorded
 or sent, so no empty request ever reaches the LLM (IT_15).
+
+``evaluate_attempt`` (S08.2) evaluates the written answers of a submitted quiz attempt
+and stores each result in the attempt through the quizzes service, which scales it to
+the question's points beside the deterministic objective score (NFR-06).
 """
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.modules.llm.models import LlmTask
 from app.modules.llm.provider import LlmError, LlmProvider
 from app.modules.llm.service import complete_request, record_request
+from app.modules.questions import service as questions
 from app.modules.questions.service import QuestionView
+from app.modules.quizzes import service as quizzes
 
 MAX_SCORE = 10.0
 EMPTY_ANSWER = "Answer cannot be empty"
@@ -291,3 +299,95 @@ def evaluate(
         return DescriptiveEvaluation(**{**vars(fallback), "llm_request_id": request_id})
     complete_request(db, request_id, output=data)
     return DescriptiveEvaluation(**{**vars(result), "llm_request_id": request_id})
+
+
+# --------------------------------------------------------------------------- #
+# Evaluating a submitted quiz attempt (S08.2)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class AnswerEvaluation:
+    question_id: int
+    points: float
+    points_earned: float
+    evaluation: DescriptiveEvaluation
+
+
+@dataclass(frozen=True)
+class NotEvaluated:
+    question_id: int
+    reason: str
+
+
+@dataclass(frozen=True)
+class AttemptEvaluation:
+    attempt_id: int
+    evaluated: tuple[AnswerEvaluation, ...]
+    not_evaluated: tuple[NotEvaluated, ...]
+    breakdown: quizzes.ScoreBreakdown
+
+
+def feedback_record(result: DescriptiveEvaluation, evaluated_at: datetime) -> dict:
+    """The evaluation as stored in the attempt (JSON), so history shows it unchanged."""
+    return {
+        "score": result.score,
+        "max_score": result.max_score,
+        "display": result.display,
+        "covered_concepts": list(result.covered_concepts),
+        "missing_concepts": list(result.missing_concepts),
+        "strengths": list(result.strengths),
+        "weaknesses": list(result.weaknesses),
+        "summary": result.summary,
+        "evaluator": result.evaluator,
+        "llm_request_id": result.llm_request_id,
+        "evaluated_at": evaluated_at.isoformat(),
+    }
+
+
+def evaluate_attempt(
+    db: Session,
+    *,
+    user_id: int,
+    attempt_id: int,
+    provider: LlmProvider | None,
+    commit: Callable[[], None] | None = None,
+) -> AttemptEvaluation:
+    """Evaluate every written answer of a submitted attempt not evaluated yet.
+
+    Each result is stored in the attempt as soon as it is ready (``commit`` is called
+    after each one), so a provider failure part-way keeps the answers already done.
+    Answers that cannot be evaluated (no expected concepts and no LLM) stay pending and
+    are reported with the reason. Objective marks are never touched (NFR-06). Raises
+    ``quizzes.NotSubmittedError`` while the attempt is still running.
+    """
+    pending = quizzes.pending_descriptive_answers(db, attempt_id)
+    views = questions.get_questions(db, (p.question_id for p in pending))
+    done, skipped = [], []
+    for item in pending:
+        try:
+            result = evaluate(
+                db,
+                user_id=user_id,
+                question=views[item.question_id],
+                answer=item.response,
+                provider=provider,
+                channel_id=item.channel_id,
+            )
+        except (EmptyAnswerError, NothingToEvaluateError) as problem:
+            skipped.append(NotEvaluated(item.question_id, str(problem)))
+            continue
+        earned = quizzes.record_descriptive_evaluation(
+            db,
+            attempt_id,
+            item.question_id,
+            score=result.score,
+            max_score=result.max_score,
+            feedback=feedback_record(result, datetime.now(UTC)),
+        )
+        if commit is not None:
+            commit()
+        done.append(AnswerEvaluation(item.question_id, item.points, earned, result))
+    return AttemptEvaluation(
+        attempt_id, tuple(done), tuple(skipped), quizzes.score_breakdown(db, attempt_id)
+    )

@@ -54,8 +54,25 @@ against"*. Objective questions are refused (*"Only descriptive questions can be
 evaluated"*): they are scored deterministically by the quizzes module. A question the
 caller cannot read in the bank is a 404.
 
-Storing descriptive results inside a quiz attempt beside the objective score is
-S08.2 (#33). It can call `evaluation.evaluate`.
+## Evaluating a quiz attempt (S08.2)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/attempts/{attempt_id}/evaluate` | owner | Evaluate the submitted attempt's pending written answers and store the results in it. |
+
+`evaluation.evaluate_attempt` runs `evaluate` on each answered descriptive question the
+quizzes module reports as pending, and stores every result through
+`quizzes.service.record_descriptive_evaluation`, which scales it to the question's
+points and adds it to the attempt total. Each result is committed as soon as it is
+ready, so a provider outage part-way keeps the ones done. Answers already evaluated are
+never re-sent, so calling again is safe and cheap. An answer that cannot be evaluated
+(no expected concepts and no LLM) stays pending and is listed in `not_evaluated` with
+the reason. A running attempt is **409** *"Submit the attempt before its written answers
+are evaluated"*; someone else's attempt is a 404. The response carries the attempt's
+`breakdown` (objective, descriptive, total, explanation).
+
+The quiz UI (UI-2) should call it straight after a successful submit and show the
+returned breakdown; the result also stays in `GET /attempts/{id}` and My Quiz History.
 
 ## Dependencies
 
@@ -67,3 +84,6 @@ and its expected concepts) and `quizzes`.
 `tests/test_descriptive_evaluation.py`: Test Plan cases `UT_15`, `UT_16`, `IT_15`,
 `IT_16` under their case IDs (each with the LLM faked and with concept matching), plus
 scale, fallback, audit, prompt, access and provider-client tests.
+
+`tests/test_descriptive_results.py`: `ST_15` and `ST_16` (S08.2) and the attempt
+evaluation route.

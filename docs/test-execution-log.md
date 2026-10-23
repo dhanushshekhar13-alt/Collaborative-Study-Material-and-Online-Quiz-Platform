@@ -362,3 +362,30 @@ models (`tests/test_migrations.py`). Manually verified on a migrated, seeded SQL
 database (including downgrade to `0007` and back): the seeded student creates, edits
 (shown as edited) and deletes a post, deletion without confirmation is refused, and
 channel quizzes and questions carry their author's name.
+
+## S08.2 (#33) — Descriptive results stored beside deterministic objective scoring
+
+Executed 2026-10-23 with `python -m pytest tests/test_descriptive_results.py`. The LLM is
+a scripted fake (`FakeLlm`); ST_15 and ST_16 are also run with no LLM configured, using
+the deterministic `concept-match` evaluator.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `ST_15` | Descriptive score and feedback are displayed inside the stored attempt in Quiz History | `test_ST_15_descriptive_score_and_feedback_are_shown_in_the_stored_attempt`, `test_ST_15_without_an_llm_the_concept_match_result_is_stored`, `test_the_stored_feedback_does_not_change_or_re_call_the_llm_when_reopened` | Pass |
+| `ST_16` | MCQ scoring in a mixed quiz remains deterministic at 100 percent when all MCQs are correct | `test_ST_16_mcq_score_stays_100_percent_and_the_total_is_a_clear_combination`, `test_ST_16_without_an_llm_the_mcq_part_is_the_same`, `test_the_objective_part_is_identical_whatever_the_llm_says[0]`, `[10]` | Pass |
+| `ST_16` | The total score is a clearly explained combination of both parts | `test_ST_16_mcq_score_stays_100_percent_and_the_total_is_a_clear_combination`, `test_before_evaluation_the_written_answer_is_pending_and_counts_zero`, `test_an_objective_only_quiz_explains_its_total_without_a_descriptive_part`, `test_the_evaluation_is_scaled_to_the_questions_points` | Pass |
+| — (NFR-06) | The LLM module cannot write an objective answer; objective rows are unchanged by evaluation | `test_the_llm_module_cannot_write_an_objective_answer`, `test_ST_16_mcq_score_stays_100_percent_and_the_total_is_a_clear_combination` | Pass |
+| — | Blank written answers are unattempted and never sent; LLM failures fall back and are audited; unevaluable answers stay pending with the reason | `test_a_blank_written_answer_is_unattempted_and_never_sent`, `test_a_failing_llm_falls_back_and_the_result_is_still_stored`, `test_an_answer_that_cannot_be_evaluated_stays_pending_with_the_reason` | Pass |
+| — | Only the owner of a submitted attempt can evaluate it | `test_a_running_attempt_cannot_be_evaluated`, `test_only_the_owner_can_evaluate_an_attempt` | Pass |
+
+Manually verified on a migrated, seeded SQLite database with `LLM_PROVIDER=none`: the
+seeded student took "CPU scheduling basics" with both objective answers correct and a
+written answer covering three of four concepts. Submitting showed `2/3 (66.7%)` with
+"1 descriptive answer is awaiting evaluation"; `POST /attempts/2/evaluate` scored it
+`7.5/10` (missing: starvation), and My Quiz History then showed `2.75/3 (91.7%)` as
+"objective 2/2 + descriptive 0.75/1", with the feedback inside the opened attempt.
+
+No schema change: the evaluation is stored in `attempt_answers.feedback` (JSON, from
+migration `0001`) and its scaled points in `attempt_answers.score`. New route
+`POST /api/v1/attempts/{attempt_id}/evaluate`; attempt results and history entries gain
+`breakdown`. `docs/api/openapi-v1.json` is regenerated.
