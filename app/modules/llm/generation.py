@@ -270,10 +270,17 @@ def generate(
     difficulty: Difficulty,
     count: int,
     channel_id: int | None = None,
+    min_count: int | None = None,
 ) -> Generation:
-    """Generate ``count`` (5-10) questions and store them as drafts for review."""
-    if not MIN_QUESTIONS <= count <= MAX_QUESTIONS:
-        raise ValueError(f"count must be between {MIN_QUESTIONS} and {MAX_QUESTIONS}")
+    """Generate ``count`` (5-10) questions and store them as drafts for review.
+
+    ``min_count`` (S09.2) lowers the floor for topping up a channel quiz that peer
+    questions already part-fill: ``count`` may then be 1-10, and the batch fails unless
+    at least ``min_count`` valid questions come back.
+    """
+    floor = MIN_QUESTIONS if min_count is None else min_count
+    if not 1 <= floor <= count <= MAX_QUESTIONS:
+        raise ValueError(f"count must be between {floor} and {MAX_QUESTIONS}")
     request_id, items = request_items(
         db,
         provider,
@@ -285,7 +292,7 @@ def generate(
         count=count,
         channel_id=channel_id,
     )
-    if len(items) < MIN_QUESTIONS:
+    if len(items) < floor:
         req = db.get(LlmRequest, request_id)
         req.status = LlmRequestStatus.FAILED
         req.error = f"only {len(items)} valid questions after {MAX_ROUNDS} attempts"
