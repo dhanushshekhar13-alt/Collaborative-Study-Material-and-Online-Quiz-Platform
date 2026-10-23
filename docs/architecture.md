@@ -52,6 +52,8 @@ subject/topic/difficulty tags) before anything is stored, and generated question
 stored as drafts that no bank, search or quiz can see until their requester approves
 them. The llm module guards its routes with accounts and checks channel-bank
 membership with channels; neither path reaches chat.
+Ask AI (S09.1, `assistant.py`) explains concepts and builds topic quizzes; its quiz
+questions come from the same generation path, so they stay review-gated drafts.
 Descriptive answer evaluation (S08.1, `evaluation.py`) uses the same provider and
 validates the model's score and concept lists against the question before returning
 them; with no real model it falls back to deterministic concept matching.

@@ -7,8 +7,9 @@ usable (JSON shape, topic and difficulty tags, answer keys) lives in
 ``LLM_PROVIDER`` picks the provider:
 
 * ``none``: AI features are switched off and report that clearly.
-* ``fake``: a deterministic, offline generator. It needs no key and never touches the
-  network, so tests and demos behave the same on every run.
+* ``fake``: a deterministic, offline generator of questions and Ask-AI explanations.
+  It needs no key and never touches the network, so tests and demos behave the same
+  on every run.
 * ``openai``: any OpenAI-compatible chat completions API (``LLM_BASE_URL`` to override).
 * ``anthropic``: the Anthropic Messages API.
 
@@ -61,6 +62,8 @@ class FakeProvider:
     name = "fake"
 
     def complete(self, task: LlmTask, prompt: str, params: dict[str, Any]) -> str:
+        if task is LlmTask.EXPLAIN:
+            return json.dumps(fake_explanation(params["topic"]))
         if task not in (LlmTask.GENERATE_QUESTIONS, LlmTask.ADAPT_DIFFICULTY):
             raise LlmError(f"the fake provider does not support {task.value}")
         subject, topic = params["subject"], params["topic"]
@@ -88,6 +91,49 @@ class FakeProvider:
                 }
             )
         return json.dumps({"questions": items})
+
+
+_FAKE_GLOSSARY: dict[str, tuple[str, str]] = {
+    "b-trees": (
+        "A B-Tree is a balanced search tree whose nodes hold many sorted keys, so it stays "
+        "shallow and a lookup touches only a few disk pages.",
+        "With up to 3 keys per node, inserting 10, 20, 30 and 40 splits the full node: 20 "
+        "moves up as the new root with [10] and [30, 40] as its children.",
+    ),
+    "normalization": (
+        "Normalization organises database tables so each fact is stored once, removing "
+        "redundancy and the update, insert and delete anomalies it causes.",
+        "A table Orders(order_id, customer_name, customer_city) repeats the city on every "
+        "order; moving customers into their own table stores each city once (3NF).",
+    ),
+    "indexing": (
+        "Indexing builds an extra sorted structure over a column so the database can find "
+        "matching rows without scanning the whole table.",
+        "An index on students(email) lets WHERE email = 'a@x.com' jump straight to one row "
+        "instead of reading all 50,000 rows.",
+    ),
+    "binary search trees": (
+        "A binary search tree keeps smaller keys in the left subtree and larger keys in the "
+        "right subtree, so each comparison discards half of the remaining tree.",
+        "Inserting 8, 3, 10, 1 and 6 puts 3 left of 8, 10 right of 8, then 1 left of 3 and "
+        "6 right of 3; searching for 6 visits only 8, 3 and 6.",
+    ),
+}
+
+
+def fake_explanation(topic: str) -> dict[str, Any]:
+    """A deterministic, topic-specific explanation with one worked example."""
+    key = " ".join(topic.lower().split())
+    known = _FAKE_GLOSSARY.get(key) or _FAKE_GLOSSARY.get(key.removesuffix("s"))
+    if known is None:
+        known = (
+            f"{topic} in simple terms: start with the problem {topic} solves, then the "
+            f"idea behind how {topic} works, and finally when you would choose {topic}.",
+            f"Worked example for {topic}: take one small, concrete case, apply {topic} "
+            "step by step and check the result against what you expected.",
+        )
+    explanation, example = known
+    return {"topic": topic, "explanation": explanation, "examples": [example]}
 
 
 class HttpProvider:

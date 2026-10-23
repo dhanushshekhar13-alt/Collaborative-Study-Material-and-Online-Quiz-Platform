@@ -3,7 +3,8 @@
 Everything that talks to the LLM provider. Owns `llm_requests`, an audit record of
 every request with its output or error; module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md). This README covers
-**descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06).
+**descriptive answer evaluation**, story **S08.1** (issue #32, FR-08, NFR-06), and
+**Ask AI**, story **S09.1** (issue #34, FR-09).
 
 ## Provider
 
@@ -74,6 +75,41 @@ are evaluated"*; someone else's attempt is a 404. The response carries the attem
 The quiz UI (UI-2) should call it straight after a successful submit and show the
 returned breakdown; the result also stays in `GET /attempts/{id}` and My Quiz History.
 
+## Ask AI: explanations and topic quizzes (S09.1)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/ai/ask` | signed in | `query` in plain language: explain a concept, or generate a quiz on a topic. |
+| `POST` | `/api/v1/ai/ask/{id}/start` | requester | Start (201) or resume (200) the generated topic quiz; answer it with `/attempts/{id}`. |
+
+`assistant.classify` decides the kind from the wording. A query mentioning a quiz
+("Give me a quiz on Binary Search Trees", "quiz me on SQL joins", "test me on ...") is
+a **quiz** request; anything else is an **explanation** request, and the concept is
+taken from it ("Explain B-Trees with an example" gives `B-Trees`).
+
+- **Explanation** (`kind: "explanation"`): `explanation.text` plus at least one
+  `explanation.examples` entry (UT_17). The reply is validated: it must be JSON with an
+  explanation, at least one example, and mention the concept asked about. An unusable
+  or off-topic reply is requested once more, then the request fails with 502. The query
+  travels between markers and the prompt tells the model to treat it as data.
+- **Topic quiz** (`kind: "quiz"`): 5 questions by default (5-10 via `question_count` or
+  "an 8 question quiz" in the query; optional `subject`, default `General`, and
+  `difficulty`, default medium). They are generated through `generation.generate`, so
+  they are **drafts** with a review batch (`quiz.generation_id`): they serve the
+  requester's private quiz, but no bank, search or other user sees them until approved
+  on `GET /ai/generations/{id}`. The quiz is a private draft (2 minutes per question)
+  that `POST /quizzes/{id}/publish` refuses while any of its questions is unapproved.
+  A quiz request with no topic is 422 *"Name the topic for the quiz, ..."*.
+
+A blank query is **422 `Please enter a question`** before anything is recorded or sent
+to the LLM (UT_18), whatever the provider setting. With `LLM_PROVIDER=none` the route
+answers 503 *"Ask AI is not available on this server right now."*; provider errors are
+502 and timeouts 504. Every call is recorded in `llm_requests` (`explain`,
+`generate_quiz`). `response_ms` reports the server's time for the answer (ST_18).
+`LLM_PROVIDER=fake` answers explanations deterministically (a short glossary for
+B-Trees, normalization, indexing and binary search trees, a topic-specific template
+otherwise), so the prototype works offline.
+
 ## Dependencies
 
 `accounts` (route guard), `channels` (question visibility), `questions` (the question
@@ -87,3 +123,6 @@ scale, fallback, audit, prompt, access and provider-client tests.
 
 `tests/test_descriptive_results.py`: `ST_15` and `ST_16` (S08.2) and the attempt
 evaluation route.
+
+`tests/test_ask_ai.py`: `UT_17`, `UT_18`, `ST_18` and `IT_17` (S09.1), plus validation,
+failure, review-gate and access tests.
