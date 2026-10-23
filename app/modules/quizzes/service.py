@@ -12,7 +12,13 @@ from app.modules.quizzes.adaptive import (  # noqa: F401 - re-exported for calle
     AdaptiveAnswerError,
     ServedQuestion,
 )
-from app.modules.quizzes.attempts import AttemptOutcome
+from app.modules.quizzes.attempts import (  # noqa: F401 - re-exported for callers
+    AttemptOutcome,
+    NotSubmittedError,
+    PendingDescriptive,
+    ScoreBreakdown,
+    ScorePart,
+)
 from app.modules.quizzes.models import (
     AttemptStatus,
     Quiz,
@@ -163,3 +169,46 @@ def finish_attempt(db: Session, attempt_id: int) -> AttemptOutcome:
 def attempt_outcome(db: Session, attempt_id: int) -> AttemptOutcome | None:
     """The result of a submitted attempt, or ``None`` while it is still running."""
     return attempts.state(db, attempt_id).outcome
+
+
+# --------------------------------------------------------------------------- #
+# S08.2 - descriptive results stored beside the deterministic objective score
+# --------------------------------------------------------------------------- #
+
+
+def attempt_owner(db: Session, attempt_id: int) -> int | None:
+    """Who took the attempt, or ``None`` if there is no such attempt."""
+    return attempts.owner_of(db, attempt_id)
+
+
+def pending_descriptive_answers(db: Session, attempt_id: int) -> list[PendingDescriptive]:
+    """Answered descriptive questions of a submitted attempt not evaluated yet.
+
+    Raises ``NotSubmittedError`` while the attempt is still running.
+    """
+    return attempts.pending_descriptive(db, attempt_id)
+
+
+def record_descriptive_evaluation(
+    db: Session,
+    attempt_id: int,
+    question_id: int,
+    *,
+    score: float,
+    max_score: float,
+    feedback: dict,
+) -> float:
+    """Store a descriptive answer's evaluation in the attempt; returns the points earned.
+
+    The 0-``max_score`` result is scaled to the question's points and added to the
+    attempt total. Objective answers cannot be written (``ValueError``), so their
+    deterministic marks never depend on the LLM (NFR-06).
+    """
+    return attempts.record_descriptive(
+        db, attempt_id, question_id, score=score, max_score=max_score, feedback=feedback
+    )
+
+
+def score_breakdown(db: Session, attempt_id: int) -> ScoreBreakdown:
+    """The attempt's objective, descriptive and total score with an explanation."""
+    return attempts.breakdown(db, attempt_id)

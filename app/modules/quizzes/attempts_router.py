@@ -6,6 +6,10 @@
     POST /attempts/{attempt_id}/submit  final submission, scored immediately
     GET  /attempts                     My Quiz History with aggregate accuracy (S06.2)
 
+Results carry a score breakdown (S08.2): the deterministic objective part, the
+descriptive part from stored evaluations, and the total with an explanation.
+Descriptive answers are evaluated by ``POST /attempts/{id}/evaluate`` in the LLM module.
+
 The attempt routes live at ``/attempts`` so they never collide with the quiz-building
 routes under ``/quizzes/{quiz_id}`` (S05.2). Only the person taking the attempt can see
 it; anyone else gets the same 404 as for an attempt that does not exist.
@@ -64,26 +68,91 @@ class AttemptQuestionResponse(BaseModel):
     response: str | None
 
 
+class DescriptiveFeedbackResponse(BaseModel):
+    """A descriptive answer's stored evaluation (S08.1 scale, S08.2 storage)."""
+
+    score: float = Field(description="0 to 10 in steps of 0.5")
+    max_score: float = Field(description="Always 10")
+    display: str = Field(description='For example "5/10"')
+    covered_concepts: list[str]
+    missing_concepts: list[str]
+    strengths: list[str]
+    weaknesses: list[str]
+    summary: str
+    evaluator: str = Field(description='"llm" or "concept-match"')
+    evaluated_at: datetime | None = None
+
+
 class AnswerOutcomeResponse(BaseModel):
     question_id: int
     position: int
+    question_type: str
     response: str | None
-    status: attempts.AnswerStatus
-    score: float | None
+    status: attempts.AnswerStatus = Field(
+        description="correct, incorrect, unattempted, pending_evaluation or evaluated"
+    )
+    score: float | None = Field(
+        description="Points earned; for a descriptive answer its 0-10 evaluation scaled "
+        "to `points`, null while pending"
+    )
     points: float
     correct_answer: str | None
     explanation: str | None
+    evaluation: DescriptiveFeedbackResponse | None = Field(
+        default=None, description="Descriptive answers once evaluated: score and feedback"
+    )
+
+
+class ScorePartResponse(BaseModel):
+    score: float
+    max_score: float
+    percentage: float
+    display: str = Field(description='For example "3/3 (100%)"')
+
+
+def _part(part: attempts.ScorePart) -> ScorePartResponse:
+    return ScorePartResponse(
+        score=part.score, max_score=part.max_score, percentage=part.percentage, display=part.display
+    )
+
+
+class ScoreBreakdownResponse(BaseModel):
+    objective: ScorePartResponse = Field(
+        description="MCQ, true/false and short answers, marked only against the answer key"
+    )
+    descriptive: ScorePartResponse = Field(
+        description="Written answers: each 0-10 evaluation scaled to the question's points"
+    )
+    total: ScorePartResponse = Field(description="objective + descriptive")
+    pending_evaluation: int
+    explanation: str = Field(
+        description='For example "Total 3.5/4 = objective 3/3 (…) + descriptive 0.5/1 (…)."'
+    )
+
+
+def breakdown_response(found: attempts.ScoreBreakdown) -> ScoreBreakdownResponse:
+    return ScoreBreakdownResponse(
+        objective=_part(found.objective),
+        descriptive=_part(found.descriptive),
+        total=_part(found.total),
+        pending_evaluation=found.pending_evaluation,
+        explanation=found.explanation,
+    )
 
 
 class ResultResponse(BaseModel):
-    score: float
+    score: float = Field(description="The total: objective plus evaluated descriptive points")
     max_score: float
     percentage: float
     display: str = Field(description='For example "4/5 (80%)"')
     correct: int
     incorrect: int
     unattempted: int
-    pending_evaluation: int = Field(description="Descriptive answers awaiting S08.1")
+    pending_evaluation: int = Field(
+        description="Descriptive answers not evaluated yet (POST /attempts/{id}/evaluate)"
+    )
+    evaluated: int = Field(description="Descriptive answers evaluated and counted")
+    breakdown: ScoreBreakdownResponse
     submitted_at: datetime | None
     answers: list[AnswerOutcomeResponse]
 
@@ -127,6 +196,9 @@ class HistoryEntryResponse(BaseModel):
     max_score: float
     percentage: float
     display: str = Field(description='For example "4/5 (80%)"')
+    breakdown: ScoreBreakdownResponse = Field(
+        description="Objective and descriptive parts of the score (S08.2)"
+    )
 
 
 class QuizHistoryResponse(BaseModel):
@@ -185,6 +257,8 @@ def _response(state: attempts.AttemptState) -> AttemptResponse:
                 incorrect=outcome.incorrect,
                 unattempted=outcome.unattempted,
                 pending_evaluation=outcome.pending_evaluation,
+                evaluated=outcome.evaluated,
+                breakdown=breakdown_response(outcome.breakdown),
                 submitted_at=outcome.submitted_at,
                 answers=[AnswerOutcomeResponse(**vars(a)) for a in outcome.answers],
             )
@@ -285,7 +359,11 @@ def quiz_history(
         average_accuracy=found.average_accuracy,
         best_percentage=found.best_percentage,
         attempts=[
-            HistoryEntryResponse(**vars(entry), display=entry.display) for entry in found.entries
+            HistoryEntryResponse(
+                **{**vars(entry), "breakdown": breakdown_response(entry.breakdown)},
+                display=entry.display,
+            )
+            for entry in found.entries
         ],
     )
 

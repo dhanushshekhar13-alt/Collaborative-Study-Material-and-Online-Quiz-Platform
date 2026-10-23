@@ -390,6 +390,95 @@
         "title": "AddToQuizResponse",
         "type": "object"
       },
+      "AnswerEvaluationResponse": {
+        "properties": {
+          "covered_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Concepts",
+            "type": "array"
+          },
+          "display": {
+            "description": "For example \"5/10\"",
+            "title": "Display",
+            "type": "string"
+          },
+          "evaluator": {
+            "description": "\"llm\", or \"concept-match\" when no real LLM is configured or it failed",
+            "title": "Evaluator",
+            "type": "string"
+          },
+          "max_score": {
+            "description": "Always 10",
+            "title": "Max Score",
+            "type": "number"
+          },
+          "missing_concepts": {
+            "description": "Each missing concept named individually",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Concepts",
+            "type": "array"
+          },
+          "points": {
+            "description": "The question's points in the quiz",
+            "title": "Points",
+            "type": "number"
+          },
+          "points_earned": {
+            "description": "score / max_score \u00d7 points",
+            "title": "Points Earned",
+            "type": "number"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "score": {
+            "description": "0 to 10 in steps of 0.5",
+            "title": "Score",
+            "type": "number"
+          },
+          "strengths": {
+            "description": "At least one",
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "weaknesses": {
+            "description": "At least one",
+            "items": {
+              "type": "string"
+            },
+            "title": "Weaknesses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_id",
+          "score",
+          "max_score",
+          "display",
+          "covered_concepts",
+          "missing_concepts",
+          "strengths",
+          "weaknesses",
+          "summary",
+          "evaluator",
+          "points",
+          "points_earned"
+        ],
+        "title": "AnswerEvaluationResponse",
+        "type": "object"
+      },
       "AnswerOutcomeResponse": {
         "properties": {
           "correct_answer": {
@@ -402,6 +491,17 @@
               }
             ],
             "title": "Correct Answer"
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DescriptiveFeedbackResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Descriptive answers once evaluated: score and feedback"
           },
           "explanation": {
             "anyOf": [
@@ -426,6 +526,10 @@
             "title": "Question Id",
             "type": "integer"
           },
+          "question_type": {
+            "title": "Question Type",
+            "type": "string"
+          },
           "response": {
             "anyOf": [
               {
@@ -446,15 +550,18 @@
                 "type": "null"
               }
             ],
+            "description": "Points earned; for a descriptive answer its 0-10 evaluation scaled to `points`, null while pending",
             "title": "Score"
           },
           "status": {
-            "$ref": "#/components/schemas/AnswerStatus"
+            "$ref": "#/components/schemas/AnswerStatus",
+            "description": "correct, incorrect, unattempted, pending_evaluation or evaluated"
           }
         },
         "required": [
           "question_id",
           "position",
+          "question_type",
           "response",
           "status",
           "score",
@@ -470,7 +577,8 @@
           "correct",
           "incorrect",
           "unattempted",
-          "pending_evaluation"
+          "pending_evaluation",
+          "evaluated"
         ],
         "title": "AnswerStatus",
         "type": "string"
@@ -504,6 +612,41 @@
         ],
         "title": "ApprovalStatus",
         "type": "string"
+      },
+      "AttemptEvaluationResponse": {
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "integer"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/AttemptScoreBreakdownResponse"
+          },
+          "evaluated": {
+            "description": "Written answers evaluated by this request",
+            "items": {
+              "$ref": "#/components/schemas/AnswerEvaluationResponse"
+            },
+            "title": "Evaluated",
+            "type": "array"
+          },
+          "not_evaluated": {
+            "description": "Written answers that could not be evaluated; they stay pending",
+            "items": {
+              "$ref": "#/components/schemas/NotEvaluatedResponse"
+            },
+            "title": "Not Evaluated",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "evaluated",
+          "not_evaluated",
+          "breakdown"
+        ],
+        "title": "AttemptEvaluationResponse",
+        "type": "object"
       },
       "AttemptQuestionResponse": {
         "properties": {
@@ -675,6 +818,66 @@
           "result"
         ],
         "title": "AttemptResponse",
+        "type": "object"
+      },
+      "AttemptScoreBreakdownResponse": {
+        "properties": {
+          "descriptive": {
+            "$ref": "#/components/schemas/AttemptScorePartResponse",
+            "description": "Evaluations scaled to question points"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "objective": {
+            "$ref": "#/components/schemas/AttemptScorePartResponse",
+            "description": "Marked only against the answer key"
+          },
+          "pending_evaluation": {
+            "title": "Pending Evaluation",
+            "type": "integer"
+          },
+          "total": {
+            "$ref": "#/components/schemas/AttemptScorePartResponse"
+          }
+        },
+        "required": [
+          "objective",
+          "descriptive",
+          "total",
+          "pending_evaluation",
+          "explanation"
+        ],
+        "title": "AttemptScoreBreakdownResponse",
+        "type": "object"
+      },
+      "AttemptScorePartResponse": {
+        "properties": {
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "number"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "max_score",
+          "percentage",
+          "display"
+        ],
+        "title": "AttemptScorePartResponse",
         "type": "object"
       },
       "AttemptStatus": {
@@ -1120,6 +1323,88 @@
         "title": "ContributionsResponse",
         "type": "object"
       },
+      "DescriptiveFeedbackResponse": {
+        "description": "A descriptive answer's stored evaluation (S08.1 scale, S08.2 storage).",
+        "properties": {
+          "covered_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Concepts",
+            "type": "array"
+          },
+          "display": {
+            "description": "For example \"5/10\"",
+            "title": "Display",
+            "type": "string"
+          },
+          "evaluated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated At"
+          },
+          "evaluator": {
+            "description": "\"llm\" or \"concept-match\"",
+            "title": "Evaluator",
+            "type": "string"
+          },
+          "max_score": {
+            "description": "Always 10",
+            "title": "Max Score",
+            "type": "number"
+          },
+          "missing_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Concepts",
+            "type": "array"
+          },
+          "score": {
+            "description": "0 to 10 in steps of 0.5",
+            "title": "Score",
+            "type": "number"
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "weaknesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Weaknesses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "score",
+          "max_score",
+          "display",
+          "covered_concepts",
+          "missing_concepts",
+          "strengths",
+          "weaknesses",
+          "summary",
+          "evaluator"
+        ],
+        "title": "DescriptiveFeedbackResponse",
+        "type": "object"
+      },
       "Difficulty": {
         "enum": [
           "easy",
@@ -1453,6 +1738,10 @@
             "title": "Auto Submitted",
             "type": "boolean"
           },
+          "breakdown": {
+            "$ref": "#/components/schemas/ScoreBreakdownResponse",
+            "description": "Objective and descriptive parts of the score (S08.2)"
+          },
           "display": {
             "description": "For example \"4/5 (80%)\"",
             "title": "Display",
@@ -1516,7 +1805,8 @@
           "score",
           "max_score",
           "percentage",
-          "display"
+          "display",
+          "breakdown"
         ],
         "title": "HistoryEntryResponse",
         "type": "object"
@@ -2102,6 +2392,24 @@
           "requested"
         ],
         "title": "NotEnoughQuestionsResponse",
+        "type": "object"
+      },
+      "NotEvaluatedResponse": {
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "reason"
+        ],
+        "title": "NotEvaluatedResponse",
         "type": "object"
       },
       "OutcomeResponse": {
@@ -3446,6 +3754,9 @@
             "title": "Answers",
             "type": "array"
           },
+          "breakdown": {
+            "$ref": "#/components/schemas/ScoreBreakdownResponse"
+          },
           "correct": {
             "title": "Correct",
             "type": "integer"
@@ -3454,6 +3765,11 @@
             "description": "For example \"4/5 (80%)\"",
             "title": "Display",
             "type": "string"
+          },
+          "evaluated": {
+            "description": "Descriptive answers evaluated and counted",
+            "title": "Evaluated",
+            "type": "integer"
           },
           "incorrect": {
             "title": "Incorrect",
@@ -3464,7 +3780,7 @@
             "type": "number"
           },
           "pending_evaluation": {
-            "description": "Descriptive answers awaiting S08.1",
+            "description": "Descriptive answers not evaluated yet (POST /attempts/{id}/evaluate)",
             "title": "Pending Evaluation",
             "type": "integer"
           },
@@ -3473,6 +3789,7 @@
             "type": "number"
           },
           "score": {
+            "description": "The total: objective plus evaluated descriptive points",
             "title": "Score",
             "type": "number"
           },
@@ -3502,6 +3819,8 @@
           "incorrect",
           "unattempted",
           "pending_evaluation",
+          "evaluated",
+          "breakdown",
           "submitted_at",
           "answers"
         ],
@@ -3643,6 +3962,69 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "ScoreBreakdownResponse": {
+        "properties": {
+          "descriptive": {
+            "$ref": "#/components/schemas/ScorePartResponse",
+            "description": "Written answers: each 0-10 evaluation scaled to the question's points"
+          },
+          "explanation": {
+            "description": "For example \"Total 3.5/4 = objective 3/3 (\u2026) + descriptive 0.5/1 (\u2026).\"",
+            "title": "Explanation",
+            "type": "string"
+          },
+          "objective": {
+            "$ref": "#/components/schemas/ScorePartResponse",
+            "description": "MCQ, true/false and short answers, marked only against the answer key"
+          },
+          "pending_evaluation": {
+            "title": "Pending Evaluation",
+            "type": "integer"
+          },
+          "total": {
+            "$ref": "#/components/schemas/ScorePartResponse",
+            "description": "objective + descriptive"
+          }
+        },
+        "required": [
+          "objective",
+          "descriptive",
+          "total",
+          "pending_evaluation",
+          "explanation"
+        ],
+        "title": "ScoreBreakdownResponse",
+        "type": "object"
+      },
+      "ScorePartResponse": {
+        "properties": {
+          "display": {
+            "description": "For example \"3/3 (100%)\"",
+            "title": "Display",
+            "type": "string"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "number"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "max_score",
+          "percentage",
+          "display"
+        ],
+        "title": "ScorePartResponse",
+        "type": "object"
       },
       "ServedResponse": {
         "properties": {
@@ -4699,6 +5081,57 @@
         "summary": "Save Answers",
         "tags": [
           "quiz attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/evaluate": {
+      "post": {
+        "description": "Evaluate the written answers of the caller's submitted attempt (FR-08, S08.2).\n\nCall it after submitting. Each descriptive answer is scored 0-10 with concept\nfeedback, as in ``POST /evaluations/descriptive``, and stored in the attempt: its\nscore is scaled to the question's points and added to the total, so\n``GET /attempts/{id}`` and My Quiz History show it from then on. Objective marks\nare never changed (NFR-06). Answers already evaluated are kept as they are, so\ncalling again only evaluates what is still pending. Someone else's attempt is a 404.",
+        "operationId": "evaluate_attempt_api_v1_attempts__attempt_id__evaluate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "title": "Attempt Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptEvaluationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The attempt is still running"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evaluate Attempt",
+        "tags": [
+          "descriptive evaluation"
         ]
       }
     },

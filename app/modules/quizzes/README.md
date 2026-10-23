@@ -4,8 +4,9 @@ Quizzes, their questions, attempts and answers. Owns `quizzes`, `quiz_questions`
 `quiz_attempts` and `attempt_answers`; module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md). Quiz assembly and publishing
 is S05.2 (#25); this README covers **taking a quiz**, story **S06.1** (issue #28,
-FR-06, NFR-01, NFR-06), and **My Quiz History**, story **S06.2** (issue #29, FR-06,
-NFR-04).
+FR-06, NFR-01, NFR-06), **My Quiz History**, story **S06.2** (issue #29, FR-06,
+NFR-04), and **descriptive results beside objective scoring**, story **S08.2**
+(issue #33, FR-08, NFR-06).
 
 Quiz responses carry `creator_name` with `creator_id`, so quizzes contributed in a
 channel are attributed to their author (S03.2).
@@ -49,7 +50,7 @@ while an attempt runs resumes it with its remaining time.
 all-or-nothing by the pure functions in `scoring.py`, never by the LLM (NFR-06). Only
 answered questions are scored; blank ones are stored as `unattempted` (score 0, neither
 correct nor incorrect). Descriptive answers are stored unscored as
-`pending_evaluation` for S08.1. After submission each answer shows its status, the
+`pending_evaluation` until they are evaluated (S08.2, below). After submission each answer shows its status, the
 correct answer and the explanation.
 
 ## My Quiz History (S06.2)
@@ -75,6 +76,29 @@ lost, lock timeout) returns **503** with *"Temporary problem saving your data. N
 from this request was saved and your earlier work is safe; please try again."*;
 retrying works, and attempts committed earlier are untouched.
 
+## Descriptive results beside objective scoring (S08.2)
+
+Submitting never calls the LLM. Afterwards the client calls
+`POST /api/v1/attempts/{id}/evaluate` (LLM module), which evaluates each pending
+written answer 0-10 and stores it here through `service.record_descriptive_evaluation`:
+
+- the answer's `score` becomes its evaluation scaled to the question's points
+  (`7.5/10` on a 1-point question is `0.75`), its status becomes `evaluated`, and
+  `evaluation` holds the stored score, concepts, strengths, weaknesses, summary,
+  evaluator and time. `GET /attempts/{id}` and My Quiz History show it from then on
+  without calling the LLM again (ST_15);
+- the attempt total gains those points. Objective answers cannot be written through
+  this function (`ValueError`), so their marks depend only on `scoring.py` (ST_16,
+  NFR-06).
+
+Every result and history entry carries `breakdown`: `objective` (answer-key marks),
+`descriptive` (evaluations scaled to points), `total` (their sum, equal to
+`score`/`max_score`), `pending_evaluation` and an `explanation`, e.g. *"Total 3.2/4 =
+objective 3/3 (marked automatically against the answer key) + descriptive 0.2/1 (each
+written answer's 0-10 evaluation scaled to the question's points)."* Pending written
+answers count 0 and the explanation says so. Blank written answers are `unattempted`
+and never evaluated.
+
 ## Service interface
 
 `service.start_attempt`, `service.submit_attempt`, `service.get_attempt_result` and
@@ -90,3 +114,6 @@ forward by replacing `attempts.utcnow`.
 `tests/test_quiz_history.py` — `IT_11`, `ST_12` and the NFR-04 transient-failure tests,
 which run the real `get_db` against a file database and inject a failure mid-submit
 and at commit.
+
+`tests/test_descriptive_results.py` — `ST_15`, `ST_16` (each with the LLM faked and
+with concept matching) and the score-breakdown, scaling and NFR-06 tests.
