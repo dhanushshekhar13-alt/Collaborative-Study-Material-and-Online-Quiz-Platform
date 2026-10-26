@@ -2,5 +2,6 @@
 
 Owns tables: study_materials, material_files, material_reviews.
 Public interface: ``app.modules.materials.service``.
-May call the services of: accounts, channels, moderation.
+May call the services of: accounts, channels, moderation, reputation (peer-rating
+reputation, S13.1).
 """

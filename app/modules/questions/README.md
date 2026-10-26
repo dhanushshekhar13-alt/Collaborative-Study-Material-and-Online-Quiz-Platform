@@ -38,7 +38,7 @@ answer the submission is refused with **`Please select the correct answer`** (UT
 | `POST` | `/api/v1/questions` | `question:contribute` | Contribute a question; `channel_id` scopes it to a channel bank. |
 | `GET` | `/api/v1/questions` | bearer | Search one bank: `q` keyword (text, subject, topic, explanation), `subject`, `topic`, `difficulty`, `type`, `channel_id`, `limit`, `offset`. |
 | `GET` | `/api/v1/questions/{id}` | bearer | One question with `rating_average`, `rating_count`, `my_rating`. |
-| `PUT` | `/api/v1/questions/{id}/rating` | bearer | Save a 1–5 star rating; rating again replaces it. |
+| `PUT` | `/api/v1/questions/{id}/rating` | bearer | Save a 1–5 star rating; rating again replaces it. A peer's 4–5 star rating earns the author reputation (S13.1, source `question_rating`); a self-rating counts towards the average but earns nothing. |
 | `POST` | `/api/v1/questions/{id}/reports` | `report:submit` | Report a question (`reason: incorrect` is "Incorrect answer"); logged as an open moderation report, scoped to the question's channel. A repeat while open returns the same report. |
 
 Every question response carries `author_name` with `author_id`, so contributions are

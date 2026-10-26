@@ -349,3 +349,28 @@ def test_S12_1_performance_dashboard_in_the_browser(live_server, browser):
     expect(page.locator("figure.chart")).to_have_count(0)
 
     assert page_errors == []
+
+
+def test_S13_1_leaderboard_screen_in_the_browser(live_server, browser):
+    """The seeded student has 5 reputation, so the leaderboard ranks them first."""
+    from playwright.sync_api import expect
+
+    page = browser.new_page(viewport={"width": 1200, "height": 900})
+    page_errors: list[str] = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+
+    page.goto(live_server + "/")
+    page.fill("[name=username]", "student@example.com")
+    page.fill("[name=password]", "Seed@1234")
+    page.click("button:has-text('Log in')")
+    expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+
+    page.click("#nav >> text=Leaderboard")
+    expect(page.get_by_role("heading", name="Leaderboard")).to_be_visible()
+    first = page.locator(".leaderboard tbody tr").first
+    expect(first).to_contain_text("#1")
+    expect(first).to_contain_text("Sample Student")
+    expect(first).to_contain_text("5")
+    expect(first).to_have_class("mine")
+    expect(page.locator("main")).to_contain_text("You are ranked #1 with 5 reputation.")
+    assert page_errors == []

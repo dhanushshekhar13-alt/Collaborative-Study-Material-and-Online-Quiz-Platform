@@ -240,6 +240,38 @@
     );
   }
 
+  // ---------------------------------------------------------- leaderboard ----
+  // S13.1: contributors ranked by reputation, with the caller's own standing.
+
+  async function leaderboardPage() {
+    const board = await API.get("/leaderboard?limit=50");
+    const mine = board.me.rank
+      ? `You are ranked #${board.me.rank} with ${board.me.reputation} reputation.`
+      : "Earn reputation when peers rate your materials and questions 4 stars or more.";
+    const rows = board.entries.map((e) =>
+      h(
+        "tr",
+        { class: me && e.user_id === me.account.id ? "mine" : "" },
+        h("td", {}, `#${e.rank}`),
+        h("td", {}, e.display_name),
+        h("td", {}, String(e.reputation)),
+        h("td", {}, e.badges.map((code) => h("span", { class: "badge" }, code.replace(/-/g, " ")))),
+      ),
+    );
+    render(
+      h("h1", {}, "Leaderboard"),
+      h("p", { class: "muted" }, mine),
+      rows.length
+        ? h(
+            "table",
+            { class: "leaderboard" },
+            h("thead", {}, h("tr", {}, ["Rank", "Contributor", "Reputation", "Badges"].map((t) => h("th", {}, t)))),
+            h("tbody", {}, rows),
+          )
+        : h("p", { class: "empty muted" }, "No one has earned reputation yet."),
+    );
+  }
+
   function channelRow(channel, { onChange } = {}) {
     const actions = h("div", { class: "row-actions" });
     const status = alertBox();
@@ -631,6 +663,7 @@
       if (page === "register") return registerPage();
       if (page === "profile") return await profilePage();
       if (page === "my-channels") return await myChannelsPage();
+      if (page === "leaderboard") return await leaderboardPage();
       if (page === "performance") return await performancePage();
       if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]));
       if (page === "channels") return await channelsPage(params);

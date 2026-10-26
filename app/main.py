@@ -18,6 +18,7 @@ from app.modules.profiles.router import router as profiles_router
 from app.modules.questions.router import router as questions_router
 from app.modules.quizzes.attempts_router import router as quiz_attempts_router
 from app.modules.quizzes.router import router as quizzes_router
+from app.modules.reputation.router import router as reputation_router
 from app.web import mount_web
 
 API_PREFIX = "/api/v1"
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(assistant_router, prefix=API_PREFIX)
+    app.include_router(reputation_router, prefix=API_PREFIX)
     app.include_router(analytics_router, prefix=API_PREFIX)
 
     mount_web(app)
