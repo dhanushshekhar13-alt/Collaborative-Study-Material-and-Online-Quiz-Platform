@@ -266,6 +266,91 @@ def test_static_files_ship_with_the_package():
     assert '"app.web" = ["static/*"]' in pyproject
 
 
+# --------------------------------------------------------------------------- #
+# S12.1 (#40) - the performance dashboard draws its analytics as charts
+# --------------------------------------------------------------------------- #
+
+
+def test_the_performance_page_draws_charts_with_svg_and_calls_the_dashboard():
+    source = (STATIC_DIR / "app.js").read_text()
+    assert ("get", "/analytics/dashboard") in _ui_calls()
+    assert "createElementNS" in source and '"http://www.w3.org/2000/svg"' in source
+    assert 'href="#/performance"' in (STATIC_DIR / "index.html").read_text()
+
+
+def _signed_in(base: str, login: str) -> dict[str, str]:
+    import httpx
+
+    token = httpx.post(
+        f"{base}{API_PREFIX}/accounts/login", json={"username": login, "password": "Seed@1234"}
+    ).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_S12_1_performance_dashboard_in_the_browser(live_server, browser):
+    """Charts, strong/weak labels, the empty state and phone width (S12.1, NFR-03)."""
+    import httpx
+    from playwright.sync_api import expect
+
+    # The seeded student has one Scheduling attempt; a second, blank one makes two,
+    # enough for the topic to be labelled (2 of 6 points: weak).
+    student = _signed_in(live_server, "student@example.com")
+    history = httpx.get(f"{live_server}{API_PREFIX}/attempts", headers=student).json()
+    quiz_id = history["attempts"][0]["quiz_id"]
+    attempt = httpx.post(f"{live_server}{API_PREFIX}/quizzes/{quiz_id}/attempts", headers=student)
+    assert attempt.status_code == 201, attempt.text
+    attempt = attempt.json()
+    submitted = httpx.post(
+        f"{live_server}{API_PREFIX}/attempts/{attempt['id']}/submit",
+        json={"answers": {}, "confirm": True},
+        headers=student,
+    )
+    assert submitted.status_code == 200, submitted.text
+
+    page = browser.new_page(viewport={"width": 1200, "height": 900})
+    page_errors: list[str] = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+
+    def log_in(who: str) -> None:
+        page.goto(live_server + "/app/#/login")
+        page.fill("[name=username]", who)
+        page.fill("[name=password]", "Seed@1234")
+        page.click("button:has-text('Log in')")
+        expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+
+    log_in("student@example.com")
+    page.click("nav >> text=Performance")
+    expect(page.get_by_role("heading", name="My performance")).to_be_visible()
+    expect(page.locator(".tile", has_text="Attempts")).to_contain_text("2")
+
+    # Charts, not raw numbers only: subject bars, topic bars, overall and subject trends.
+    expect(page.locator("figure.chart svg[role=img]")).to_have_count(4)
+    expect(page.locator("figure.chart", has_text="Accuracy by subject")).to_be_visible()
+    topic_bar = page.locator("svg.bars g.bar.weak[data-label=Scheduling]")
+    expect(topic_bar).to_have_count(1)
+    expect(page.locator("svg.trend").first.locator("circle.point")).to_have_count(2)
+    expect(page.locator(".standing-list.weak")).to_contain_text("Scheduling")
+    expect(page.locator(".standing-list.strong")).to_contain_text("No strong topics yet.")
+
+    # Phone width: the charts scale down without horizontal scrolling.
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.reload()
+    expect(page.get_by_role("heading", name="My performance")).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth") <= 375
+
+    # A user with no attempts sees the empty state, not empty charts.
+    page.set_viewport_size({"width": 1200, "height": 900})
+    page.click("#logout")
+    log_in("faculty@example.com")
+    page.goto(live_server + "/app/#/performance")
+    expect(page.locator(".empty-state")).to_contain_text(
+        "No quiz attempts yet. Attempt a quiz to see your performance here."
+    )
+    expect(page.locator("figure.chart")).to_have_count(0)
+
+    assert page_errors == []
+
+
 def test_S13_1_leaderboard_screen_in_the_browser(live_server, browser):
     """The seeded student has 5 reputation, so the leaderboard ranks them first."""
     from playwright.sync_api import expect

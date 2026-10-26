@@ -1487,6 +1487,107 @@
         "title": "ContributionsResponse",
         "type": "object"
       },
+      "DashboardResponse": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "empty": {
+            "title": "Empty",
+            "type": "boolean"
+          },
+          "empty_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Message"
+          },
+          "not_enough_data": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Not Enough Data",
+            "type": "array"
+          },
+          "strengths": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectResponse"
+            },
+            "title": "Subjects",
+            "type": "array"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdsResponse"
+          },
+          "topics": {
+            "description": "Every topic, by subject then topic",
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "total_possible": {
+            "title": "Total Possible",
+            "type": "number"
+          },
+          "total_score": {
+            "title": "Total Score",
+            "type": "number"
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TrendResponse"
+          },
+          "weak_areas": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Weak Areas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attempts",
+          "total_score",
+          "total_possible",
+          "accuracy",
+          "empty",
+          "empty_message",
+          "subjects",
+          "topics",
+          "trend",
+          "strengths",
+          "weak_areas",
+          "not_enough_data",
+          "thresholds"
+        ],
+        "title": "DashboardResponse",
+        "type": "object"
+      },
       "DescriptiveFeedbackResponse": {
         "description": "A descriptive answer's stored evaluation (S08.1 scale, S08.2 storage).",
         "properties": {
@@ -1576,6 +1677,16 @@
           "hard"
         ],
         "title": "Difficulty",
+        "type": "string"
+      },
+      "Direction": {
+        "enum": [
+          "improving",
+          "steady",
+          "declining",
+          "not_enough_data"
+        ],
+        "title": "Direction",
         "type": "string"
       },
       "EarnedBadgeResponse": {
@@ -4127,6 +4238,75 @@
         "title": "RatingRequest",
         "type": "object"
       },
+      "ReconciliationResponse": {
+        "properties": {
+          "matches": {
+            "title": "Matches",
+            "type": "boolean"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationRow"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "matches",
+          "topics"
+        ],
+        "title": "ReconciliationResponse",
+        "type": "object"
+      },
+      "ReconciliationRow": {
+        "properties": {
+          "recomputed_attempts": {
+            "title": "Recomputed Attempts",
+            "type": "integer"
+          },
+          "recomputed_possible": {
+            "title": "Recomputed Possible",
+            "type": "number"
+          },
+          "recomputed_score": {
+            "title": "Recomputed Score",
+            "type": "number"
+          },
+          "stored_attempts": {
+            "title": "Stored Attempts",
+            "type": "integer"
+          },
+          "stored_possible": {
+            "title": "Stored Possible",
+            "type": "number"
+          },
+          "stored_score": {
+            "title": "Stored Score",
+            "type": "number"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "stored_attempts",
+          "stored_score",
+          "stored_possible",
+          "recomputed_attempts",
+          "recomputed_score",
+          "recomputed_possible"
+        ],
+        "title": "ReconciliationRow",
+        "type": "object"
+      },
       "RegistrationRequest": {
         "properties": {
           "display_name": {
@@ -4622,6 +4802,16 @@
         "title": "ServedResponse",
         "type": "object"
       },
+      "Standing": {
+        "enum": [
+          "strong",
+          "developing",
+          "weak",
+          "not_enough_data"
+        ],
+        "title": "Standing",
+        "type": "string"
+      },
       "StartResponse": {
         "properties": {
           "attempt_id": {
@@ -4650,6 +4840,58 @@
         "title": "StartResponse",
         "type": "object"
       },
+      "SubjectResponse": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "total_possible": {
+            "title": "Total Possible",
+            "type": "number"
+          },
+          "total_score": {
+            "title": "Total Score",
+            "type": "number"
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TrendResponse"
+          }
+        },
+        "required": [
+          "subject",
+          "attempts",
+          "total_score",
+          "total_possible",
+          "accuracy",
+          "topics",
+          "trend"
+        ],
+        "title": "SubjectResponse",
+        "type": "object"
+      },
       "SubmitRequest": {
         "properties": {
           "answers": {
@@ -4675,6 +4917,32 @@
           }
         },
         "title": "SubmitRequest",
+        "type": "object"
+      },
+      "ThresholdsResponse": {
+        "properties": {
+          "min_attempts": {
+            "description": "Attempts a topic needs before it is labelled",
+            "title": "Min Attempts",
+            "type": "integer"
+          },
+          "strong_at": {
+            "description": "Accuracy (percent) at or above which a topic is strong",
+            "title": "Strong At",
+            "type": "number"
+          },
+          "weak_below": {
+            "description": "Accuracy (percent) below which a topic is weak",
+            "title": "Weak Below",
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_attempts",
+          "strong_at",
+          "weak_below"
+        ],
+        "title": "ThresholdsResponse",
         "type": "object"
       },
       "TokenResponse": {
@@ -4798,6 +5066,163 @@
           "start_path"
         ],
         "title": "TopicQuizResponse",
+        "type": "object"
+      },
+      "TopicResponse": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Percent of points earned; null if none possible",
+            "title": "Accuracy"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "standing": {
+            "$ref": "#/components/schemas/Standing"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          },
+          "total_possible": {
+            "title": "Total Possible",
+            "type": "number"
+          },
+          "total_score": {
+            "title": "Total Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "attempts",
+          "total_score",
+          "total_possible",
+          "accuracy",
+          "standing"
+        ],
+        "title": "TopicResponse",
+        "type": "object"
+      },
+      "TrendPointResponse": {
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "integer"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "integer"
+          },
+          "quiz_title": {
+            "title": "Quiz Title",
+            "type": "string"
+          },
+          "running_accuracy": {
+            "description": "Accuracy over every attempt up to this one",
+            "title": "Running Accuracy",
+            "type": "number"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "quiz_id",
+          "quiz_title",
+          "subject",
+          "topic",
+          "submitted_at",
+          "percentage",
+          "running_accuracy"
+        ],
+        "title": "TrendPointResponse",
+        "type": "object"
+      },
+      "TrendResponse": {
+        "properties": {
+          "direction": {
+            "$ref": "#/components/schemas/Direction"
+          },
+          "line_end": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line End"
+          },
+          "line_start": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Start"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPointResponse"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "slope": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Least-squares slope, percentage points per attempt",
+            "title": "Slope"
+          }
+        },
+        "required": [
+          "points",
+          "slope",
+          "direction",
+          "line_start",
+          "line_end"
+        ],
+        "title": "TrendResponse",
         "type": "object"
       },
       "UnansweredResponse": {
@@ -5704,6 +6129,60 @@
         "summary": "Add To Quiz",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/analytics/dashboard": {
+      "get": {
+        "description": "The caller's performance by subject and topic, trends and strong/weak topics.",
+        "operationId": "my_dashboard_api_v1_analytics_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Dashboard",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/reconciliation": {
+      "get": {
+        "description": "Stored figures beside the same figures recomputed from the raw attempts.\n\nRead-only: it does not sync first, so it shows whether the stored figures already\nagree with the attempt records.",
+        "operationId": "my_reconciliation_api_v1_analytics_reconciliation_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Reconciliation",
+        "tags": [
+          "analytics"
         ]
       }
     },

@@ -480,3 +480,34 @@ No schema change: `reputation_events`, `badges` and `user_badges` exist since mi
 `0001`, and badge rows are created on first award. New routes `GET /api/v1/leaderboard`,
 `GET /api/v1/reputation/me` and `GET /api/v1/badges`; `docs/api/openapi-v1.json` is
 regenerated. The existing ST_02 profile test (50 points, one badge) is unchanged.
+
+## S12.1 (#40) — Performance tracking and analytics dashboard
+
+Test Plan cases are automated in `tests/test_analytics.py` under their case IDs, run
+against `GET /api/v1/analytics/dashboard` with attempts taken through the real
+`/attempts` endpoints. The charts are checked in a browser by
+`tests/test_web_ui.py::test_S12_1_performance_dashboard_in_the_browser` (Playwright +
+Chromium against a live, seeded server; skipped where Chromium is not installed).
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| — | Each attempt updates the user's aggregate accuracy and attempt count | `test_each_attempt_updates_the_stored_accuracy_and_attempt_count`, `test_a_later_descriptive_evaluation_replaces_the_attempts_earlier_contribution`, `test_an_attempt_closed_by_its_timer_is_counted` | Pass |
+| — | Stored figures reconcile exactly with individual attempt records | `test_stored_figures_reconcile_exactly_with_the_attempt_records`, `test_attempts_the_event_missed_or_that_were_deleted_are_reconciled_on_read`, `test_the_dashboard_repairs_figures_that_drifted_from_the_attempts` | Pass |
+| — | Recomputation from raw attempts produces the same aggregates | `test_recomputation_from_raw_attempts_produces_the_same_aggregates` | Pass |
+| `UT_23` | The dashboard shows performance grouped by subject and topic with trend over time | `test_UT_23_dashboard_shows_DBMS_at_80_and_OS_at_60_matching_quiz_history`, `test_each_subject_has_its_own_trend_over_time` | Pass |
+| `IT_23` | The trend updates as soon as a new attempt is recorded | `test_IT_23_trend_includes_the_new_attempt_and_the_updated_line`, `test_trend_direction_needs_at_least_two_attempts` | Pass |
+| — | Analytics are presented as charts or graphs, not raw numbers only | `test_S12_1_performance_dashboard_in_the_browser`, `test_the_performance_page_draws_charts_with_svg_and_calls_the_dashboard` | Pass (browser test run locally with Chromium) |
+| — | A new user with no attempts sees a clear empty state | `test_a_new_user_with_no_attempts_sees_a_clear_empty_state`, `test_a_running_attempt_does_not_end_the_empty_state`, `test_S12_1_performance_dashboard_in_the_browser` | Pass |
+| `UT_24` | Weak and strong topics are derived from accuracy per topic and labelled as such | `test_UT_24_normalization_at_90_is_a_strength_and_indexing_at_40_is_weak`, `test_a_topic_between_the_thresholds_is_developing`, `test_classification_thresholds` | Pass |
+| — | The classification updates as new attempts are recorded | `test_the_classification_updates_as_new_attempts_are_recorded` | Pass |
+| — | Topics with too little data are excluded rather than mislabelled | `test_topics_with_too_little_data_are_excluded_not_mislabelled`, `test_classification_thresholds` | Pass |
+| — | Each user sees only their own performance; sign-in required | `test_each_user_sees_only_their_own_performance`, `test_the_dashboard_needs_a_signed_in_user` | Pass |
+
+Schema change: migration `0009` adds `performance_attempts` and `performance_topics`
+(analytics module). Existing attempts are folded in on the user's first dashboard read.
+Analytics now depends on accounts (route guard) and quizzes; quizzes does not depend on
+analytics: it publishes `quizzes.attempt_scored` through `app/core/events.py`.
+Manually verified on a seeded SQLite database with ten attempts across three subjects:
+the Performance page shows the tiles, subject and topic bar charts (topics coloured by
+standing, with the 50% and 75% threshold lines), the overall and per-subject trend
+charts with the fitted line, and the strengths and weak areas, in light and dark mode.
