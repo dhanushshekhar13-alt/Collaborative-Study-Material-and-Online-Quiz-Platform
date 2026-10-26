@@ -44,7 +44,12 @@ ENTITIES_BY_REQUIREMENT = {
         "direct_messages",
         "user_blocks",
     },
-    "FR-12 performance analytics": {"quiz_attempts", "attempt_answers"},
+    "FR-12 performance analytics": {
+        "quiz_attempts",
+        "attempt_answers",
+        "performance_attempts",
+        "performance_topics",
+    },
     "FR-13 reputation, badges, reports": {"reputation_events", "badges", "user_badges", "reports"},
     "FR-14 notifications and admin actions": {
         "notifications",

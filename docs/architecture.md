@@ -29,7 +29,7 @@ public service interface keeps its promises (NFR-07).
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | accounts, channels, questions |
 | llm | FR-07, FR-08, FR-09 | llm_requests, adaptive_sessions | accounts, channels, questions, quizzes |
 | chat | FR-10, FR-11 | channel_messages, conversations, conversation_participants, direct_messages, user_blocks | accounts, channels |
-| analytics | FR-12 | none (derived from quiz attempts) | quizzes |
+| analytics | FR-12 | performance_attempts, performance_topics (rebuildable from quiz attempts) | accounts, quizzes |
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
 | notifications | FR-14 | notifications, notification_preferences | – |
@@ -62,6 +62,14 @@ Quiz scoring lives in `app/modules/quizzes/scoring.py` as pure functions. No mod
 that quizzes depends on can reach chat, so a change to chat can never require a change
 to scoring (checked by `test_quiz_scoring_does_not_depend_on_chat` and
 `test_chat_activity_does_not_change_quiz_scores`).
+
+Performance analytics (S12.1) keeps stored figures without making quizzes depend on
+analytics: quizzes publishes `quizzes.attempt_scored` through the in-process event hub
+in `app/core/events.py`, and analytics subscribes to it. Handlers run in the
+publisher's transaction, so an attempt and its analytics figures commit together.
+Analytics also reconciles the figures with the raw attempts before the dashboard is
+read, so a missed event can never leave them wrong. See
+`app/modules/analytics/README.md`.
 
 Cross-cutting references that point at "any content" (a shared resource in a chat
 message, the target of a report) are stored as a type plus an id rather than a
@@ -101,6 +109,8 @@ erDiagram
   badges ||--o{ user_badges : awarded
   users ||--o{ notifications : receives
   users ||--o{ notification_preferences : sets
+  users ||--o{ performance_attempts : contributes
+  users ||--o{ performance_topics : aggregates
 ```
 
 ## Migrations and seed data

@@ -20,6 +20,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import events
 from app.modules.questions import service as questions
 from app.modules.quizzes.models import (
     AttemptAnswer,
@@ -34,6 +35,11 @@ from app.modules.quizzes.scoring import score_objective
 # A manual submit that reaches the server this soon after the limit still counts as
 # on time, so network latency at the last second does not cost the answers in it.
 SUBMIT_GRACE = timedelta(seconds=5)
+
+# Published (with ``attempt_id``) whenever an attempt's score is set or changes: on
+# submit, on auto-submit at the time limit and when a descriptive answer is evaluated.
+# Analytics (S12.1) folds it into the user's stored performance figures.
+ATTEMPT_SCORED = "quizzes.attempt_scored"
 
 
 def utcnow() -> datetime:
@@ -342,6 +348,7 @@ def _finalise(db: Session, attempt: QuizAttempt, now: datetime, *, auto: bool) -
     # An attempt closed by the timer is recorded as submitted at its limit.
     attempt.submitted_at = _aware(attempt.expires_at) if auto else now
     db.flush()
+    events.publish(ATTEMPT_SCORED, db, attempt_id=attempt.id)
 
 
 def save_answers(db: Session, attempt_id: int, responses: dict[int, str | None]) -> None:
@@ -619,6 +626,7 @@ def record_descriptive(
     row.feedback = {**feedback, "score": score, "max_score": max_score}
     attempt.score = _points((attempt.score or 0.0) - previous + earned)
     db.flush()
+    events.publish(ATTEMPT_SCORED, db, attempt_id=attempt.id)
     return earned
 
 

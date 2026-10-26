@@ -5,6 +5,7 @@ models here.
 """
 
 from app.modules.accounts import models as accounts  # noqa: F401
+from app.modules.analytics import models as analytics  # noqa: F401
 from app.modules.channels import models as channels  # noqa: F401
 from app.modules.chat import models as chat  # noqa: F401
 from app.modules.llm import models as llm  # noqa: F401

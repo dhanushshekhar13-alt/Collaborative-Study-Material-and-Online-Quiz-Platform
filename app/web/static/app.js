@@ -1,4 +1,4 @@
-// StudyHub web UI (UI-1): register, log in, profile, channels.
+// StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance.
 // Hash routes keep this a set of static files with no build step. All text from the
 // server is inserted with textContent, never as HTML.
 "use strict";
@@ -439,6 +439,173 @@
     );
   }
 
+  // ------------------------------------------------- performance (S12.1) ----
+  // Charts are inline SVG built with createElementNS; text goes in via textContent.
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  function s(tag, attrs = {}, ...children) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (value !== undefined && value !== null) el.setAttribute(key, String(value));
+    }
+    for (const child of children.flat()) {
+      if (child === null || child === undefined) continue;
+      el.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    }
+    return el;
+  }
+
+  const STANDING_LABEL = {
+    strong: "Strong",
+    developing: "Developing",
+    weak: "Weak",
+    not_enough_data: "Not enough data",
+  };
+  const DIRECTION_LABEL = {
+    improving: "Improving",
+    steady: "Steady",
+    declining: "Declining",
+    not_enough_data: "Not enough attempts for a trend",
+  };
+
+  function pct(value) {
+    return value === null || value === undefined ? "—" : `${Number(value).toFixed(1).replace(/\.0$/, "")}%`;
+  }
+
+  function chart(title, description, svg) {
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", description);
+    svg.prepend(s("title", {}, description));
+    return h("figure", { class: "chart" }, h("figcaption", {}, title), svg);
+  }
+
+  // Horizontal bars, 0-100%, with optional dashed threshold lines.
+  function barChart(rows, { thresholds = [] } = {}) {
+    const label = 150, width = 560, bar = 22, gap = 12, top = 8;
+    const plot = width - label - 60;
+    const height = top + rows.length * (bar + gap) + 18;
+    const x = (v) => label + (plot * Math.max(0, Math.min(100, v))) / 100;
+    const svg = s("svg", { class: "bars", viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "xMinYMin meet" });
+    for (const t of thresholds) {
+      svg.append(
+        s("line", { class: `threshold ${t.cls}`, x1: x(t.value), x2: x(t.value), y1: top - 4, y2: height - 16 }),
+        s("text", { class: "axis", x: x(t.value), y: height - 4, "text-anchor": "middle" }, `${t.value}%`),
+      );
+    }
+    rows.forEach((row, i) => {
+      const y = top + i * (bar + gap);
+      const g = s("g", { class: `bar ${row.cls || ""}`, "data-label": row.label });
+      g.append(
+        s("text", { class: "label", x: label - 8, y: y + bar / 2 + 5, "text-anchor": "end" }, row.label),
+        s("rect", { class: "track", x: label, y, width: plot, height: bar, rx: 4 }),
+        s("rect", { class: "fill", x: label, y, width: Math.max(0, x(row.value ?? 0) - label), height: bar, rx: 4 }),
+        s("text", { class: "value", x: x(row.value ?? 0) + 6, y: y + bar / 2 + 5 }, pct(row.value)),
+        s("title", {}, `${row.label}: ${pct(row.value)}${row.note ? ` — ${row.note}` : ""}`),
+      );
+      svg.append(g);
+    });
+    return svg;
+  }
+
+  // Each attempt's percentage in order, with the fitted trend line dashed.
+  function trendChart(trend) {
+    const width = 560, height = 220, left = 40, right = 16, top = 12, bottom = 28;
+    const pts = trend.points;
+    const n = pts.length;
+    const x = (i) => left + (n > 1 ? ((width - left - right) * i) / (n - 1) : (width - left - right) / 2);
+    const y = (v) => top + ((height - top - bottom) * (100 - v)) / 100;
+    const svg = s("svg", { class: "trend", viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "xMinYMin meet" });
+    for (const v of [0, 25, 50, 75, 100]) {
+      svg.append(
+        s("line", { class: "grid-line", x1: left, x2: width - right, y1: y(v), y2: y(v) }),
+        s("text", { class: "axis", x: left - 6, y: y(v) + 4, "text-anchor": "end" }, `${v}%`),
+      );
+    }
+    if (trend.line_start !== null && n > 1) {
+      svg.append(s("line", { class: "fit", x1: x(0), y1: y(trend.line_start), x2: x(n - 1), y2: y(trend.line_end) }));
+    }
+    if (n > 1) svg.append(s("polyline", { class: "series", points: pts.map((p, i) => `${x(i)},${y(p.percentage)}`).join(" ") }));
+    pts.forEach((p, i) => {
+      const when = new Date(p.submitted_at).toLocaleString();
+      svg.append(
+        s("circle", { class: "point", cx: x(i), cy: y(p.percentage), r: 4.5, "data-attempt": p.attempt_id },
+          s("title", {}, `${p.quiz_title} (${p.topic}) — ${pct(p.percentage)} on ${when}`)),
+      );
+    });
+    svg.append(s("text", { class: "axis", x: (left + width - right) / 2, y: height - 6, "text-anchor": "middle" }, "Attempts, oldest to newest"));
+    return svg;
+  }
+
+  function topicList(title, items, cls, emptyText) {
+    return h(
+      "section",
+      { class: `card standing-list ${cls}` },
+      h("h2", {}, title),
+      items.length
+        ? h("ul", {}, items.map((t) => h("li", {}, h("strong", {}, t.topic), ` (${t.subject}) — ${pct(t.accuracy)} over ${t.attempts} attempts`)))
+        : h("p", { class: "muted" }, emptyText),
+    );
+  }
+
+  async function performancePage() {
+    const d = await API.get("/analytics/dashboard");
+    if (d.empty) {
+      return render(
+        h("h1", {}, "My performance"),
+        h("section", { class: "card empty-state" },
+          h("h2", {}, "Nothing to show yet"),
+          h("p", {}, d.empty_message),
+          h("a", { href: "#/channels" }, "Find a channel with quizzes")),
+      );
+    }
+    const t = d.thresholds;
+    const tiles = h(
+      "div", { class: "tiles" },
+      [["Attempts", d.attempts], ["Accuracy", pct(d.accuracy)], ["Points", `${d.total_score} / ${d.total_possible}`],
+        ["Trend", DIRECTION_LABEL[d.trend.direction]]].map(([k, v]) => h("div", { class: "tile" }, h("span", { class: "muted" }, k), h("strong", {}, String(v)))),
+    );
+    const subjectChart = chart(
+      "Accuracy by subject",
+      "Accuracy by subject: " + d.subjects.map((x) => `${x.subject} ${pct(x.accuracy)}`).join(", "),
+      barChart(d.subjects.map((x) => ({ label: x.subject, value: x.accuracy, note: `${x.attempts} attempts` }))),
+    );
+    const topicChart = chart(
+      "Accuracy by topic",
+      "Accuracy by topic: " + d.topics.map((x) => `${x.topic} ${pct(x.accuracy)} (${STANDING_LABEL[x.standing]})`).join(", "),
+      barChart(
+        d.topics.map((x) => ({ label: x.topic, value: x.accuracy, cls: x.standing, note: `${x.subject}, ${STANDING_LABEL[x.standing]}` })),
+        { thresholds: [{ value: t.weak_below, cls: "weak" }, { value: t.strong_at, cls: "strong" }] },
+      ),
+    );
+    const legend = h("p", { class: "legend muted" },
+      ["strong", "developing", "weak", "not_enough_data"].map((k) => h("span", { class: `key ${k}` }, STANDING_LABEL[k])),
+      ` Topics need ${t.min_attempts} attempts before they are labelled.`);
+    const overallTrend = chart(
+      "Score trend over time",
+      `Score trend: ${d.trend.points.map((p) => pct(p.percentage)).join(", ")}. ${DIRECTION_LABEL[d.trend.direction]}.`,
+      trendChart(d.trend),
+    );
+    const subjectTrends = d.subjects.map((x) =>
+      h("section", { class: "card" },
+        chart(`${x.subject} — ${DIRECTION_LABEL[x.trend.direction]}`,
+          `${x.subject} trend: ${x.trend.points.map((p) => pct(p.percentage)).join(", ")}`, trendChart(x.trend))));
+    render(
+      h("h1", {}, "My performance"),
+      tiles,
+      h("div", { class: "grid even" },
+        topicList("Strengths", d.strengths, "strong", "No strong topics yet."),
+        topicList("Weak areas", d.weak_areas, "weak", "No weak topics. Nice work!")),
+      h("p", { class: "muted not-enough", hidden: !d.not_enough_data.length },
+        "Not enough data yet: ", d.not_enough_data.map((x) => x.topic).join(", ")),
+      h("section", { class: "card" }, subjectChart),
+      h("section", { class: "card" }, topicChart, legend),
+      h("section", { class: "card" }, overallTrend),
+      h("h2", {}, "Trend by subject"),
+      h("div", { class: "grid even" }, subjectTrends),
+    );
+  }
+
   // --------------------------------------------------------------- router ----
 
   const PUBLIC = new Set(["login", "register"]);
@@ -464,6 +631,7 @@
       if (page === "register") return registerPage();
       if (page === "profile") return await profilePage();
       if (page === "my-channels") return await myChannelsPage();
+      if (page === "performance") return await performancePage();
       if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]));
       if (page === "channels") return await channelsPage(params);
       render(h("h1", {}, "Page not found"), h("a", { href: "#/channels" }, "Go to channels"));
