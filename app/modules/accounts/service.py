@@ -15,6 +15,7 @@ only needs this module's public interface::
         ...
 """
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import cache
@@ -95,6 +96,14 @@ def create_user(
 def get_user(db: Session, user_id: int) -> UserSummary | None:
     user = db.get(User, user_id)
     return _summary(user) if user else None
+
+
+def get_users(db: Session, user_ids: Collection[int]) -> dict[int, UserSummary]:
+    """Several users at once, keyed by id; unknown ids are left out (S13.1 leaderboard)."""
+    ids = set(user_ids)
+    if not ids:
+        return {}
+    return {u.id: _summary(u) for u in db.scalars(select(User).where(User.id.in_(ids)))}
 
 
 def get_user_by_email(db: Session, email: str) -> UserSummary | None:
@@ -355,6 +364,7 @@ __all__ = [
     "get_profile_picture",
     "get_user",
     "get_user_by_email",
+    "get_users",
     "list_accounts",
     "register_account",
     "remove_profile_picture",

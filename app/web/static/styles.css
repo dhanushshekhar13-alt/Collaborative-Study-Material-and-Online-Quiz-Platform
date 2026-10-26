@@ -163,3 +163,9 @@ button:disabled { opacity: 0.6; cursor: progress; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; }
 .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; float: right; }
+
+/* S13.1 leaderboard */
+.leaderboard { width: 100%; border-collapse: collapse; }
+.leaderboard th,
+.leaderboard td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+.leaderboard tr.mine { font-weight: 600; }

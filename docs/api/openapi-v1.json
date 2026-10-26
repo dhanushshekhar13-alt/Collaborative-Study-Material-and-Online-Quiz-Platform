@@ -1019,6 +1019,39 @@
         "title": "AttemptStatus",
         "type": "string"
       },
+      "BadgeLevelResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "earned": {
+            "title": "Earned",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "description",
+          "threshold",
+          "earned"
+        ],
+        "title": "BadgeLevelResponse",
+        "type": "object"
+      },
       "BadgeResponse": {
         "properties": {
           "code": {
@@ -1545,6 +1578,42 @@
         "title": "Difficulty",
         "type": "string"
       },
+      "EarnedBadgeResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "earned_at": {
+            "format": "date-time",
+            "title": "Earned At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "description",
+          "earned_at"
+        ],
+        "title": "EarnedBadgeResponse",
+        "type": "object"
+      },
       "EvaluationRequest": {
         "properties": {
           "answer": {
@@ -1963,6 +2032,79 @@
           "breakdown"
         ],
         "title": "HistoryEntryResponse",
+        "type": "object"
+      },
+      "LeaderboardResponse": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/LeaderboardRow"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "me": {
+            "$ref": "#/components/schemas/MyStanding"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entries",
+          "total",
+          "me"
+        ],
+        "title": "LeaderboardResponse",
+        "type": "object"
+      },
+      "LeaderboardRow": {
+        "properties": {
+          "badges": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Badges",
+            "type": "array"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "reputation": {
+            "title": "Reputation",
+            "type": "integer"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "rank",
+          "user_id",
+          "display_name",
+          "username",
+          "reputation",
+          "badges"
+        ],
+        "title": "LeaderboardRow",
         "type": "object"
       },
       "LoginRequest": {
@@ -2614,6 +2756,77 @@
           "created_at"
         ],
         "title": "MessageResponse",
+        "type": "object"
+      },
+      "MyReputationResponse": {
+        "properties": {
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/EarnedBadgeResponse"
+            },
+            "title": "Badges",
+            "type": "array"
+          },
+          "event_count": {
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ReputationEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "reputation": {
+            "title": "Reputation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reputation",
+          "rank",
+          "badges",
+          "events",
+          "event_count"
+        ],
+        "title": "MyReputationResponse",
+        "type": "object"
+      },
+      "MyStanding": {
+        "properties": {
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "reputation": {
+            "title": "Reputation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rank",
+          "reputation"
+        ],
+        "title": "MyStanding",
         "type": "object"
       },
       "NotEnoughQuestionsResponse": {
@@ -4034,6 +4247,59 @@
           "message"
         ],
         "title": "ReportResponse",
+        "type": "object"
+      },
+      "ReputationEventResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          }
+        },
+        "required": [
+          "id",
+          "points",
+          "reason",
+          "source_type",
+          "source_id",
+          "created_at"
+        ],
+        "title": "ReputationEventResponse",
         "type": "object"
       },
       "ResultResponse": {
@@ -5723,6 +5989,37 @@
         ]
       }
     },
+    "/api/v1/badges": {
+      "get": {
+        "description": "Every badge level, lowest threshold first, with whether the caller has earned it.",
+        "operationId": "read_badges_api_v1_badges_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BadgeLevelResponse"
+                  },
+                  "title": "Response Read Badges Api V1 Badges Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Badges",
+        "tags": [
+          "reputation"
+        ]
+      }
+    },
     "/api/v1/channels": {
       "get": {
         "description": "Channels the caller can see, with their type label (ST_04).\n\nPending or rejected Authorized Channels are visible only to the requester and to\nadmins; once approved they appear for everyone (ST_27).",
@@ -6707,6 +7004,68 @@
         "summary": "Evaluate Descriptive",
         "tags": [
           "descriptive evaluation"
+        ]
+      }
+    },
+    "/api/v1/leaderboard": {
+      "get": {
+        "description": "Contributors ranked by current reputation, highest first (UT_26).\n\nOnly users with positive reputation are listed; equal totals share a rank.\n``me`` is the caller's own rank (``null`` until they have reputation).",
+        "operationId": "read_leaderboard_api_v1_leaderboard_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaderboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Leaderboard",
+        "tags": [
+          "reputation"
         ]
       }
     },
@@ -8390,6 +8749,68 @@
         "summary": "Publish Quiz",
         "tags": [
           "quizzes"
+        ]
+      }
+    },
+    "/api/v1/reputation/me": {
+      "get": {
+        "description": "The caller's reputation, rank, badges and the events behind the total, newest first.",
+        "operationId": "read_my_reputation_api_v1_reputation_me_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyReputationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Reputation",
+        "tags": [
+          "reputation"
         ]
       }
     },

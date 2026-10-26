@@ -89,6 +89,9 @@ listings show them the same way everywhere (UT_07).
 - Uploaders cannot rate or mark their own material (**403** `You can't rate or mark
   your own material as helpful`), so nobody can lift their own work.
 - A blank review is stored as a rating only and not listed as a review.
+- A rating of 4 or 5 stars earns the uploader reputation (S13.1), through
+  `reputation.record_peer_rating` with source `material_review` / the review row's id.
+  See [`../reputation/README.md`](../reputation/README.md).
 
 ## Reporting (S04.2)
 

@@ -19,6 +19,7 @@ from app.modules.questions.models import (
     QuestionStatus,
     QuestionType,
 )
+from app.modules.reputation import service as reputation
 
 
 @dataclass(frozen=True)
@@ -279,11 +280,15 @@ def search_bank(
     return _bank(db, rows, viewer_id)
 
 
+QUESTION_RATING_SOURCE = "question_rating"
+
+
 def rate_question(db: Session, question_id: int, user_id: int, rating: int) -> BankQuestion:
     """Save the user's 1-5 rating; rating again replaces their earlier rating."""
     if not 1 <= rating <= 5:
         raise ValueError("rating must be between 1 and 5")
-    if db.get(Question, question_id) is None:
+    question = db.get(Question, question_id)
+    if question is None:
         raise LookupError(f"question {question_id} not found")
     existing = db.scalar(
         select(QuestionRating).where(
@@ -291,10 +296,19 @@ def rate_question(db: Session, question_id: int, user_id: int, rating: int) -> B
         )
     )
     if existing is None:
-        db.add(QuestionRating(question_id=question_id, user_id=user_id, rating=rating))
+        existing = QuestionRating(question_id=question_id, user_id=user_id, rating=rating)
+        db.add(existing)
     else:
         existing.rating = rating
     db.flush()
+    reputation.record_peer_rating(
+        db,
+        contributor_id=question.author_id,
+        rater_id=user_id,
+        rating=rating,
+        source_type=QUESTION_RATING_SOURCE,
+        source_id=existing.id,
+    )
     return get_bank_question(db, question_id, user_id)
 
 

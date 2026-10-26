@@ -459,3 +459,24 @@ seeded message, sends one that comes back with their name and time, a blank one 
 refused with `Message cannot be empty`, the admin (not a member) is refused with
 `Join the channel to view this chat`, and paging with `limit=1` then `before` walks
 back through both messages in order.
+
+## S13.1 (#42) — Reputation, badges and contributor leaderboard
+
+Test Plan cases are automated in `tests/test_reputation.py` under their case IDs, run
+against the endpoints the UI uses (`PUT /materials/{id}/review`,
+`PUT /questions/{id}/rating`, `GET /profiles/me`, `GET /leaderboard`). Defaults: a
+rating of 4–5 stars earns 5 points; "Top Contributor" is awarded at 100.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `UT_25` | A positive peer rating increases the contributor's reputation by the configured amount | `test_UT_25_positive_peer_rating_adds_the_configured_points` (100 → 105), `test_positive_question_rating_also_increases_reputation`, `test_points_follow_the_configured_amount_and_threshold`, `test_low_ratings_do_not_add_reputation`, `test_rating_again_counts_once_and_lowering_it_withdraws_the_points` | Pass |
+| — | Reputation events are recorded with their source for auditability | `test_reputation_events_record_their_source` | Pass |
+| — | Reputation does not change on a self-rating | `test_self_rating_does_not_change_reputation` | Pass |
+| `ST_26` | Crossing a reputation threshold awards the corresponding badge | `test_ST_26_reaching_the_threshold_through_ratings_awards_top_contributor` (90 + 3 × 5 → "Top Contributor"), `test_crossing_each_threshold_awards_its_badge_once`, `test_badges_are_kept_when_reputation_later_drops` | Pass |
+| `UT_26` | The leaderboard order matches current reputation totals | `test_UT_26_leaderboard_reflects_updated_reputation_totals`, `test_leaderboard_order_matches_current_totals_with_shared_ranks`, `test_leaderboard_pages_and_shows_the_callers_rank`, `test_leaderboard_lists_badges_and_needs_sign_in`, `tests/test_web_ui.py::test_S13_1_leaderboard_screen_in_the_browser` | Pass |
+| `ST_26` | Badge awards appear on the user's profile | `test_ST_26_reaching_the_threshold_through_ratings_awards_top_contributor`, `test_badge_awards_appear_on_the_users_profile` (own and public profile, `/badges` catalogue) | Pass |
+
+No schema change: `reputation_events`, `badges` and `user_badges` exist since migration
+`0001`, and badge rows are created on first award. New routes `GET /api/v1/leaderboard`,
+`GET /api/v1/reputation/me` and `GET /api/v1/badges`; `docs/api/openapi-v1.json` is
+regenerated. The existing ST_02 profile test (50 points, one badge) is unchanged.

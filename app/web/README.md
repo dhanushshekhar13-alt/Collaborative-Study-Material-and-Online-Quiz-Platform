@@ -14,7 +14,7 @@ origin as the API, so no CORS setup is needed.
 | --- | --- |
 | `static/index.html` | The shell: top bar, nav, and the `<main>` the pages render into. |
 | `static/api.js` | `API.get/post/patch/del` for `/api/v1`. It adds the bearer token, turns error responses into `ApiError(status, detail)` and sends the user back to Log in when a token expires. |
-| `static/app.js` | Hash routes (`#/login`, `#/register`, `#/channels`, `#/channels/<id>`, `#/my-channels`, `#/profile`), one function per page. |
+| `static/app.js` | Hash routes (`#/login`, `#/register`, `#/channels`, `#/channels/<id>`, `#/my-channels`, `#/profile`, `#/leaderboard` (S13.1)), one function per page. |
 | `static/styles.css` | Design tokens on `:root` with a dark-mode set, and the `channel-normal` / `channel-authorized` badge styles named by the API's `type_style`. |
 
 ## Rules for adding screens

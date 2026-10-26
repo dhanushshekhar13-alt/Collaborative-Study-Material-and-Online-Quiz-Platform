@@ -16,6 +16,7 @@ from app.modules.materials.models import (
     MaterialType,
     StudyMaterial,
 )
+from app.modules.reputation import service as reputation
 
 
 @dataclass(frozen=True)
@@ -492,6 +493,9 @@ def _own_review(db: Session, material_id: int, user_id: int) -> MaterialReview:
     return row
 
 
+MATERIAL_RATING_SOURCE = "material_review"
+
+
 def rate_material(
     db: Session, material_id: int, user_id: int, rating: int, review: str | None = None
 ) -> MaterialFeedback:
@@ -506,6 +510,16 @@ def rate_material(
     row.rating = rating
     row.review = (review or "").strip() or None
     db.flush()
+    material = db.get(StudyMaterial, material_id)
+    if material is not None:
+        reputation.record_peer_rating(
+            db,
+            contributor_id=material.uploader_id,
+            rater_id=user_id,
+            rating=rating,
+            source_type=MATERIAL_RATING_SOURCE,
+            source_id=row.id,
+        )
     return feedback_for(db, [material_id], user_id)[material_id]
 
 

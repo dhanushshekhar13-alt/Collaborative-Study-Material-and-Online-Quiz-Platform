@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # questions. "warn" asks them to confirm first; "block" refuses until all are answered.
     quiz_unanswered_rule: Literal["warn", "block"] = "warn"
 
+    # Peer reputation (S13.1): points a contributor earns when a peer rates their
+    # material or question at least ``reputation_positive_rating`` stars.
+    reputation_points_per_positive_rating: int = 5
+    reputation_positive_rating: int = 4
+
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = ""
 
