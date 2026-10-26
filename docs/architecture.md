@@ -28,7 +28,7 @@ public service interface keeps its promises (NFR-07).
 | questions | FR-05, FR-07 | questions, question_ratings | accounts, channels, moderation |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | accounts, channels, questions |
 | llm | FR-07, FR-08, FR-09 | llm_requests, adaptive_sessions | accounts, channels, questions, quizzes |
-| chat | FR-10, FR-11 | channel_messages, conversations, conversation_participants, direct_messages, user_blocks | – |
+| chat | FR-10, FR-11 | channel_messages, conversations, conversation_participants, direct_messages, user_blocks | accounts, channels |
 | analytics | FR-12 | none (derived from quiz attempts) | quizzes |
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |

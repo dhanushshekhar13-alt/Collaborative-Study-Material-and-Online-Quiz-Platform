@@ -8,6 +8,7 @@ from app import __version__
 from app.core.config import settings
 from app.modules.accounts.router import router as accounts_router
 from app.modules.channels.router import router as channels_router
+from app.modules.chat.router import router as chat_router
 from app.modules.llm.assistant_router import router as assistant_router
 from app.modules.llm.evaluation_router import router as evaluation_router
 from app.modules.llm.router import router as llm_router
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
 
     app.include_router(accounts_router, prefix=API_PREFIX)
     app.include_router(channels_router, prefix=API_PREFIX)
+    app.include_router(chat_router, prefix=API_PREFIX)
     app.include_router(materials_router, prefix=API_PREFIX)
     app.include_router(profiles_router, prefix=API_PREFIX)
     app.include_router(questions_router, prefix=API_PREFIX)
