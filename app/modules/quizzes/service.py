@@ -13,6 +13,7 @@ from app.modules.quizzes.adaptive import (  # noqa: F401 - re-exported for calle
     ServedQuestion,
 )
 from app.modules.quizzes.attempts import (  # noqa: F401 - re-exported for callers
+    ATTEMPT_SCORED,
     AttemptOutcome,
     NotSubmittedError,
     PendingDescriptive,
@@ -110,6 +111,66 @@ def attempts_for_user(db: Session, user_id: int) -> list[AttemptResult]:
         .order_by(QuizAttempt.submitted_at)
     )
     return [get_attempt_result(db, a.id) for a in rows]
+
+
+# --------------------------------------------------------------------------- #
+# S12.1 - scored attempts with the quiz's subject and topic, for analytics
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class ScoredAttempt:
+    """A submitted attempt with the subject and topic of the quiz it was taken at."""
+
+    attempt_id: int
+    user_id: int
+    quiz_id: int
+    quiz_title: str
+    subject: str
+    topic: str
+    score: float
+    max_score: float
+    submitted_at: datetime
+
+
+def _scored(attempt: QuizAttempt, quiz: Quiz) -> ScoredAttempt:
+    return ScoredAttempt(
+        attempt_id=attempt.id,
+        user_id=attempt.user_id,
+        quiz_id=quiz.id,
+        quiz_title=quiz.title,
+        subject=quiz.subject,
+        topic=quiz.topic,
+        score=attempt.score or 0.0,
+        max_score=attempt.max_score or 0.0,
+        submitted_at=attempt.submitted_at,
+    )
+
+
+def scored_attempt(db: Session, attempt_id: int) -> ScoredAttempt | None:
+    """The attempt as analytics sees it, or ``None`` if it is missing or still running."""
+    row = db.execute(
+        select(QuizAttempt, Quiz)
+        .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
+        .where(QuizAttempt.id == attempt_id, QuizAttempt.status == AttemptStatus.SUBMITTED)
+    ).first()
+    return _scored(*row) if row else None
+
+
+def scored_attempts_for_user(db: Session, user_id: int) -> list[ScoredAttempt]:
+    """Every submitted attempt of the user, oldest first (ties broken by id)."""
+    rows = db.execute(
+        select(QuizAttempt, Quiz)
+        .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
+        .where(QuizAttempt.user_id == user_id, QuizAttempt.status == AttemptStatus.SUBMITTED)
+        .order_by(QuizAttempt.submitted_at, QuizAttempt.id)
+    ).all()
+    return [_scored(attempt, quiz) for attempt, quiz in rows]
+
+
+def close_expired_attempts(db: Session, user_id: int) -> int:
+    """Auto-submit the user's attempts whose time ran out; returns how many closed."""
+    return attempts.close_expired_for_user(db, user_id)
 
 
 @dataclass(frozen=True)
