@@ -43,6 +43,7 @@ class ModerationActionType(enum.StrEnum):
     APPROVE_CHANNEL = "approve_channel"
     REJECT_CHANNEL = "reject_channel"
     WARN_USER = "warn_user"
+    DISMISS_REPORT = "dismiss_report"
 
 
 class Report(CreatedAtMixin, Base):

@@ -1,4 +1,4 @@
-// StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance.
+// StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance; S12.2: recommended.
 // Hash routes keep this a set of static files with no build step. All text from the
 // server is inserted with textContent, never as HTML.
 "use strict";
@@ -638,6 +638,79 @@
     );
   }
 
+  // ----------------------------------------------- recommended (S12.2) ------
+  // Recommended for You: items for weak topics; opening one de-prioritises it.
+
+  const KIND_LABEL = { quiz: "Quiz", material: "Material", question: "Question" };
+
+  function recommendationDetail(item, data) {
+    if (item.item_type === "material") {
+      return h("div", { class: "rec-detail" },
+        h("p", {}, data.description || "No description."),
+        data.url ? h("a", { href: data.url, target: "_blank", rel: "noopener noreferrer" }, "Open link") : null);
+    }
+    if (item.item_type === "question") {
+      const q = data.question || data;
+      return h("div", { class: "rec-detail" },
+        h("p", {}, q.text),
+        q.options && q.options.length ? h("ol", { type: "A" }, q.options.map((o) => h("li", {}, o))) : null);
+    }
+    const count = (data.questions || []).length;
+    return h("div", { class: "rec-detail" },
+      h("p", {}, `${count} questions · ${data.duration_minutes} minutes · ${data.difficulty}`));
+  }
+
+  function recommendationRow(item) {
+    const status = alertBox();
+    const meta = [
+      `${item.subject}${item.topic ? ` › ${item.topic}` : ""}`,
+      item.rating_average ? `★ ${item.rating_average} (${item.rating_count})` : null,
+      item.attempt_count ? `${item.attempt_count} attempt${item.attempt_count === 1 ? "" : "s"}` : null,
+      item.difficulty,
+    ].filter(Boolean).join(" · ");
+    const flag = h("span", { class: "badge consumed", hidden: !item.consumed }, item.item_type === "quiz" ? "Done before" : "Seen");
+    const open = h("button", { type: "button", class: "secondary" }, "Open");
+    const row = h("li", { class: `rec ${item.consumed ? "is-consumed" : ""}`, "data-type": item.item_type, "data-id": String(item.item_id) },
+      h("div", {},
+        h("span", { class: `badge kind-${item.item_type}` }, KIND_LABEL[item.item_type]), flag,
+        h("strong", { class: "rec-title" }, item.title),
+        h("p", { class: "muted rec-meta" }, meta),
+        h("p", { class: "rec-reason" }, item.reason),
+        status),
+      h("div", { class: "row-actions" }, open));
+    open.addEventListener("click", () => busy(open, async () => {
+      try {
+        await API.post("/analytics/recommendations/opened", { item_type: item.item_type, item_id: item.item_id });
+        flag.hidden = false;
+        row.classList.add("is-consumed");
+        const data = await API.get(item.api_path.replace(/^\/api\/v1/, ""));
+        row.querySelector(".rec-detail")?.remove();
+        row.firstChild.append(recommendationDetail(item, data));
+        open.hidden = true;
+      } catch (err) {
+        show(status, err.message, "error");
+      }
+    }));
+    return row;
+  }
+
+  async function recommendedPage() {
+    const r = await API.get("/analytics/recommendations");
+    const focus = r.focus_topics.length
+      ? h("section", { class: "card focus" },
+          h("h2", {}, "Your weak topics"),
+          h("ul", {}, r.focus_topics.map((f) => h("li", {}, h("strong", {}, f.topic), ` (${f.subject}) — ${f.reason}`))))
+      : null;
+    render(
+      h("h1", {}, "Recommended for You"),
+      h("p", { class: `alert ${r.mode === "targeted" ? "info" : "success"}` }, r.message),
+      focus,
+      r.items.length
+        ? h("ul", { class: "recs card" }, r.items.map(recommendationRow))
+        : h("p", { class: "empty muted" }, "Nothing to recommend yet. Check back once peers share materials and quizzes."),
+    );
+  }
+
   // --------------------------------------------------------------- router ----
 
   const PUBLIC = new Set(["login", "register"]);
@@ -665,6 +738,7 @@
       if (page === "my-channels") return await myChannelsPage();
       if (page === "leaderboard") return await leaderboardPage();
       if (page === "performance") return await performancePage();
+      if (page === "recommended") return await recommendedPage();
       if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]));
       if (page === "channels") return await channelsPage(params);
       render(h("h1", {}, "Page not found"), h("a", { href: "#/channels" }, "Go to channels"));

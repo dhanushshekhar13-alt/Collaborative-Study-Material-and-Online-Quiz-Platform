@@ -215,3 +215,19 @@ button:disabled { opacity: 0.6; cursor: progress; }
 .standing-list.strong h2 { color: var(--strong); }
 .standing-list.weak h2 { color: var(--weak); }
 .empty-state { text-align: center; padding: 32px 18px; }
+
+/* Recommended for You (S12.2) */
+.recs { list-style: none; padding: 6px 18px; }
+.rec { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.rec:first-child { border-top: none; }
+.rec > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.rec-title { display: block; margin-top: 4px; }
+.rec-meta, .rec-reason { margin: 2px 0 0; font-size: 0.92rem; }
+.rec.is-consumed .rec-title { color: var(--muted); }
+.badge.kind-quiz { background: var(--normal-bg); color: var(--normal-text); }
+.badge.kind-material { background: var(--success-bg); color: var(--success-text); }
+.badge.kind-question { background: var(--authorized-bg); color: var(--authorized-text); }
+.badge.consumed { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.rec-detail { margin-top: 8px; padding: 8px 12px; background: var(--bg); border-radius: 6px; }
+.rec-detail p { margin: 0 0 6px; }
+.focus ul { margin: 0; padding-left: 18px; }

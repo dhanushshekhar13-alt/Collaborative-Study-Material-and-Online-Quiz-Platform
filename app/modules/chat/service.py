@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.chat.models import (
@@ -74,6 +74,49 @@ def get_channel_message(db: Session, channel_id: int, message_id: int) -> Messag
     return _view(m)
 
 
+@dataclass(frozen=True)
+class ThreadSummary:
+    """What the main stream shows under a message that has replies (S10.2)."""
+
+    reply_count: int
+    last_reply_at: datetime | None
+
+
+def thread_root(db: Session, channel_id: int, message_id: int) -> int | None:
+    """The message a reply to ``message_id`` belongs under, or None if it can't be replied to.
+
+    Threads are one level deep: replying to a reply joins the thread of its parent, so
+    a conversation never disappears into nested sub-threads. A missing, deleted or
+    other-channel message (or a reply whose parent was deleted) cannot be replied to.
+    """
+    target = get_channel_message(db, channel_id, message_id)
+    if target is None:
+        return None
+    if target.parent_id is None:
+        return target.id
+    root = get_channel_message(db, channel_id, target.parent_id)
+    return root.id if root is not None else None
+
+
+def thread_summaries(db: Session, message_ids: list[int]) -> dict[int, ThreadSummary]:
+    """Visible reply count and latest reply time for each message that has replies."""
+    if not message_ids:
+        return {}
+    rows = db.execute(
+        select(
+            ChannelMessage.parent_id,
+            func.count(ChannelMessage.id),
+            func.max(ChannelMessage.created_at),
+        )
+        .where(
+            ChannelMessage.parent_id.in_(message_ids),
+            ChannelMessage.is_deleted.is_(False),
+        )
+        .group_by(ChannelMessage.parent_id)
+    )
+    return {parent: ThreadSummary(count, last) for parent, count, last in rows}
+
+
 def channel_messages_page(
     db: Session,
     channel_id: int,
@@ -81,6 +124,7 @@ def channel_messages_page(
     limit: int = 50,
     before: int | None = None,
     after: int | None = None,
+    thread_of: int | None = None,
 ) -> tuple[list[MessageView], bool]:
     """A page of a channel's chat in the order the server accepted the messages (S10.1).
 
@@ -94,11 +138,19 @@ def channel_messages_page(
 
     The flag says whether more messages lie beyond the page in the direction read:
     older ones for the first two, newer ones for ``after``.
+
+    Without ``thread_of`` the page is the main stream: top-level messages only (S10.2).
+    With ``thread_of=<message id>`` it is that message's replies, paged the same way.
     """
     if before is not None and after is not None:
         raise ValueError("before and after cannot be combined")
     query = select(ChannelMessage).where(
-        ChannelMessage.channel_id == channel_id, ChannelMessage.is_deleted.is_(False)
+        ChannelMessage.channel_id == channel_id,
+        ChannelMessage.is_deleted.is_(False),
+        # The main stream holds top-level messages only; a thread is read on its own.
+        ChannelMessage.parent_id.is_(None)
+        if thread_of is None
+        else ChannelMessage.parent_id == thread_of,
     )
     if after is not None:
         query = query.where(ChannelMessage.id > after).order_by(ChannelMessage.id)

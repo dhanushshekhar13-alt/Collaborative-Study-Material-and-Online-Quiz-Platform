@@ -15,6 +15,7 @@ from app.modules.llm.assistant_router import router as assistant_router
 from app.modules.llm.evaluation_router import router as evaluation_router
 from app.modules.llm.router import router as llm_router
 from app.modules.materials.router import router as materials_router
+from app.modules.moderation_queue.router import router as moderation_router
 from app.modules.profiles.router import router as profiles_router
 from app.modules.questions.router import router as questions_router
 from app.modules.quizzes.attempts_router import router as quiz_attempts_router
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix=API_PREFIX)
     app.include_router(direct_messages_router, prefix=API_PREFIX)
     app.include_router(materials_router, prefix=API_PREFIX)
+    app.include_router(moderation_router, prefix=API_PREFIX)
     app.include_router(profiles_router, prefix=API_PREFIX)
     app.include_router(questions_router, prefix=API_PREFIX)
     app.include_router(quizzes_router, prefix=API_PREFIX)

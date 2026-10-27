@@ -1,7 +1,8 @@
 # Analytics module
 
-Performance tracking and the analytics dashboard: **FR-12**, story **S12.1** (issue
-#40), under **NFR-03**. Module rules are in [`docs/architecture.md`](../../../docs/architecture.md).
+Performance tracking and the analytics dashboard (**S12.1**, issue #40, under
+**NFR-03**) and recommendations targeting weak topics (**S12.2**, issue #41, UC-13),
+both **FR-12**. Module rules are in [`docs/architecture.md`](../../../docs/architecture.md).
 
 ## Data
 
@@ -9,6 +10,7 @@ Performance tracking and the analytics dashboard: **FR-12**, story **S12.1** (is
 | --- | --- |
 | `performance_attempts` | The ledger: one row per submitted attempt with exactly what it contributed (subject, topic, score, max score, time). Feeds the trend charts. |
 | `performance_topics` | Running totals per user, subject and topic: attempt count, points earned, points possible. |
+| `recommendation_opens` | Which recommended items each user opened (S12.2, migration `0011`). |
 
 Both are derived from the quizzes module's attempts and can always be rebuilt from
 them (migration `0009`). Subject and topic come from the quiz the attempt was taken at.
@@ -55,3 +57,35 @@ percentages in order; a slope of at least ±1 point per attempt is improving/dec
 The web UI's **Performance** page (`#/performance`) draws these as charts: accuracy by
 subject, accuracy by topic coloured by standing with the threshold lines, and score
 trends with the fitted line.
+
+## Recommendations (S12.2)
+
+`recommendations.py`, exposed as `service.recommendations_for` and
+`service.record_recommendation_open`.
+
+1. **Focus topics**: every topic below 50% accuracy, weakest first. That is the
+   dashboard's weak topics plus a topic with one low-scoring attempt: one 30% quiz is
+   enough to start recommending for it (IT_24), although the dashboard waits for two
+   attempts before *labelling* a topic weak.
+2. **Candidates**: peer-shared materials, questions and quizzes the user can see
+   (general content and their channels' content) with the same subject and topic.
+   The user's own contributions are never recommended.
+3. **Ranking**: unconsumed items first, grouped by focus topic (weakest first, up to
+   6 per topic), alternating quiz, material, question; quizzes by attempts, materials
+   and questions by rating. **Consumed** items (quiz attempted, question answered,
+   material rated/reviewed/marked helpful, or anything opened from the list) follow
+   at the end: de-prioritised, not hidden.
+4. **No weak topics**, or nothing shared for them (UC-13 alternate flow): popular
+   items from the same scope, with a message saying why (`mode: general`).
+
+The list is worked out on every request after the performance figures are synced,
+so it changes as soon as a new attempt is recorded: a topic that improves past 50%
+drops out and the next weakest moves up (ST_23).
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/analytics/recommendations?limit=` | bearer | `mode`, `message`, `focus_topics` (weakest first, with the reason) and `items` (type, id, title, subject, topic, `consumed`, `reason`, rating or attempt count, `api_path`). |
+| `POST` | `/api/v1/analytics/recommendations/opened` | bearer | `{item_type, item_id}`: remember an opened item (idempotent), **204**. |
+
+The web UI's **Recommended** page (`#/recommended`) lists them; *Open* records the
+item and shows it inline.

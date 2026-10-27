@@ -49,6 +49,7 @@ ENTITIES_BY_REQUIREMENT = {
         "attempt_answers",
         "performance_attempts",
         "performance_topics",
+        "recommendation_opens",
     },
     "FR-13 reputation, badges, reports": {"reputation_events", "badges", "user_badges", "reports"},
     "FR-14 notifications and admin actions": {

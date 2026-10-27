@@ -537,3 +537,71 @@ send messages to this user" and the student's conversation showed `blocked_by_me
 No schema change: the chat tables and the `direct_message` report target exist since
 migration `0001`. New routes under `/api/v1/conversations` and `/api/v1/blocks`;
 `docs/api/openapi-v1.json` is regenerated.
+
+## S13.2 (#43) — Report queue and moderator actions
+
+Test Plan cases are automated in `tests/test_moderation_queue.py` under their case IDs,
+run against the endpoints the UI uses (`POST /materials/{id}/reports`,
+`POST /questions/{id}/reports`, `/moderation/queue`, `/moderation/reports/...`).
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `IT_25` | A report appears in the moderation queue with content reference, reporter and reason | `test_IT_25_report_reaches_the_moderation_queue`, `test_channel_moderators_see_only_their_channels`, `test_regular_members_have_no_queue` | Pass |
+| — | Duplicate reports on the same item are grouped rather than duplicated | `test_duplicate_reports_on_one_item_are_grouped`, `test_one_decision_closes_every_duplicate_report` | Pass |
+| — | The reporter sees confirmation that the report was filed | `test_reporter_sees_confirmation_and_follows_the_outcome` | Pass |
+| `IT_26` | Removing content hides it from the platform and sets the report status to Resolved | `test_IT_26_remove_content_hides_it_and_resolves_the_report`, `test_removal_needs_confirmation`, `test_dismiss_clears_the_report_and_keeps_the_content`, `test_a_closed_report_cannot_be_decided_again` | Pass |
+| `ST_25` | A regular member cannot resolve a report in an Authorized Channel while an authorized user can | `test_ST_25_authorized_user_resolves_where_a_regular_member_cannot` | Pass |
+| — | Every moderation action is recorded with actor and timestamp | `test_every_moderation_action_is_logged_with_actor_and_time` | Pass |
+
+Schema change: migration `0010` widens the `moderation_action_type` CHECK constraint
+with `dismiss_report` (verified upgrade/downgrade on SQLite and PostgreSQL 16). New
+routes under `/api/v1/moderation`; `docs/api/openapi-v1.json` is regenerated.
+
+## S10.2 (#37) — Threaded replies and membership-gated chat access
+
+Test Plan cases are automated in `tests/test_channel_threads.py` under their case IDs,
+run against the endpoints the UI calls: `POST /api/v1/channels/{id}/messages` with
+`parent_id`, and `GET /api/v1/channels/{id}/messages/{message_id}/replies`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_19` | A reply is displayed nested under its parent message | `test_IT_19_a_reply_is_threaded_under_its_parent_message`, `test_a_reply_is_displayed_nested_not_in_the_main_stream`, `test_replying_to_a_reply_joins_the_same_thread`, `test_a_long_thread_pages_like_the_main_stream` | Pass |
+| `IT_19` | The reply is stored with a link to its parent | `test_the_reply_is_stored_with_a_link_to_its_parent`, `test_a_reply_needs_a_visible_parent_in_the_same_channel`, `test_a_blank_reply_is_refused` | Pass |
+| — | Thread reply counts are visible on the parent | `test_thread_reply_counts_are_visible_on_the_parent`, `test_deleted_replies_are_hidden_and_not_counted` | Pass |
+| `IT_20` | A non-member navigating directly to the chat is denied with 'Join the channel to view this chat' | `test_IT_20_a_non_member_opening_the_chat_directly_is_denied` (main stream and thread) | Pass |
+| `IT_20` | The restriction is enforced server side, not only in the UI (NFR-02) | `test_the_restriction_is_enforced_server_side`, `test_access_to_threads_follows_membership_on_every_request`, and the S10.1 access tests in `tests/test_channel_chat.py` | Pass |
+
+No schema change: `channel_messages.parent_id` exists since migration `0001`. The main
+stream now lists top-level messages only, each with `parent_id`, `reply_count` and
+`last_reply_at`; `docs/api/openapi-v1.json` is regenerated. All S10.1 tests pass
+unchanged.
+Manually verified on a migrated, seeded SQLite database: the seeded student replies
+"Yes, uploading now!" to the seeded message, the parent then shows `reply_count` 1,
+the thread returns the parent and the nested reply, the admin (not a member) gets
+`Join the channel to view this chat`, and replying to a missing message is
+`Message not found`.
+
+## S12.2 (#41) — Recommendations targeting weak topics
+
+Test Plan cases are automated in `tests/test_recommendations.py` under their case IDs,
+run against `GET /api/v1/analytics/recommendations` with attempts taken through the
+real `/attempts` endpoints and peer content shared through the materials, questions and
+quizzes services. The page is checked in a browser by
+`tests/test_web_ui.py::test_S12_2_recommended_for_you_in_the_browser` (skipped where
+Chromium is not installed).
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_24` | Recommendations refresh as new performance data arrives (a new weak topic goes to the top) | `test_IT_24_a_30_percent_concurrency_quiz_puts_its_materials_and_quizzes_on_top` | Pass |
+| `ST_23` | Recommendations refresh as new performance data arrives (an improved topic gives way to the next weakest) | `test_ST_23_after_two_85_percent_attempts_concurrency_gives_way_to_the_next_weakest` | Pass |
+| `ST_24` | Recommended items map to topics identified as weak | `test_ST_24_top_recommendations_are_tagged_with_the_weakest_topic`, `test_every_targeted_item_maps_to_a_weak_topic`, `test_a_developing_topic_is_not_targeted` | Pass |
+| — | Already-consumed items are de-prioritized | `test_consumed_items_are_listed_after_fresh_ones_not_hidden`, `test_opening_a_recommendation_moves_it_behind_fresh_items`, `test_a_rated_material_counts_as_consumed` | Pass |
+| — | UC-13 alternate flow: no weak areas (or nothing shared for them) gives popular picks | `test_a_new_user_gets_popular_picks_with_a_clear_message`, `test_a_weak_topic_with_nothing_shared_falls_back_to_popular_picks` | Pass |
+| — | Only content the user may see, never their own; better-rated items first | `test_channel_content_is_recommended_only_to_its_members`, `test_own_contributions_are_never_recommended`, `test_better_rated_materials_rank_first_within_a_topic`, `test_an_admin_is_scoped_like_anyone_else` | Pass |
+| — | Sign-in required; input validated | `test_recommendations_need_a_signed_in_user`, `test_an_unknown_item_type_is_refused` | Pass |
+| — | Recommended for You page (UC-13 steps 1, 4, 5) | `test_S12_2_recommended_for_you_in_the_browser`, `test_the_recommended_page_is_linked_and_records_opened_items` | Pass (browser test run locally with Chromium) |
+
+Schema change: migration `0011` adds `recommendation_opens` (analytics module).
+Analytics now also calls channels (the user's scope), materials and questions; none of
+them reaches chat. The LLM is not used: the UC-13 ranking is deterministic, so it works
+with `LLM_PROVIDER=none`.
