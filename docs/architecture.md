@@ -31,6 +31,7 @@ public service interface keeps its promises (NFR-07).
 | chat | FR-10, FR-11 | channel_messages, conversations, conversation_participants, direct_messages, user_blocks | accounts, channels |
 | analytics | FR-12 | performance_attempts, performance_topics (rebuildable from quiz attempts) | accounts, quizzes |
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
+| moderation_queue | FR-13 | none (the S13.2 report queue and moderator actions, assembled from other modules' services) | accounts, channels, materials, moderation, questions |
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
 | notifications | FR-14 | notifications, notification_preferences | – |
 | profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |

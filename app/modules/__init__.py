@@ -17,6 +17,7 @@ ALLOWED_DEPENDENCIES: dict[str, set[str]] = {
     "chat": {"accounts", "channels"},
     "analytics": {"accounts", "quizzes"},
     "moderation": set(),
+    "moderation_queue": {"accounts", "channels", "materials", "moderation", "questions"},
     "reputation": {"accounts"},
     "notifications": set(),
     "profiles": {"accounts", "materials", "questions", "quizzes", "reputation"},
