@@ -231,3 +231,70 @@ button:disabled { opacity: 0.6; cursor: progress; }
 .rec-detail { margin-top: 8px; padding: 8px 12px; background: var(--bg); border-radius: 6px; }
 .rec-detail p { margin: 0 0 6px; }
 .focus ul { margin: 0; padding-left: 18px; }
+
+/* UI-2: materials, question bank, quizzes, attempts and history */
+a.button {
+  display: inline-block;
+  text-decoration: none;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 6px;
+  padding: 7px 14px;
+}
+a.button.secondary { background: transparent; color: var(--accent); }
+.channel-links { margin: 0 0 12px; }
+.items { list-style: none; margin: 0; padding: 0; }
+.item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.item:first-child { border-top: none; }
+.item > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.item-title { font-weight: 600; }
+.row-actions.wrap { flex-wrap: wrap; flex-shrink: 1; }
+.row-actions select { width: auto; }
+.tags { margin: 4px 0; }
+.badge.tag { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.badge.content-official { background: var(--authorized-bg); color: var(--authorized-text); }
+.badge.content-peer { background: var(--normal-bg); color: var(--normal-text); }
+.badge.draft { background: var(--authorized-bg); color: var(--authorized-text); }
+.badge.published { background: var(--success-bg); color: var(--success-text); }
+.badge.status-correct, .badge.status-evaluated { background: var(--success-bg); color: var(--success-text); }
+.badge.status-incorrect { background: var(--error-bg); color: var(--error-text); }
+.result-count { margin: 0 0 4px; }
+.material-detail h1 { overflow-wrap: anywhere; }
+.rating-summary { font-weight: 600; }
+.preview { margin-top: 12px; }
+.preview-frame { width: 100%; height: 70vh; border: 1px solid var(--border); border-radius: 6px; }
+.preview-image { max-width: 100%; height: auto; border-radius: 6px; }
+.preview-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 60vh; overflow: auto; background: var(--bg); padding: 12px; border-radius: 6px; }
+fieldset { border: 1px solid var(--border); border-radius: 8px; margin: 0 0 12px; padding: 10px 12px; min-width: 0; }
+legend { font-weight: 600; padding: 0 4px; }
+.stars { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.star, .inline, .choice { display: inline-flex; align-items: center; gap: 4px; }
+.star input, .inline input, .choice input, .option-row input[type=radio] { width: auto; }
+.inline select { width: auto; }
+.option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.options { margin: 4px 0; padding-left: 22px; }
+.reviews { list-style: none; margin: 0; padding: 0; }
+.reviews li { padding: 8px 0; border-top: 1px solid var(--border); }
+.reviews li:first-child { border-top: none; }
+.reviews p { margin: 2px 0 0; }
+.quiz-preview { margin-top: 12px; }
+.quiz-preview h3 { font-size: 1rem; margin: 0 0 6px; }
+.preview-questions { padding-left: 20px; overflow-wrap: anywhere; }
+.attempt-head { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.attempt-head h1 { margin: 0; }
+.attempt-status { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+.timer { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.timer.low { color: var(--weak); }
+.attempt-question legend { font-size: 0.95rem; }
+.question-text { margin: 0 0 8px; overflow-wrap: anywhere; }
+.choices { display: grid; gap: 6px; }
+.choice { align-items: flex-start; overflow-wrap: anywhere; }
+.score { font-size: 1.4rem; margin: 0 0 12px; }
+.answers { padding-left: 20px; }
+.answers li { padding: 8px 0; border-top: 1px solid var(--border); }
+.answers li:first-child { border-top: none; }
+.answers p { margin: 2px 0; }
+.table-wrap { overflow-x: auto; }
+.history { width: 100%; border-collapse: collapse; }
+.history th, .history td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }

@@ -20,7 +20,9 @@ import pytest
 from app.main import API_PREFIX, create_app
 from app.web import STATIC_DIR
 
-SCRIPTS = ["api.js", "app.js"]
+SCRIPTS = ["api.js", "app.js", "study.js"]
+# Scripts whose ``API.*("/path")`` calls are matched against the API's routes.
+PAGE_SCRIPTS = ["app.js", "study.js"]
 
 
 def test_root_redirects_to_the_ui(client):
@@ -35,6 +37,7 @@ def test_root_redirects_to_the_ui(client):
         ("/app/", "text/html"),
         ("/app/app.js", "javascript"),
         ("/app/api.js", "javascript"),
+        ("/app/study.js", "javascript"),
         ("/app/styles.css", "text/css"),
     ],
 )
@@ -65,12 +68,15 @@ def test_server_text_is_never_inserted_as_html():
 
 def _ui_calls() -> set[tuple[str, str]]:
     calls = set()
-    source = (STATIC_DIR / "app.js").read_text()
-    pattern = r"API\.(get|post|patch|del)\(\s*`?\"?(/[^`\"?$]*(?:\$\{[^}]+\}[^`\"?$]*)*)"
+    source = "\n".join((STATIC_DIR / name).read_text() for name in PAGE_SCRIPTS)
+    pattern = (
+        r"API\.(get|post|put|patch|del|upload|blob)\(\s*`?\"?(/[^`\"?$]*(?:\$\{[^}]+\}[^`\"?$]*)*)"
+    )
+    verbs = {"del": "delete", "upload": "post", "blob": "get"}
     for method, path in re.findall(pattern, source):
         template = re.sub(r"\$\{[^}]+\}", "{id}", path)
         template = re.sub(r"(?<!/)\{id\}$", "", template)  # a trailing ?query, not an id
-        calls.add(({"del": "delete"}.get(method, method), template))
+        calls.add((verbs.get(method, method), template))
     return calls
 
 
@@ -98,8 +104,17 @@ def _free_port() -> int:
 
 
 @pytest.fixture()
-def live_server(tmp_path):
-    """The real app on a free port, backed by a seeded throwaway SQLite file."""
+def live_server(live_app):
+    """The base URL of the real app on a free port (see ``live_app``)."""
+    return live_app[0]
+
+
+@pytest.fixture()
+def live_app(tmp_path):
+    """The real app on a free port, backed by a seeded throwaway SQLite file.
+
+    Yields ``(base_url, Session)`` so a test can also adjust the database directly.
+    """
     uvicorn = pytest.importorskip("uvicorn")
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -137,7 +152,7 @@ def live_server(tmp_path):
         if time.monotonic() > deadline:
             pytest.fail("test server did not start")
         time.sleep(0.05)
-    yield f"http://127.0.0.1:{port}"
+    yield f"http://127.0.0.1:{port}", Session
     server.should_exit = True
     thread.join(timeout=5)
     engine.dispose()
@@ -429,4 +444,287 @@ def test_S12_2_recommended_for_you_in_the_browser(live_server, browser):
     page.reload()
     expect(page.get_by_role("heading", name="Recommended for You")).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    assert page_errors == []
+
+
+# --------------------------------------------------------------------------- #
+# UI-2 (#63) - materials, question bank and quizzes
+# --------------------------------------------------------------------------- #
+
+UI_2_CALLS = {
+    ("post", "/materials"),
+    ("get", "/materials"),
+    ("get", "/materials/{id}"),
+    ("get", "/materials/{id}/preview"),
+    ("get", "/materials/{id}/download"),
+    ("put", "/materials/{id}/review"),
+    ("get", "/materials/{id}/reviews"),
+    ("put", "/materials/{id}/helpful"),
+    ("delete", "/materials/{id}/helpful"),
+    ("post", "/materials/{id}/reports"),
+    ("post", "/questions"),
+    ("get", "/questions"),
+    ("put", "/questions/{id}/rating"),
+    ("post", "/questions/{id}/reports"),
+    ("post", "/quizzes/preview"),
+    ("post", "/quizzes"),
+    ("get", "/quizzes"),
+    ("post", "/quizzes/{id}/publish"),
+    ("post", "/quizzes/{id}/attempts"),
+    ("get", "/attempts/{id}"),
+    ("put", "/attempts/{id}/answers"),
+    ("post", "/attempts/{id}/submit"),
+    ("get", "/attempts"),
+}
+
+
+def test_UI_2_screens_call_the_study_workflow_endpoints():
+    """Every flow in the card is wired to its endpoint (and, above, every call exists)."""
+    missing = UI_2_CALLS - _ui_calls()
+    assert not missing, f"UI-2 screens do not call: {sorted(missing)}"
+
+
+def test_UI_2_screens_are_linked_from_the_navigation():
+    html = (STATIC_DIR / "index.html").read_text()
+    for route in ("#/materials", "#/questions", "#/quizzes", "#/history"):
+        assert f'href="{route}"' in html, route
+    # study.js registers its pages before app.js routes the first page.
+    assert html.index('src="study.js"') < html.index('src="app.js"')
+
+
+def test_material_preview_is_allowed_only_as_blob_images_and_frames(client):
+    csp = client.get("/app/").headers["content-security-policy"]
+    assert "img-src 'self' data: blob:" in csp and "frame-src 'self' blob:" in csp
+    assert "object-src 'none'" in csp and "script-src 'self';" in csp
+
+
+PDF_BYTES = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
+
+def test_UI_2_acceptance_criteria_in_the_browser(live_app, browser, tmp_path):
+    """Walks UT_07/UT_08, IT_07/IT_08, ST_07/ST_08, UT_09/UT_10, IT_09, IT_10, ST_09,
+    ST_10, UT_11/UT_12, ST_11 and IT_11 through the pages against a live server."""
+    from datetime import timedelta
+
+    from playwright.sync_api import expect
+    from sqlalchemy import select, update
+
+    from app.modules.quizzes.attempts import utcnow
+    from app.modules.quizzes.models import AttemptStatus, QuizAttempt
+
+    base, Session = live_app
+    page = browser.new_page(viewport={"width": 1200, "height": 900}, accept_downloads=True)
+    page_errors: list[str] = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+
+    def log_in(who: str) -> None:
+        page.goto(base + "/app/#/login")
+        page.fill("[name=username]", who)
+        page.fill("[name=password]", "Seed@1234")
+        page.click("button:has-text('Log in')")
+        expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+
+    # ---- Upload Material: blank subject (UT_08), then a full upload (UT_07) ----
+    notes = tmp_path / "OS_Scheduling_Notes.pdf"
+    notes.write_bytes(PDF_BYTES)
+    log_in("student@example.com")
+    page.click("#nav >> text=Materials")
+    expect(page.get_by_role("heading", name="Study materials")).to_be_visible()
+    upload = page.locator("form.upload-material")
+    upload.locator("[name=material_type]").select_option("notes")
+    upload.locator("[name=file]").set_input_files(str(notes))
+    upload.locator("[name=topic]").fill("CPU Scheduling")
+    upload.locator("[name=semester]").fill("5")
+    upload.locator("button:has-text('Upload')").click()
+    expect(upload.locator(".alert")).to_have_text("Subject is required")
+    upload.locator("[name=subject]").fill("Operating Systems")
+    upload.locator("button:has-text('Upload')").click()
+    expect(upload.locator(".alert.success")).to_have_text('Uploaded "OS_Scheduling_Notes"')
+    row = page.locator("li.material", has_text="OS_Scheduling_Notes")
+    for tag in ("Operating Systems", "CPU Scheduling", "Semester 5", "Notes"):
+        expect(row.locator(".badge.tag", has_text=tag)).to_have_count(1)
+
+    # ---- Search by subject and topic (IT_07) ----
+    page.fill("form.search [name=subject]", "Operating Systems")
+    page.fill("form.search [name=topic]", "CPU Scheduling")
+    page.click("form.search button:has-text('Search')")
+    expect(page.locator("li.material")).to_have_count(1)
+    page.fill("form.search [name=topic]", "Deadlocks")
+    page.click("form.search button:has-text('Search')")
+    expect(page.locator(".items .empty")).to_contain_text("No materials match your search")
+
+    # ---- Preview and download (IT_08) ----
+    page.fill("form.search [name=topic]", "CPU Scheduling")
+    page.click("form.search button:has-text('Search')")
+    page.click("li.material >> text=View")
+    expect(page.get_by_role("heading", name="OS_Scheduling_Notes")).to_be_visible()
+    page.click(".material-detail button:has-text('View')")
+    expect(page.locator(".preview iframe.preview-frame")).to_have_count(1)
+    with page.expect_download() as download:
+        page.click(".material-detail button:has-text('Download')")
+    saved = tmp_path / "downloaded.pdf"
+    download.value.save_as(saved)
+    assert download.value.suggested_filename == "OS_Scheduling_Notes.pdf"
+    assert saved.read_bytes() == PDF_BYTES
+    # The uploader cannot rate their own material.
+    expect(page.locator("main")).to_contain_text("You can't rate or mark your own material")
+
+    # ---- Rate, review, helpful (ST_07) and report (ST_08) as a peer ----
+    page.click("#logout")
+    log_in("faculty@example.com")
+    page.click("#nav >> text=Materials")
+    page.click("li.material >> text=OS_Scheduling_Notes")
+    rate = page.locator("form.rate-material")
+    rate.locator("button:has-text('Submit rating')").click()
+    expect(rate.locator(".alert")).to_have_text("Select a rating from 1 to 5 stars")
+    rate.locator("label.star", has_text="5★").click()
+    rate.locator("[name=review]").fill("Very clear explanation")
+    rate.locator("button:has-text('Submit rating')").click()
+    expect(rate.locator(".alert.success")).to_be_visible()
+    expect(page.locator(".rating-summary")).to_contain_text("Average rating ★ 5.0 from 1 rating")
+    expect(page.locator(".reviews")).to_contain_text("Very clear explanation")
+    page.click("button.helpful")
+    expect(page.locator("button.helpful")).to_have_text("Helpful ✓ (1)")
+    expect(page.locator(".rating-summary")).to_contain_text("1 found helpful")
+    report = page.locator("form.report-material")
+    report.locator("button:has-text('Submit report')").click()
+    expect(report.locator(".alert")).to_have_text("Select a reason for reporting this material")
+    report.locator("[name=reason]").select_option("duplicate")
+    report.locator("button:has-text('Submit report')").click()
+    expect(report.locator(".alert.success")).to_contain_text("Report submitted for moderation")
+
+    # ---- Add Question: no correct answer (UT_10), then saved (UT_09) ----
+    page.click("#nav >> text=Questions")
+    expect(page.get_by_role("heading", name="Question bank")).to_be_visible()
+    add = page.locator("form.add-question")
+    add.locator("[name=text]").fill("What is a primary key?")
+    choices = ["A unique row identifier", "A foreign table", "An index", "A view"]
+    for i, option in enumerate(choices):
+        add.locator(f"[name=option{i}]").fill(option)
+    add.locator("[name=subject]").fill("DBMS")
+    add.locator("[name=topic]").fill("Keys")
+    add.locator("[name=difficulty]").select_option("easy")
+    add.locator("button:has-text('Submit question')").click()
+    expect(add.locator(".alert")).to_have_text("Please select the correct answer")
+    add.locator("[name=correct][value='0']").check()
+    add.locator("button:has-text('Submit question')").click()
+    expect(add.locator(".alert.success")).to_have_text("Question added to the bank")
+    expect(page.locator("li.question", has_text="What is a primary key?")).to_be_visible()
+    # A second DBMS/Keys/Easy question, true/false this time.
+    add.locator("[name=question_type]").select_option("true_false")
+    add.locator("[name=text]").fill("A candidate key can be chosen as the primary key.")
+    add.locator("[name=tf][value=True]").check()
+    add.locator("[name=subject]").fill("DBMS")
+    add.locator("[name=topic]").fill("Keys")
+    add.locator("button:has-text('Submit question')").click()
+    expect(add.locator(".alert.success")).to_have_text("Question added to the bank")
+    # Keyword search (IT_09, step 1).
+    page.fill("form.search [name=q]", "primary key")
+    page.click("form.search button:has-text('Search')")
+    expect(page.locator("li.question")).to_have_count(2)
+
+    # ---- Create Quiz (IT_10, ST_10) and publish it to a channel (ST_09) ----
+    page.click("#nav >> text=Quizzes")
+    create = page.locator("form.create-quiz")
+    create.locator("[name=title]").fill("DBMS Quick Quiz")
+    create.locator("[name=subject]").fill("DBMS")
+    create.locator("[name=topic]").fill("Keys")
+    create.locator("[name=difficulty]").select_option("easy")
+    create.locator("[name=question_count]").fill("5")
+    create.locator("[name=duration_minutes]").fill("1")
+    create.locator("button:has-text('Generate quiz')").click()
+    expect(create.locator(".alert.error")).to_be_visible()  # only 2 match: say so
+    create.locator("[name=question_count]").fill("2")
+    create.locator("button:has-text('Generate quiz')").click()
+    expect(create.locator(".preview-questions li")).to_have_count(2)
+    expect(create.locator(".preview-questions")).to_contain_text("What is a primary key?")
+    expect(create.locator(".quiz-preview h3")).to_have_text("2 questions · 1 minutes")
+    create.locator("button.save-quiz").click()
+    expect(create.locator(".alert.success")).to_contain_text('Saved "DBMS Quick Quiz" as a draft')
+    draft = page.locator("li.my-quiz", has_text="DBMS Quick Quiz")
+    expect(draft.locator(".badge.draft")).to_be_visible()
+    draft.locator("[name=publish_to]").select_option(label="DBMS study group (Normal)")
+    draft.locator("button:has-text('Publish')").click()
+    expect(draft.locator(".alert.success")).to_have_text(
+        'Published "DBMS Quick Quiz" to DBMS study group'
+    )
+
+    # ---- A member attempts it: unanswered warning (UT_12), score at once (UT_11) ----
+    page.click("#logout")
+    log_in("student@example.com")
+    page.click("text=DBMS study group")
+    page.click(".channel-links >> text=Quizzes")
+    quiz_row = page.locator(".quiz-list li.quiz", has_text="DBMS Quick Quiz")
+    expect(quiz_row).to_be_visible()
+    quiz_row.locator("text=Start quiz").click()
+    expect(page.get_by_role("heading", name="DBMS Quick Quiz")).to_be_visible()
+    expect(page.locator(".timer")).to_contain_text("Time left 00:")
+    mcq = page.locator("fieldset.attempt-question", has_text="What is a primary key?")
+    tf = page.locator("fieldset.attempt-question", has_text="candidate key")
+    mcq.locator("label.choice", has_text="A unique row identifier").click()
+    expect(page.locator(".unanswered")).to_have_text("1 question is unanswered")
+    page.click("button:has-text('Submit quiz')")
+    expect(page.locator(".confirm-submit")).to_contain_text("1 question is unanswered")
+    page.click("button:has-text('Keep answering')")
+    tf.locator("label.choice", has_text="True").click()
+    expect(page.locator(".unanswered")).to_be_hidden()
+    page.click("button:has-text('Submit quiz')")
+    expect(page.get_by_role("heading", name="Result: DBMS Quick Quiz")).to_be_visible()
+    expect(page.locator(".score strong")).to_have_text("2/2 (100%)")
+    expect(page.locator(".tile-correct")).to_contain_text("2")
+
+    # ---- Timer runs out: saved answers are auto-submitted (ST_11) ----
+    page.click("#nav >> text=Quizzes")
+    page.locator("[name=scope]").select_option(label="DBMS study group (Normal)")
+    page.locator(".quiz-list li.quiz", has_text="DBMS Quick Quiz").locator(
+        "text=Start quiz"
+    ).click()
+    mcq.locator("label.choice", has_text="A unique row identifier").click()
+    page.wait_for_timeout(1200)  # the answer autosaves
+    with Session() as db:
+        attempt_id = db.scalar(
+            select(QuizAttempt.id).where(QuizAttempt.status == AttemptStatus.IN_PROGRESS)
+        )
+        db.execute(
+            update(QuizAttempt)
+            .where(QuizAttempt.id == attempt_id)
+            .values(expires_at=utcnow() + timedelta(seconds=3))
+        )
+        db.commit()
+    page.reload()  # resumes with three seconds left, then the clock reaches zero
+    expect(page.get_by_role("heading", name="Result: DBMS Quick Quiz")).to_be_visible(timeout=20000)
+    expect(page.locator(".auto-submitted")).to_be_visible()
+    expect(page.locator(".score strong")).to_have_text("1/2 (50%)")
+    expect(page.locator(".tile-unattempted")).to_contain_text("1")
+
+    # ---- My Quiz History lists every attempt (IT_11) ----
+    page.click("#nav >> text=Quiz History")
+    expect(page.get_by_role("heading", name="My Quiz History")).to_be_visible()
+    rows = page.locator("table.history tbody tr")
+    expect(rows).to_have_count(3)  # the seeded attempt plus the two above
+    expect(rows.first).to_contain_text("1/2 (50%)")
+    expect(rows.first).to_contain_text("auto-submitted")
+    expect(rows.nth(1)).to_contain_text("2/2 (100%)")
+    rows.nth(1).locator("text=View").click()
+    expect(page.locator(".score strong")).to_have_text("2/2 (100%)")
+    expect(page.locator(".answers")).to_contain_text("Correct answer: A unique row identifier")
+
+    # ---- Rate a peer's question 4 stars and report another (IT_09) ----
+    page.click("#nav >> text=Questions")
+    rated = page.locator("li.question", has_text="What is a primary key?")
+    rated.locator("[name=rating]").select_option("4")
+    rated.locator("button:has-text('Rate')").click()
+    expect(rated.locator(".alert.success")).to_contain_text("Rating saved")
+    other = page.locator("li.question", has_text="candidate key")
+    other.locator("[name=reason]").select_option("incorrect")
+    other.locator("button:has-text('Report')").click()
+    expect(other.locator(".alert.success")).to_have_text("Report submitted for moderation")
+
+    # Phone width: the screens fit without horizontal scrolling.
+    page.set_viewport_size({"width": 375, "height": 800})
+    for route in ("#/materials", "#/questions", "#/quizzes", "#/history"):
+        page.goto(base + "/app/" + route)
+        expect(page.locator("main h1")).to_be_visible()
+        assert page.evaluate("document.documentElement.scrollWidth") <= 375, route
+
     assert page_errors == []
