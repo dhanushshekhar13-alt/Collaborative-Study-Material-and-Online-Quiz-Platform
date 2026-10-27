@@ -1913,6 +1913,39 @@
         "title": "ExplanationResponse",
         "type": "object"
       },
+      "FocusTopicResponse": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "topic",
+          "accuracy",
+          "attempts",
+          "reason"
+        ],
+        "title": "FocusTopicResponse",
+        "type": "object"
+      },
       "GenerateRequest": {
         "properties": {
           "channel_id": {
@@ -2213,6 +2246,15 @@
         ],
         "title": "HistoryEntryResponse",
         "type": "object"
+      },
+      "ItemType": {
+        "enum": [
+          "material",
+          "question",
+          "quiz"
+        ],
+        "title": "ItemType",
+        "type": "string"
       },
       "LeaderboardResponse": {
         "properties": {
@@ -2978,6 +3020,14 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "Mode": {
+        "enum": [
+          "targeted",
+          "general"
+        ],
+        "title": "Mode",
+        "type": "string"
+      },
       "ModerationActionType": {
         "enum": [
           "remove_content",
@@ -3138,6 +3188,24 @@
           "reason"
         ],
         "title": "NotEvaluatedResponse",
+        "type": "object"
+      },
+      "OpenedRequest": {
+        "properties": {
+          "item_id": {
+            "minimum": 1.0,
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_type": {
+            "$ref": "#/components/schemas/ItemType"
+          }
+        },
+        "required": [
+          "item_type",
+          "item_id"
+        ],
+        "title": "OpenedRequest",
         "type": "object"
       },
       "OutcomeResponse": {
@@ -4541,6 +4609,151 @@
           "rating"
         ],
         "title": "RatingRequest",
+        "type": "object"
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "api_path": {
+            "title": "Api Path",
+            "type": "string"
+          },
+          "attempt_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quizzes: how often others attempted it",
+            "title": "Attempt Count"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "consumed": {
+            "description": "Already attempted, answered, rated or opened",
+            "title": "Consumed",
+            "type": "boolean"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_type": {
+            "$ref": "#/components/schemas/ItemType"
+          },
+          "rating_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating Average"
+          },
+          "rating_count": {
+            "title": "Rating Count",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "Why it is recommended",
+            "title": "Reason",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "item_type",
+          "item_id",
+          "title",
+          "subject",
+          "topic",
+          "channel_id",
+          "consumed",
+          "reason",
+          "rating_average",
+          "rating_count",
+          "attempt_count",
+          "difficulty",
+          "api_path"
+        ],
+        "title": "RecommendationResponse",
+        "type": "object"
+      },
+      "RecommendationsResponse": {
+        "properties": {
+          "focus_topics": {
+            "description": "Weak topics, weakest first",
+            "items": {
+              "$ref": "#/components/schemas/FocusTopicResponse"
+            },
+            "title": "Focus Topics",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode",
+            "description": "targeted: for weak topics; general: popular picks"
+          }
+        },
+        "required": [
+          "mode",
+          "message",
+          "focus_topics",
+          "items"
+        ],
+        "title": "RecommendationsResponse",
         "type": "object"
       },
       "ReconciliationResponse": {
@@ -6705,6 +6918,97 @@
           }
         ],
         "summary": "My Dashboard",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/recommendations": {
+      "get": {
+        "description": "Recommended for You (UC-13): materials, questions and quizzes for weak topics.\n\nItems for the weakest topic come first; items already attempted, answered, rated\nor opened are listed after the fresh ones. With no weak topics the list is popular\nitems instead (``mode: general``). Worked out on every request, so it follows the\nlatest attempt.",
+        "operationId": "my_recommendations_api_v1_analytics_recommendations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Recommendations",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/recommendations/opened": {
+      "post": {
+        "description": "Record that the caller opened a recommended item; it is then de-prioritised.",
+        "operationId": "recommendation_opened_api_v1_analytics_recommendations_opened_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Recommendation Opened",
         "tags": [
           "analytics"
         ]

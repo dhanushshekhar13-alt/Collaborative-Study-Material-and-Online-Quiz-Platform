@@ -374,3 +374,59 @@ def test_S13_1_leaderboard_screen_in_the_browser(live_server, browser):
     expect(first).to_have_class("mine")
     expect(page.locator("main")).to_contain_text("You are ranked #1 with 5 reputation.")
     assert page_errors == []
+
+
+# --------------------------------------------------------------------------- #
+# S12.2 (#41) - Recommended for You
+# --------------------------------------------------------------------------- #
+
+
+def test_the_recommended_page_is_linked_and_records_opened_items():
+    calls = _ui_calls()
+    assert ("get", "/analytics/recommendations") in calls
+    assert ("post", "/analytics/recommendations/opened") in calls
+    assert 'href="#/recommended"' in (STATIC_DIR / "index.html").read_text()
+
+
+def test_S12_2_recommended_for_you_in_the_browser(live_server, browser):
+    """Weak-topic items listed first; opening one shows it and marks it as seen."""
+    import httpx
+    from playwright.sync_api import expect
+
+    # Two Scheduling attempts (the seeded one plus a blank one) make Scheduling weak.
+    student = _signed_in(live_server, "student@example.com")
+    history = httpx.get(f"{live_server}{API_PREFIX}/attempts", headers=student).json()
+    quiz_id = history["attempts"][0]["quiz_id"]
+    attempt = httpx.post(f"{live_server}{API_PREFIX}/quizzes/{quiz_id}/attempts", headers=student)
+    submitted = httpx.post(
+        f"{live_server}{API_PREFIX}/attempts/{attempt.json()['id']}/submit",
+        json={"answers": {}, "confirm": True},
+        headers=student,
+    )
+    assert submitted.status_code == 200, submitted.text
+
+    page = browser.new_page(viewport={"width": 1200, "height": 900})
+    page_errors: list[str] = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+    page.goto(live_server + "/app/#/login")
+    page.fill("[name=username]", "student@example.com")
+    page.fill("[name=password]", "Seed@1234")
+    page.click("button:has-text('Log in')")
+    expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+
+    page.click("nav >> text=Recommended")
+    expect(page.get_by_role("heading", name="Recommended for You")).to_be_visible()
+    expect(page.locator(".focus")).to_contain_text("Scheduling")
+    first = page.locator("li.rec").first
+    expect(first.locator(".rec-meta")).to_contain_text("Scheduling")
+    expect(first).not_to_have_class("rec is-consumed")
+    first.locator("button:has-text('Open')").click()
+    expect(first.locator(".rec-detail")).to_be_visible()
+    expect(first.locator(".badge.consumed")).to_be_visible()
+
+    # Phone width: no horizontal scrolling.
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.reload()
+    expect(page.get_by_role("heading", name="Recommended for You")).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    assert page_errors == []

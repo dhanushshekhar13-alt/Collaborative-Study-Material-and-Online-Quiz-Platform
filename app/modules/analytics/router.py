@@ -1,18 +1,19 @@
-"""HTTP surface of the analytics module (S12.1), mounted under ``/api/v1``.
+"""HTTP surface of the analytics module (S12.1, S12.2), mounted under ``/api/v1``.
 
-Both endpoints show the signed-in user's own performance only.
+Every endpoint is about the signed-in user's own performance only.
 """
 
 from dataclasses import asdict
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.modules.accounts.service import UserSummary, current_user
 from app.modules.analytics import service
+from app.modules.analytics.recommendations import ItemType, Mode
 from app.modules.analytics.service import Direction, Standing
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -147,3 +148,73 @@ def my_reconciliation(
             )
         )
     return ReconciliationResponse(matches=kept == fresh, topics=rows)
+
+
+# --------------------------------------------------------------------------- #
+# S12.2 - recommendations targeting weak topics
+# --------------------------------------------------------------------------- #
+
+
+class FocusTopicResponse(BaseModel):
+    subject: str
+    topic: str
+    accuracy: float
+    attempts: int
+    reason: str
+
+
+class RecommendationResponse(BaseModel):
+    item_type: ItemType
+    item_id: int
+    title: str
+    subject: str
+    topic: str | None
+    channel_id: int | None
+    consumed: bool = Field(description="Already attempted, answered, rated or opened")
+    reason: str = Field(description="Why it is recommended")
+    rating_average: float | None
+    rating_count: int
+    attempt_count: int | None = Field(description="Quizzes: how often others attempted it")
+    difficulty: str | None
+    api_path: str
+
+
+class RecommendationsResponse(BaseModel):
+    mode: Mode = Field(description="targeted: for weak topics; general: popular picks")
+    message: str
+    focus_topics: list[FocusTopicResponse] = Field(description="Weak topics, weakest first")
+    items: list[RecommendationResponse]
+
+
+class OpenedRequest(BaseModel):
+    item_type: ItemType
+    item_id: int = Field(ge=1)
+
+
+@router.get("/recommendations", response_model=RecommendationsResponse)
+def my_recommendations(
+    limit: int = Query(default=12, ge=1, le=50),
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> RecommendationsResponse:
+    """Recommended for You (UC-13): materials, questions and quizzes for weak topics.
+
+    Items for the weakest topic come first; items already attempted, answered, rated
+    or opened are listed after the fresh ones. With no weak topics the list is popular
+    items instead (``mode: general``). Worked out on every request, so it follows the
+    latest attempt.
+    """
+    found = service.recommendations_for(db, user.id, limit=limit)
+    db.commit()  # keep any performance figures the dashboard sync corrected
+    return RecommendationsResponse(**asdict(found))
+
+
+@router.post("/recommendations/opened", status_code=status.HTTP_204_NO_CONTENT)
+def recommendation_opened(
+    payload: OpenedRequest,
+    user: UserSummary = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Record that the caller opened a recommended item; it is then de-prioritised."""
+    service.record_recommendation_open(db, user.id, payload.item_type, payload.item_id)
+    db.commit()

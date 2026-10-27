@@ -1,9 +1,10 @@
 """Public interface of the quizzes module (quiz building, attempts, grading)."""
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.quizzes import adaptive, attempts
@@ -21,6 +22,7 @@ from app.modules.quizzes.attempts import (  # noqa: F401 - re-exported for calle
     ScorePart,
 )
 from app.modules.quizzes.models import (
+    AttemptAnswer,
     AttemptStatus,
     Quiz,
     QuizAttempt,
@@ -171,6 +173,112 @@ def scored_attempts_for_user(db: Session, user_id: int) -> list[ScoredAttempt]:
 def close_expired_attempts(db: Session, user_id: int) -> int:
     """Auto-submit the user's attempts whose time ran out; returns how many closed."""
     return attempts.close_expired_for_user(db, user_id)
+
+
+# --------------------------------------------------------------------------- #
+# S12.2 - what recommendations may offer, and what the user has already done
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class QuizListing:
+    """A published, attemptable quiz as a recommendation shows it."""
+
+    id: int
+    title: str
+    subject: str
+    topic: str
+    difficulty: str
+    channel_id: int | None
+    creator_id: int
+    created_at: datetime | None
+    question_count: int
+    attempt_count: int
+
+
+def published_in_scope(
+    db: Session,
+    *,
+    channel_ids: Collection[int],
+    include_general: bool = True,
+    subject: str | None = None,
+    topic: str | None = None,
+    exclude_creator_id: int | None = None,
+    limit: int = 50,
+) -> list[QuizListing]:
+    """Published quizzes with questions, general and in the given channels.
+
+    Adaptive runs are not listed (they are one person's session, not a quiz to share).
+    Subject and topic match whole values, ignoring case. Most attempted first, then
+    newest.
+    """
+    scope = [Quiz.channel_id.in_(list(channel_ids))] if channel_ids else []
+    if include_general:
+        scope.append(Quiz.channel_id.is_(None))
+    if not scope:
+        return []
+    question_count = (
+        select(func.count(QuizQuestion.id)).where(QuizQuestion.quiz_id == Quiz.id).scalar_subquery()
+    )
+    attempt_count = (
+        select(func.count(QuizAttempt.id))
+        .where(QuizAttempt.quiz_id == Quiz.id, QuizAttempt.status == AttemptStatus.SUBMITTED)
+        .scalar_subquery()
+    )
+    stmt = select(Quiz, question_count, attempt_count).where(
+        Quiz.status == QuizStatus.PUBLISHED,
+        Quiz.is_adaptive.is_(False),
+        question_count > 0,
+        or_(*scope),
+    )
+    if subject and subject.strip():
+        stmt = stmt.where(func.lower(Quiz.subject) == subject.strip().lower())
+    if topic and topic.strip():
+        stmt = stmt.where(func.lower(Quiz.topic) == topic.strip().lower())
+    if exclude_creator_id is not None:
+        stmt = stmt.where(Quiz.creator_id != exclude_creator_id)
+    stmt = stmt.order_by(attempt_count.desc(), Quiz.created_at.desc(), Quiz.id.desc())
+    return [
+        QuizListing(
+            q.id,
+            q.title,
+            q.subject,
+            q.topic,
+            q.difficulty,
+            q.channel_id,
+            q.creator_id,
+            q.created_at,
+            int(n_questions),
+            int(n_attempts),
+        )
+        for q, n_questions, n_attempts in db.execute(stmt.limit(limit))
+    ]
+
+
+def attempted_quiz_ids(db: Session, user_id: int) -> set[int]:
+    """Quizzes the user has submitted at least one attempt at."""
+    return set(
+        db.scalars(
+            select(QuizAttempt.quiz_id).where(
+                QuizAttempt.user_id == user_id, QuizAttempt.status == AttemptStatus.SUBMITTED
+            )
+        )
+    )
+
+
+def answered_question_ids(db: Session, user_id: int) -> set[int]:
+    """Questions the user has answered in a submitted attempt."""
+    return set(
+        db.scalars(
+            select(AttemptAnswer.question_id)
+            .join(QuizAttempt, QuizAttempt.id == AttemptAnswer.attempt_id)
+            .where(
+                QuizAttempt.user_id == user_id,
+                QuizAttempt.status == AttemptStatus.SUBMITTED,
+                AttemptAnswer.response.is_not(None),
+            )
+        )
+    )
 
 
 @dataclass(frozen=True)

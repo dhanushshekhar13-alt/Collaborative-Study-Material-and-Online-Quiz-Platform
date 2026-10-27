@@ -4,7 +4,7 @@
 it carries everything needed to present and score a question.
 """
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -305,6 +305,44 @@ def search_bank(
     stmt = stmt.order_by(Question.created_at.desc(), Question.id.desc())
     rows = list(db.scalars(stmt.offset(offset).limit(limit)))
     return _bank(db, rows, viewer_id)
+
+
+def published_in_scope(
+    db: Session,
+    *,
+    channel_ids: Collection[int],
+    include_general: bool = True,
+    subject: str | None = None,
+    topic: str | None = None,
+    exclude_author_id: int | None = None,
+    limit: int = 50,
+) -> list[BankQuestion]:
+    """Published questions from the general bank and the given channels' banks (S12.2).
+
+    Subject and topic match whole values, ignoring case. Best rated first, then newest,
+    so a recommendation list can take the top of it.
+    """
+    scope = [Question.channel_id.in_(list(channel_ids))] if channel_ids else []
+    if include_general:
+        scope.append(Question.channel_id.is_(None))
+    if not scope:
+        return []
+    stmt = select(Question).where(Question.status == QuestionStatus.PUBLISHED, or_(*scope))
+    if subject and subject.strip():
+        stmt = stmt.where(func.lower(Question.subject) == subject.strip().lower())
+    if topic and topic.strip():
+        stmt = stmt.where(func.lower(Question.topic) == topic.strip().lower())
+    if exclude_author_id is not None:
+        stmt = stmt.where(Question.author_id != exclude_author_id)
+    average = (
+        select(func.avg(QuestionRating.rating))
+        .where(QuestionRating.question_id == Question.id)
+        .scalar_subquery()
+    )
+    stmt = stmt.order_by(
+        func.coalesce(average, 0).desc(), Question.created_at.desc(), Question.id.desc()
+    )
+    return _bank(db, list(db.scalars(stmt.limit(limit))), None)
 
 
 QUESTION_RATING_SOURCE = "question_rating"
