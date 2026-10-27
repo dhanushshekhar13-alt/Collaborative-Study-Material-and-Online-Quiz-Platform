@@ -512,6 +512,32 @@ the Performance page shows the tiles, subject and topic bar charts (topics colou
 standing, with the 50% and 75% threshold lines), the overall and per-subject trend
 charts with the fitted line, and the strengths and weak areas, in light and dark mode.
 
+## S11.1 (#38) — Direct conversations with block and report
+
+Test Plan cases are automated in `tests/test_direct_chat.py` under their case IDs. The
+plan's steps run in the web UI; the tests call the endpoints that UI uses.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `UT_21` | A direct conversation can be started with any user | `test_UT_21_start_a_private_conversation_and_send_a_message`, `test_a_conversation_can_be_started_with_any_user_and_is_reused`, `test_starting_a_conversation_with_yourself_or_nobody_is_refused` | Pass |
+| `UT_21` | Messages are delivered in order and none are lost | `test_UT_21_start_a_private_conversation_and_send_a_message`, `test_messages_are_delivered_in_order_and_none_are_lost`, `test_blank_messages_are_refused_and_nothing_is_stored` | Pass |
+| `IT_21` | Conversation history reloads correctly on return | `test_IT_21_twenty_plus_messages_load_in_order_before_and_after_re_login`, `test_conversation_history_reloads_correctly_on_return` | Pass |
+| `UT_22` | Blocking stops further messages from that user | `test_UT_22_blocked_user_can_no_longer_send_and_a_blocked_indicator_is_shown`, `test_blocking_stops_further_messages_in_both_directions`, `test_blocking_needs_confirmation`, `test_unblocking_lets_messages_through_again` | Pass |
+| `UT_22` | The block takes effect immediately and persists | `test_the_block_takes_effect_immediately_and_persists` | Pass |
+| `IT_22` | A reported message reaches the moderation queue with its reason | `test_IT_22_report_an_inappropriate_message_for_moderation`, `test_a_reported_message_reaches_the_moderation_queue_with_its_reason`, `test_you_cannot_report_your_own_message_or_one_from_another_conversation` | Pass |
+| — | Conversations are private to their two participants | `test_only_participants_can_read_send_or_report` | Pass |
+
+Manually verified on a migrated, seeded SQLite database: the seeded student reopened
+the seeded conversation with the faculty user (200), sent "Hey, can you share your quiz
+notes?", which the faculty user saw after "Thanks!"; the faculty user reported it as
+`inappropriate` ("Report submitted for moderation"); after the student blocked the
+faculty user, the faculty user's next message was refused with 403 "You can no longer
+send messages to this user" and the student's conversation showed `blocked_by_me`.
+
+No schema change: the chat tables and the `direct_message` report target exist since
+migration `0001`. New routes under `/api/v1/conversations` and `/api/v1/blocks`;
+`docs/api/openapi-v1.json` is regenerated.
+
 ## S13.2 (#43) — Report queue and moderator actions
 
 Test Plan cases are automated in `tests/test_moderation_queue.py` under their case IDs,
