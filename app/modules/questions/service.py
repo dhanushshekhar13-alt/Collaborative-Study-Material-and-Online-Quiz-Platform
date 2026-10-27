@@ -155,6 +155,33 @@ def recent_authored_by(db: Session, user_id: int, limit: int = 10) -> list[Quest
     return [QuestionContribution(r.id, _headline(r.text), r.created_at) for r in rows]
 
 
+@dataclass(frozen=True)
+class QuestionOwner:
+    """Who posted a published question and how to name it (S14.2 content removal)."""
+
+    id: int
+    author_id: int
+    headline: str
+    channel_id: int | None
+
+
+def get_question_owner(db: Session, question_id: int) -> QuestionOwner | None:
+    """A published question's author and headline; None if missing or not published."""
+    q = db.get(Question, question_id)
+    if q is None or q.status is not QuestionStatus.PUBLISHED:
+        return None
+    return QuestionOwner(q.id, q.author_id, _headline(q.text), q.channel_id)
+
+
+def set_removed(db: Session, question_id: int, removed: bool) -> None:
+    """Take a question off the platform (or put it back); it keeps its history."""
+    q = db.get(Question, question_id)
+    if q is None:
+        raise LookupError(f"question {question_id} not found")
+    q.status = QuestionStatus.REMOVED if removed else QuestionStatus.PUBLISHED
+    db.flush()
+
+
 def _headline(text: str, limit: int = 80) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"

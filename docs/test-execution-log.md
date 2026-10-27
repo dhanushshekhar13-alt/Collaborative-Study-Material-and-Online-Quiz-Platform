@@ -512,6 +512,25 @@ the Performance page shows the tiles, subject and topic bar charts (topics colou
 standing, with the 50% and 75% threshold lines), the overall and per-subject trend
 charts with the fitted line, and the strengths and weak areas, in light and dark mode.
 
+## S13.2 (#43) — Report queue and moderator actions
+
+Test Plan cases are automated in `tests/test_moderation_queue.py` under their case IDs,
+run against the endpoints the UI uses (`POST /materials/{id}/reports`,
+`POST /questions/{id}/reports`, `/moderation/queue`, `/moderation/reports/...`).
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `IT_25` | A report appears in the moderation queue with content reference, reporter and reason | `test_IT_25_report_reaches_the_moderation_queue`, `test_channel_moderators_see_only_their_channels`, `test_regular_members_have_no_queue` | Pass |
+| — | Duplicate reports on the same item are grouped rather than duplicated | `test_duplicate_reports_on_one_item_are_grouped`, `test_one_decision_closes_every_duplicate_report` | Pass |
+| — | The reporter sees confirmation that the report was filed | `test_reporter_sees_confirmation_and_follows_the_outcome` | Pass |
+| `IT_26` | Removing content hides it from the platform and sets the report status to Resolved | `test_IT_26_remove_content_hides_it_and_resolves_the_report`, `test_removal_needs_confirmation`, `test_dismiss_clears_the_report_and_keeps_the_content`, `test_a_closed_report_cannot_be_decided_again` | Pass |
+| `ST_25` | A regular member cannot resolve a report in an Authorized Channel while an authorized user can | `test_ST_25_authorized_user_resolves_where_a_regular_member_cannot` | Pass |
+| — | Every moderation action is recorded with actor and timestamp | `test_every_moderation_action_is_logged_with_actor_and_time` | Pass |
+
+Schema change: migration `0010` widens the `moderation_action_type` CHECK constraint
+with `dismiss_report` (verified upgrade/downgrade on SQLite and PostgreSQL 16). New
+routes under `/api/v1/moderation`; `docs/api/openapi-v1.json` is regenerated.
+
 ## S10.2 (#37) — Threaded replies and membership-gated chat access
 
 Test Plan cases are automated in `tests/test_channel_threads.py` under their case IDs,

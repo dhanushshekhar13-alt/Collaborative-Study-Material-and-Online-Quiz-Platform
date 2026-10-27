@@ -47,6 +47,57 @@
         "title": "AccountResponse",
         "type": "object"
       },
+      "ActionResponse": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ModerationActionType"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "actor",
+          "report_id",
+          "note",
+          "at"
+        ],
+        "title": "ActionResponse",
+        "type": "object"
+      },
       "AdaptiveAnswerRequest": {
         "properties": {
           "question_id": {
@@ -1689,6 +1740,24 @@
         "title": "Direction",
         "type": "string"
       },
+      "DismissRequest": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "DismissRequest",
+        "type": "object"
+      },
       "EarnedBadgeResponse": {
         "properties": {
           "code": {
@@ -2909,6 +2978,56 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "ModerationActionType": {
+        "enum": [
+          "remove_content",
+          "restore_content",
+          "suspend_user",
+          "unsuspend_user",
+          "approve_channel",
+          "reject_channel",
+          "warn_user",
+          "dismiss_report"
+        ],
+        "title": "ModerationActionType",
+        "type": "string"
+      },
+      "MyReportResponse": {
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "reported_at": {
+            "format": "date-time",
+            "title": "Reported At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          }
+        },
+        "required": [
+          "report_id",
+          "target_type",
+          "target_id",
+          "reason",
+          "status",
+          "reported_at"
+        ],
+        "title": "MyReportResponse",
+        "type": "object"
+      },
       "MyReputationResponse": {
         "properties": {
           "badges": {
@@ -3067,6 +3186,31 @@
           "capabilities"
         ],
         "title": "PermissionsResponse",
+        "type": "object"
+      },
+      "Person": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Person",
         "type": "object"
       },
       "PostListResponse": {
@@ -3734,6 +3878,127 @@
         "title": "QuestionType",
         "type": "string"
       },
+      "QueueItemResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "channel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Name"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ReportedContent"
+          },
+          "first_reported_at": {
+            "format": "date-time",
+            "title": "First Reported At",
+            "type": "string"
+          },
+          "last_reported_at": {
+            "format": "date-time",
+            "title": "Last Reported At",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReportReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/QueueReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "channel_id",
+          "channel_name",
+          "content",
+          "report_count",
+          "reasons",
+          "reports",
+          "first_reported_at",
+          "last_reported_at"
+        ],
+        "title": "QueueItemResponse",
+        "type": "object"
+      },
+      "QueueReport": {
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "reported_at": {
+            "format": "date-time",
+            "title": "Reported At",
+            "type": "string"
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          }
+        },
+        "required": [
+          "report_id",
+          "reporter",
+          "reason",
+          "details",
+          "status",
+          "reported_at"
+        ],
+        "title": "QueueReport",
+        "type": "object"
+      },
       "QuizCreate": {
         "properties": {
           "channel_id": {
@@ -4400,6 +4665,160 @@
         "title": "RegistrationResponse",
         "type": "object"
       },
+      "RemoveRequest": {
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "RemoveRequest",
+        "type": "object"
+      },
+      "ReportDetailResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "channel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Name"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ReportedContent"
+          },
+          "first_reported_at": {
+            "format": "date-time",
+            "title": "First Reported At",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ActionResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "last_reported_at": {
+            "format": "date-time",
+            "title": "Last Reported At",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReportReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/QueueReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "resolution_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Note"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "resolved_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "channel_id",
+          "channel_name",
+          "content",
+          "report_count",
+          "reasons",
+          "reports",
+          "first_reported_at",
+          "last_reported_at",
+          "report_id",
+          "status",
+          "resolved_by",
+          "resolved_at",
+          "resolution_note",
+          "history"
+        ],
+        "title": "ReportDetailResponse",
+        "type": "object"
+      },
       "ReportReason": {
         "enum": [
           "incorrect",
@@ -4467,6 +4886,67 @@
           "message"
         ],
         "title": "ReportResponse",
+        "type": "object"
+      },
+      "ReportStatus": {
+        "enum": [
+          "open",
+          "resolved",
+          "dismissed"
+        ],
+        "title": "ReportStatus",
+        "type": "string"
+      },
+      "ReportTarget": {
+        "enum": [
+          "material",
+          "question",
+          "quiz",
+          "channel_message",
+          "direct_message",
+          "user",
+          "channel"
+        ],
+        "title": "ReportTarget",
+        "type": "string"
+      },
+      "ReportedContent": {
+        "properties": {
+          "available": {
+            "description": "False once the content has been removed",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Material title or question headline",
+            "title": "Title"
+          }
+        },
+        "required": [
+          "title",
+          "available",
+          "link"
+        ],
+        "title": "ReportedContent",
         "type": "object"
       },
       "ReputationEventResponse": {
@@ -8455,6 +8935,262 @@
         "summary": "List Material Reviews",
         "tags": [
           "materials"
+        ]
+      }
+    },
+    "/api/v1/moderation/queue": {
+      "get": {
+        "description": "Open reports, one entry per reported item, oldest first (IT_25).\n\nEach entry names the content, its channel, every reporter with their reason, and\nhow many reports it has, so duplicate reports show as one item. Admins see the\nwhole platform; channel moderators see the channels they moderate. Anyone else\ngets 403.",
+        "operationId": "report_queue_api_v1_moderation_queue_get",
+        "parameters": [
+          {
+            "description": "Only this channel's reports",
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this channel's reports",
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueItemResponse"
+                  },
+                  "title": "Response Report Queue Api V1 Moderation Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report Queue",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/mine": {
+      "get": {
+        "description": "The caller's own reports, newest first, with their current status.\n\nThis is the reporter's confirmation that a report was filed, and later that it\nwas resolved or dismissed.",
+        "operationId": "my_reports_api_v1_moderation_reports_mine_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MyReportResponse"
+                  },
+                  "title": "Response My Reports Api V1 Moderation Reports Mine Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Reports",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/{report_id}": {
+      "get": {
+        "description": "One report with every other report on the same item and the item's\nmoderation history (who did what, when).",
+        "operationId": "open_report_api_v1_moderation_reports__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open Report",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/{report_id}/dismiss": {
+      "post": {
+        "description": "Clear a report the moderator finds unfounded: the content stays, every open\nreport on it becomes Dismissed, and the decision is logged.",
+        "operationId": "dismiss_report_api_v1_moderation_reports__report_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dismiss Report",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/{report_id}/remove": {
+      "post": {
+        "description": "Remove Content (IT_26): hide the reported item and resolve its reports.\n\nNeeds ``confirm: true``. The material or question is taken off the platform (it\ndisappears from search, channels and direct links), every open report on it\nbecomes Resolved, and the removal is logged with the moderator and time.",
+        "operationId": "remove_content_api_v1_moderation_reports__report_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Content",
+        "tags": [
+          "moderation"
         ]
       }
     },
