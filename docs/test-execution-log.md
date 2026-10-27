@@ -530,3 +530,27 @@ run against the endpoints the UI uses (`POST /materials/{id}/reports`,
 Schema change: migration `0010` widens the `moderation_action_type` CHECK constraint
 with `dismiss_report` (verified upgrade/downgrade on SQLite and PostgreSQL 16). New
 routes under `/api/v1/moderation`; `docs/api/openapi-v1.json` is regenerated.
+
+## S10.2 (#37) — Threaded replies and membership-gated chat access
+
+Test Plan cases are automated in `tests/test_channel_threads.py` under their case IDs,
+run against the endpoints the UI calls: `POST /api/v1/channels/{id}/messages` with
+`parent_id`, and `GET /api/v1/channels/{id}/messages/{message_id}/replies`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_19` | A reply is displayed nested under its parent message | `test_IT_19_a_reply_is_threaded_under_its_parent_message`, `test_a_reply_is_displayed_nested_not_in_the_main_stream`, `test_replying_to_a_reply_joins_the_same_thread`, `test_a_long_thread_pages_like_the_main_stream` | Pass |
+| `IT_19` | The reply is stored with a link to its parent | `test_the_reply_is_stored_with_a_link_to_its_parent`, `test_a_reply_needs_a_visible_parent_in_the_same_channel`, `test_a_blank_reply_is_refused` | Pass |
+| — | Thread reply counts are visible on the parent | `test_thread_reply_counts_are_visible_on_the_parent`, `test_deleted_replies_are_hidden_and_not_counted` | Pass |
+| `IT_20` | A non-member navigating directly to the chat is denied with 'Join the channel to view this chat' | `test_IT_20_a_non_member_opening_the_chat_directly_is_denied` (main stream and thread) | Pass |
+| `IT_20` | The restriction is enforced server side, not only in the UI (NFR-02) | `test_the_restriction_is_enforced_server_side`, `test_access_to_threads_follows_membership_on_every_request`, and the S10.1 access tests in `tests/test_channel_chat.py` | Pass |
+
+No schema change: `channel_messages.parent_id` exists since migration `0001`. The main
+stream now lists top-level messages only, each with `parent_id`, `reply_count` and
+`last_reply_at`; `docs/api/openapi-v1.json` is regenerated. All S10.1 tests pass
+unchanged.
+Manually verified on a migrated, seeded SQLite database: the seeded student replies
+"Yes, uploading now!" to the seeded message, the parent then shows `reply_count` 1,
+the thread returns the parent and the nested reply, the admin (not a member) gets
+`Join the channel to view this chat`, and replying to a missing message is
+`Message not found`.
