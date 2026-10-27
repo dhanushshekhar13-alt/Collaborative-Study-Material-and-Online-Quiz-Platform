@@ -36,7 +36,8 @@ public service interface keeps its promises (NFR-07).
 | notifications | FR-14 | notifications, notification_preferences | accounts (reacts to chat, channels and quizzes through events) |
 | profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |
 
-The web UI (`app/web/`, UI-1) is not a module. It is static files served at `/app/`
+The web UI (`app/web/`, UI-1; UI-2 adds the materials, question bank and quiz screens
+in `static/study.js`) is not a module. It is static files served at `/app/`
 that call the public `/api/v1` endpoints like any other client, so it owns no tables and
 imports no module code. See `app/web/README.md`.
 

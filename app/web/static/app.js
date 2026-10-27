@@ -1,4 +1,6 @@
 // StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance; S12.2: recommended.
+// UI-2's materials, question bank and quiz screens live in study.js and register
+// themselves in window.StudyHubPages; the router below hands them the shared helpers.
 // Hash routes keep this a set of static files with no build step. All text from the
 // server is inserted with textContent, never as HTML.
 "use strict";
@@ -464,6 +466,10 @@
         h("p", { class: "muted" }, [channel.subject, channel.topic].filter(Boolean).join(" · ")),
         channel.description ? h("p", {}, channel.description) : null,
         h("p", {}, `${channel.member_count} member${channel.member_count === 1 ? "" : "s"}`),
+        h("p", { class: "channel-links" },
+          h("a", { href: `#/materials?channel=${channel.id}` }, "Materials"), " · ",
+          h("a", { href: `#/questions?channel=${channel.id}` }, "Question bank"), " · ",
+          h("a", { href: `#/quizzes?channel=${channel.id}` }, "Quizzes")),
         status,
         actions,
       ),
@@ -713,6 +719,9 @@
 
   // --------------------------------------------------------------- router ----
 
+  // Helpers shared with the pages other scripts register (UI-2, study.js).
+  const ui = { h, render, alertBox, show, field, formData, busy, can, go, typeLabel, me: () => me };
+
   const PUBLIC = new Set(["login", "register"]);
 
   async function route() {
@@ -739,6 +748,8 @@
       if (page === "leaderboard") return await leaderboardPage();
       if (page === "performance") return await performancePage();
       if (page === "recommended") return await recommendedPage();
+      const extra = Object.prototype.hasOwnProperty.call(window.StudyHubPages || {}, page) ? window.StudyHubPages[page] : null;
+      if (extra) return await extra(ui, parts.slice(1), params);
       if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]));
       if (page === "channels") return await channelsPage(params);
       render(h("h1", {}, "Page not found"), h("a", { href: "#/channels" }, "Go to channels"));

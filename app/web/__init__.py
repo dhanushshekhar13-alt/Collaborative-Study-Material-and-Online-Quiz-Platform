@@ -15,10 +15,13 @@ from fastapi.staticfiles import StaticFiles
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 UI_PATH = "/app"
 
-# The pages load only their own files; the API is called on the same origin.
+# The pages load only their own files; the API is called on the same origin. UI-2's
+# material preview shows a file fetched with the bearer token as a ``blob:`` URL (an
+# image, or a PDF in a frame), so ``blob:`` is allowed for images and frames only.
 _CSP = (
-    "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-    "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; "
+    "connect-src 'self'; frame-src 'self' blob:; object-src 'none'; "
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 )
 
 

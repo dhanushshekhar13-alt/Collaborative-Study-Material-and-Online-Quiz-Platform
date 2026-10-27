@@ -626,3 +626,30 @@ run against the endpoints the notification bell and Notification Settings use
 No schema change: `notifications` and `notification_preferences` exist since migration
 `0001`. New routes under `/api/v1/notifications`; `docs/api/openapi-v1.json` is
 regenerated.
+
+## UI-2 (#63) — Web UI for materials, question bank and quizzes
+
+Executed 2026-10-27. The screens are in `app/web/static/study.js`. Every acceptance
+criterion is walked in a real browser (Playwright + Chromium) against a live, seeded
+server by `tests/test_web_ui.py::test_UI_2_acceptance_criteria_in_the_browser`, which
+runs the Test Plan's system-level steps for these flows through the pages and asserts
+the Test Plan wording, which comes from the API. Like the UI-1 browser test it runs
+locally and is skipped in CI, which has no browser; the contract tests run everywhere.
+For ST_11 the test moves the running attempt's server-side time limit to three seconds
+away instead of waiting a full minute; the page then counts down and the server closes
+the attempt.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_07`, `UT_08` | Upload Material collects file or link, subject, topic, semester and material type; a blank subject shows "Subject is required" | browser test, upload steps (tags shown in the listing) | Pass (local) |
+| `IT_07`, `IT_08` | Materials are searched and filtered by subject and topic, previewed and downloaded | browser test, search (both filters, empty state), View (PDF preview frame) and Download (original name and bytes) steps | Pass (local) |
+| `ST_07`, `ST_08` | A material is rated with stars and a review, marked helpful, and reported with a reason | browser test, peer steps: average rating and helpful count update, "Report submitted for moderation"; missing rating and reason messages | Pass (local) |
+| `UT_09`, `UT_10`, `IT_09` | Add Question collects text, options, correct answer, subject, topic, difficulty and type; none chosen shows "Please select the correct answer"; questions are searched, rated and reported | browser test, Add Question, keyword search, rate and report steps | Pass (local) |
+| `IT_10`, `ST_10`, `ST_09` | Create Quiz takes topic, difficulty, number of questions and duration (newly added questions selectable), and the quiz is published to a channel | browser test, Create Quiz (too-few-questions message, preview, save) and Publish to "DBMS study group" steps; the member then finds it in the channel's quizzes | Pass (local) |
+| `UT_12`, `ST_11` | The attempt screen shows a countdown timer, warns about unanswered questions and auto-submits when the timer expires | browser test, "1 question is unanswered" warning and confirm, then the timed-out attempt auto-submitted with only the saved answer scored | Pass (local) |
+| `UT_11`, `IT_11` | The result screen shows the score immediately, and My Quiz History lists past attempts | browser test, "2/2 (100%)" on submit, history with all three attempts and their per-question breakdown | Pass (local) |
+| — | Every endpoint the screens call exists; the screens are in the navigation | `test_UI_2_screens_call_the_study_workflow_endpoints`, `test_every_endpoint_the_ui_calls_exists`, `test_UI_2_screens_are_linked_from_the_navigation` | Pass |
+| — | Server text never parsed as HTML; previews limited to blob images and frames | `test_server_text_is_never_inserted_as_html` (now covers `study.js`), `test_material_preview_is_allowed_only_as_blob_images_and_frames` | Pass |
+| — | Usable at phone width (no horizontal scroll at 375 px) | browser test, phone step on all four screens | Pass (local) |
+
+No API or schema change: `docs/api/openapi-v1.json` is unchanged.
