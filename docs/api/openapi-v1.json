@@ -1139,6 +1139,47 @@
         "title": "BadgeResponse",
         "type": "object"
       },
+      "BlockRequest": {
+        "properties": {
+          "confirm": {
+            "default": false,
+            "description": "Must be true: the UI's confirm step",
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "BlockRequest",
+        "type": "object"
+      },
+      "BlockResponse": {
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/Participant"
+          }
+        },
+        "required": [
+          "user",
+          "blocked"
+        ],
+        "title": "BlockResponse",
+        "type": "object"
+      },
       "Body_upload_material_api_v1_materials_post": {
         "properties": {
           "channel_id": {
@@ -1538,6 +1579,62 @@
         "title": "ContributionsResponse",
         "type": "object"
       },
+      "ConversationResponse": {
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "boolean"
+          },
+          "blocked_by_me": {
+            "title": "Blocked By Me",
+            "type": "boolean"
+          },
+          "can_send": {
+            "title": "Can Send",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DirectMessageResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "other_user": {
+            "$ref": "#/components/schemas/Participant"
+          }
+        },
+        "required": [
+          "id",
+          "other_user",
+          "blocked",
+          "blocked_by_me",
+          "can_send",
+          "last_message",
+          "created_at"
+        ],
+        "title": "ConversationResponse",
+        "type": "object"
+      },
       "DashboardResponse": {
         "properties": {
           "accuracy": {
@@ -1729,6 +1826,59 @@
         ],
         "title": "Difficulty",
         "type": "string"
+      },
+      "DirectMessageResponse": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "sender_id": {
+            "title": "Sender Id",
+            "type": "integer"
+          },
+          "sender_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Name"
+          }
+        },
+        "required": [
+          "id",
+          "conversation_id",
+          "sender_id",
+          "sender_name",
+          "body",
+          "created_at"
+        ],
+        "title": "DirectMessageResponse",
+        "type": "object"
       },
       "Direction": {
         "enum": [
@@ -2889,54 +3039,81 @@
         "title": "MemberRole",
         "type": "string"
       },
-      "MessagePageResponse": {
+      "MessageReportRequest": {
         "properties": {
-          "has_more": {
-            "title": "Has More",
-            "type": "boolean"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/MessageResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "has_more",
-          "limit"
-        ],
-        "title": "MessagePageResponse",
-        "type": "object"
-      },
-      "MessageRequest": {
-        "properties": {
-          "body": {
-            "default": "",
-            "maxLength": 2000,
-            "title": "Body",
-            "type": "string"
-          },
-          "parent_id": {
+          "details": {
             "anyOf": [
               {
-                "minimum": 1.0,
-                "type": "integer"
+                "maxLength": 2000,
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Parent Id"
+            "title": "Details"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\"inappropriate\" is the \"Inappropriate content\" report"
           }
         },
-        "title": "MessageRequest",
+        "title": "MessageReportRequest",
+        "type": "object"
+      },
+      "MessageReportResponse": {
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "reported_at": {
+            "format": "date-time",
+            "title": "Reported At",
+            "type": "string"
+          },
+          "reporter_id": {
+            "title": "Reporter Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "message_id",
+          "conversation_id",
+          "reason",
+          "reporter_id",
+          "reported_at",
+          "status",
+          "message"
+        ],
+        "title": "MessageReportResponse",
         "type": "object"
       },
       "MessageResponse": {
@@ -3331,6 +3508,43 @@
           "display"
         ],
         "title": "OutcomeResponse",
+        "type": "object"
+      },
+      "Participant": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "username"
+        ],
+        "title": "Participant",
         "type": "object"
       },
       "PermissionsResponse": {
@@ -5684,6 +5898,21 @@
         "title": "Standing",
         "type": "string"
       },
+      "StartConversationRequest": {
+        "properties": {
+          "user_id": {
+            "description": "The user to message (the profile's Message button)",
+            "minimum": 1.0,
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "StartConversationRequest",
+        "type": "object"
+      },
       "StartResponse": {
         "properties": {
           "attempt_id": {
@@ -6214,6 +6443,94 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "app__modules__chat__direct_router__MessagePageResponse": {
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DirectMessageResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "has_more",
+          "limit"
+        ],
+        "title": "MessagePageResponse",
+        "type": "object"
+      },
+      "app__modules__chat__direct_router__MessageRequest": {
+        "properties": {
+          "body": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "title": "MessageRequest",
+        "type": "object"
+      },
+      "app__modules__chat__router__MessagePageResponse": {
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "has_more",
+          "limit"
+        ],
+        "title": "MessagePageResponse",
+        "type": "object"
+      },
+      "app__modules__chat__router__MessageRequest": {
+        "properties": {
+          "body": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Body",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "title": "MessageRequest",
         "type": "object"
       }
     },
@@ -7506,6 +7823,141 @@
         ]
       }
     },
+    "/api/v1/blocks": {
+      "get": {
+        "description": "The users the caller has blocked.",
+        "operationId": "list_blocks_api_v1_blocks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Participant"
+                  },
+                  "title": "Response List Blocks Api V1 Blocks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Blocks",
+        "tags": [
+          "direct messages"
+        ]
+      }
+    },
+    "/api/v1/blocks/{user_id}": {
+      "delete": {
+        "description": "Lift a block. Lifting one that doesn't exist changes nothing.",
+        "operationId": "unblock_user_api_v1_blocks__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unblock User",
+        "tags": [
+          "direct messages"
+        ]
+      },
+      "put": {
+        "description": "Block a user after confirming (UT_22). Stored, so it lasts across sessions;\nblocking someone already blocked changes nothing.",
+        "operationId": "block_user_api_v1_blocks__user_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Block User",
+        "tags": [
+          "direct messages"
+        ]
+      }
+    },
     "/api/v1/channels": {
       "get": {
         "description": "Channels the caller can see, with their type label (ST_04).\n\nPending or rejected Authorized Channels are visible only to the requester and to\nadmins; once approved they appear for everyone (ST_27).",
@@ -8060,7 +8512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessagePageResponse"
+                  "$ref": "#/components/schemas/app__modules__chat__router__MessagePageResponse"
                 }
               }
             },
@@ -8105,7 +8557,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MessageRequest"
+                "$ref": "#/components/schemas/app__modules__chat__router__MessageRequest"
               }
             }
           },
@@ -8550,6 +9002,354 @@
         "summary": "Reject Channel",
         "tags": [
           "channels"
+        ]
+      }
+    },
+    "/api/v1/conversations": {
+      "get": {
+        "description": "The caller's conversations, most recent activity first.",
+        "operationId": "list_conversations_api_v1_conversations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
+                  },
+                  "title": "Response List Conversations Api V1 Conversations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Conversations",
+        "tags": [
+          "direct messages"
+        ]
+      },
+      "post": {
+        "description": "Open a direct conversation with any user (UT_21): **201** when it is new, **200**\nwith the existing one otherwise, so two users always share one conversation.",
+        "operationId": "start_conversation_api_v1_conversations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The conversation already existed"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Conversation",
+        "tags": [
+          "direct messages"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}": {
+      "get": {
+        "description": "One conversation with its blocked indicator. Participants only (others get 404).",
+        "operationId": "read_conversation_api_v1_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Conversation",
+        "tags": [
+          "direct messages"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/messages": {
+      "get": {
+        "description": "The conversation's history, oldest first within each page (IT_21).\n\nWith no cursor this is the newest ``limit`` messages. Scroll up with\n``before=<oldest id shown>`` until ``has_more`` is false; poll for new messages with\n``after=<newest id shown>``. History stays readable after a block.",
+        "operationId": "read_messages_api_v1_conversations__conversation_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Older than this message id",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Older than this message id",
+              "title": "Before"
+            }
+          },
+          {
+            "description": "Newer than this message id",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Newer than this message id",
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__chat__direct_router__MessagePageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Messages",
+        "tags": [
+          "direct messages"
+        ]
+      },
+      "post": {
+        "description": "Send a direct message (UT_21). The sender and time are the server's.\n\nRefused with **403** while either participant has blocked the other (UT_22); the\ncheck runs on every send, so a block takes effect at once.",
+        "operationId": "send_message_api_v1_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__modules__chat__direct_router__MessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectMessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Message",
+        "tags": [
+          "direct messages"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/messages/{message_id}/reports": {
+      "post": {
+        "description": "Report a received message (IT_22), for example as \"Inappropriate content\".\n\nThe report is filed as open in the moderation queue with the message's id and the\nreason. Reporting the same message again while that report is open returns it.",
+        "operationId": "report_message_api_v1_conversations__conversation_id__messages__message_id__reports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report Message",
+        "tags": [
+          "direct messages"
         ]
       }
     },

@@ -77,6 +77,69 @@ Rules:
   `Join the channel to send messages` (replying), straight from the API, whatever the
   UI shows (NFR-02).
 
+## Direct conversations (S11.1, issue #38)
+
+A one-to-one conversation can be started with any registered user (the profile's
+**Message** button). The same two users always share one conversation, whoever starts
+it: `POST /conversations` returns **201** when it is new and **200** with the existing
+one otherwise. A conversation is private to its two participants; anyone else gets
+**404** `Conversation not found`, so its existence is not revealed.
+
+Messages are 1–2000 characters after trimming; a blank one is refused with
+`Message cannot be empty` and nothing is stored. The sender and time are always the
+server's. History is ordered by message id (the order the database accepted the
+messages, which never ties) and paged with cursors, oldest first within each page,
+so it reloads identically on return or after re-login.
+
+### Blocking
+
+`PUT /blocks/{user_id}` with `{"confirm": true}` blocks a user (without it: **400**
+`Confirm blocking this user`). The block is a row in `user_blocks`, checked on every
+send, so it takes effect on the very next message and persists across sessions until
+`DELETE /blocks/{user_id}` lifts it. Either side's block stops messages **both ways**:
+
+| Sender | Refusal (403) |
+| --- | --- |
+| the user who was blocked | `You can no longer send messages to this user` |
+| the user who blocked | `You have blocked this user. Unblock them to send messages` |
+
+Conversation responses carry the "blocked" indicator: `blocked` (either side),
+`blocked_by_me` (so the UI can offer Unblock) and `can_send`. History stays readable.
+
+### Reporting a message
+
+`POST /conversations/{id}/messages/{message_id}/reports` with a `reason` (the Test
+Plan's "Inappropriate content" is `inappropriate`) files an open report in the
+moderation queue with `target_type = direct_message` and the message id. Only a
+participant can report, never their own message; a missing reason is **422**
+`Select a reason for reporting this message`. Reporting the same message again while
+its report is open returns that report. Moderators read the reported message with
+`chat.service.get_direct_message` (the admin queue screen is S14.2).
+
+### Endpoints
+
+All under `/api/v1`, signed in.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/conversations` | Start (or reopen) a conversation: `{"user_id": n}`. |
+| `GET` | `/conversations` | My conversations, most recent activity first, with the last message. |
+| `GET` | `/conversations/{id}` | One conversation with its blocked indicator. |
+| `POST` | `/conversations/{id}/messages` | Send a message. |
+| `GET` | `/conversations/{id}/messages?limit=&before=&after=` | History page (newest `limit` without a cursor; `before` scrolls up, `after` polls). |
+| `POST` | `/conversations/{id}/messages/{message_id}/reports` | Report a received message (`report:submit`). |
+| `GET` | `/blocks` | Users I have blocked. |
+| `PUT` | `/blocks/{user_id}` | Block (needs `confirm: true`; repeating changes nothing). |
+| `DELETE` | `/blocks/{user_id}` | Unblock. |
+
+### Direct-conversation service functions
+
+`find_conversation`, `open_conversation` (refuses a user with themselves),
+`get_conversation`, `conversations_for`, `conversation_participants`,
+`send_direct_message`, `get_direct_message`, `direct_messages_page`, `has_blocked`
+(one direction), `is_blocked` (either direction), `block_user`, `unblock_user`,
+`blocked_by`. All return ids or dataclasses, never ORM objects.
+
 ## Service interface for other modules
 
 `app.modules.chat.service`: `post_channel_message`, `channel_history`,
@@ -84,11 +147,16 @@ Rules:
 for a thread's replies), `thread_root`, `thread_summaries` (`ThreadSummary`), `is_blocked`,
 `open_conversation`, `send_direct_message`. All return dataclasses or plain values.
 No other module may depend on chat (`test_no_module_imports_chat`); chat itself calls
-accounts (route guards, sender names) and channels (visibility, membership).
+accounts (route guards, sender names), channels (visibility, membership) and
+moderation (reporting a direct message).
 
 ## Tests
 
 `tests/test_channel_chat.py` — Test Plan cases `UT_19`, `UT_20`, `ST_19`, `ST_20`
 under their IDs, plus a test per S10.1 acceptance criterion and the access rules above.
+
+`tests/test_direct_chat.py` — S11.1 Test Plan cases and acceptance criteria for
+direct conversations, blocking and reporting.
+
 `tests/test_channel_threads.py` — S10.2 cases `IT_19`, `IT_20` and a test per
 acceptance criterion and thread rule.
