@@ -554,3 +554,28 @@ Manually verified on a migrated, seeded SQLite database: the seeded student repl
 the thread returns the parent and the nested reply, the admin (not a member) gets
 `Join the channel to view this chat`, and replying to a missing message is
 `Message not found`.
+
+## S12.2 (#41) — Recommendations targeting weak topics
+
+Test Plan cases are automated in `tests/test_recommendations.py` under their case IDs,
+run against `GET /api/v1/analytics/recommendations` with attempts taken through the
+real `/attempts` endpoints and peer content shared through the materials, questions and
+quizzes services. The page is checked in a browser by
+`tests/test_web_ui.py::test_S12_2_recommended_for_you_in_the_browser` (skipped where
+Chromium is not installed).
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_24` | Recommendations refresh as new performance data arrives (a new weak topic goes to the top) | `test_IT_24_a_30_percent_concurrency_quiz_puts_its_materials_and_quizzes_on_top` | Pass |
+| `ST_23` | Recommendations refresh as new performance data arrives (an improved topic gives way to the next weakest) | `test_ST_23_after_two_85_percent_attempts_concurrency_gives_way_to_the_next_weakest` | Pass |
+| `ST_24` | Recommended items map to topics identified as weak | `test_ST_24_top_recommendations_are_tagged_with_the_weakest_topic`, `test_every_targeted_item_maps_to_a_weak_topic`, `test_a_developing_topic_is_not_targeted` | Pass |
+| — | Already-consumed items are de-prioritized | `test_consumed_items_are_listed_after_fresh_ones_not_hidden`, `test_opening_a_recommendation_moves_it_behind_fresh_items`, `test_a_rated_material_counts_as_consumed` | Pass |
+| — | UC-13 alternate flow: no weak areas (or nothing shared for them) gives popular picks | `test_a_new_user_gets_popular_picks_with_a_clear_message`, `test_a_weak_topic_with_nothing_shared_falls_back_to_popular_picks` | Pass |
+| — | Only content the user may see, never their own; better-rated items first | `test_channel_content_is_recommended_only_to_its_members`, `test_own_contributions_are_never_recommended`, `test_better_rated_materials_rank_first_within_a_topic`, `test_an_admin_is_scoped_like_anyone_else` | Pass |
+| — | Sign-in required; input validated | `test_recommendations_need_a_signed_in_user`, `test_an_unknown_item_type_is_refused` | Pass |
+| — | Recommended for You page (UC-13 steps 1, 4, 5) | `test_S12_2_recommended_for_you_in_the_browser`, `test_the_recommended_page_is_linked_and_records_opened_items` | Pass (browser test run locally with Chromium) |
+
+Schema change: migration `0011` adds `recommendation_opens` (analytics module).
+Analytics now also calls channels (the user's scope), materials and questions; none of
+them reaches chat. The LLM is not used: the UC-13 ranking is deterministic, so it works
+with `LLM_PROVIDER=none`.

@@ -1,6 +1,6 @@
 """Stored performance figures (S12.1, FR-12).
 
-Two tables, both written only by ``app.modules.analytics.service``:
+Tables written only by ``app.modules.analytics.service``:
 
 * ``performance_attempts`` is the ledger: one row per submitted quiz attempt holding
   exactly what that attempt contributed (subject, topic, score, max score, time). It
@@ -13,6 +13,9 @@ Two tables, both written only by ``app.modules.analytics.service``:
 ``performance_attempts.attempt_id`` is a plain integer, not a foreign key: if an
 attempt disappears (its quiz is deleted), the ledger row survives long enough for the
 next sync to subtract its contribution instead of silently losing it.
+
+* ``recommendation_opens`` (S12.2) records which recommended items the user opened, so
+  they are de-prioritised in later recommendations.
 """
 
 from datetime import datetime
@@ -50,5 +53,24 @@ class PerformanceTopic(Base):
     total_possible: Mapped[float] = mapped_column(Float, default=0.0)
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class RecommendationOpen(Base):
+    """A recommended item the user opened (S12.2), so it is de-prioritised next time.
+
+    The item is a type plus an id rather than a foreign key, because it can be a
+    material, a question or a quiz, each owned by another module.
+    """
+
+    __tablename__ = "recommendation_opens"
+    __table_args__ = (UniqueConstraint("user_id", "item_type", "item_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    item_type: Mapped[str] = mapped_column(String(16))
+    item_id: Mapped[int] = mapped_column(Integer)
+    opened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

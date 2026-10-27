@@ -449,3 +449,26 @@ def dashboard(db: Session, user_id: int) -> Dashboard:
         empty_message=None if ledger else EMPTY_MESSAGE,
         topics=topics,
     )
+
+
+# --------------------------------------------------------------------------- #
+# S12.2 - recommendations targeting weak topics (see ``recommendations.py``)
+# --------------------------------------------------------------------------- #
+
+
+def recommendations_for(db: Session, user_id: int, *, limit: int = 12):
+    """Materials, questions and quizzes for the user's weak topics, best first.
+
+    Returns ``recommendations.Recommendations``. Reconciles the performance figures
+    first, so the list reflects the latest attempt.
+    """
+    from app.modules.analytics import recommendations
+
+    return recommendations.recommend(db, user_id, limit=limit)
+
+
+def record_recommendation_open(db: Session, user_id: int, item_type: str, item_id: int) -> None:
+    """Remember that the user opened a recommended item, to de-prioritise it later."""
+    from app.modules.analytics import recommendations
+
+    recommendations.record_open(db, user_id, recommendations.ItemType(item_type), item_id)
