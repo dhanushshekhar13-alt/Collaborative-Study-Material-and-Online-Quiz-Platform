@@ -23,7 +23,7 @@ public service interface keeps its promises (NFR-07).
 | Module | Requirements | Owns tables | May call |
 | --- | --- | --- | --- |
 | accounts | FR-01 | users, profile_pictures | – |
-| channels | FR-02, FR-03 | channels, channel_memberships, channel_posts | accounts |
+| channels | FR-02, FR-03 | channels, channel_memberships, channel_posts | accounts, moderation, notifications |
 | materials | FR-04 | study_materials, material_files, material_reviews | accounts, channels, moderation, reputation |
 | questions | FR-05, FR-07 | questions, question_ratings | accounts, channels, moderation, reputation |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | accounts, channels, questions |
@@ -35,6 +35,7 @@ public service interface keeps its promises (NFR-07).
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
 | notifications | FR-14 | notifications, notification_preferences | accounts (reacts to chat, channels and quizzes through events) |
 | profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |
+| admin | FR-14 | none (audit log is moderation's `moderation_actions`) | accounts, channels, materials, moderation, notifications, questions |
 
 The web UI (`app/web/`, UI-1; UI-2 adds the materials, question bank and quiz screens
 in `static/study.js`) is not a module. It is static files served at `/app/`

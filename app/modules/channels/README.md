@@ -37,7 +37,11 @@ Channel is visible only to the person who requested it and to admins; others get
 | `POST` | `/api/v1/channels/{id}/approve` | `channel:approve` | Approve a pending request. |
 | `POST` | `/api/v1/channels/{id}/reject` | `channel:approve` | Reject a pending request. |
 
-Deciding a request that's already decided returns **409**.
+Deciding a request that's already decided returns **409**. Approve and reject take an
+optional body `{"note": "..."}`. Each decision is written to the admin audit log
+(`moderation_actions`: `approve_channel` / `reject_channel`, actor, channel, time, note)
+and the requester gets a `moderation` notification with the outcome (S14.2). The admin
+screen lists requests with requester names at `GET /api/v1/admin/channel-requests`.
 
 ### Membership (S02.2)
 

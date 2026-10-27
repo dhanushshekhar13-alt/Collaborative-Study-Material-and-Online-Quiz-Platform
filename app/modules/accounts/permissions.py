@@ -26,6 +26,7 @@ class Capability(enum.StrEnum):
     REPORT_SUBMIT = "report:submit"
     REPORT_RESOLVE = "report:resolve"
     USER_MANAGE = "user:manage"
+    ADMIN_DASHBOARD = "admin:dashboard"
 
 
 # Every signed-in user is a learner first, so the student set is the base that the
@@ -51,6 +52,7 @@ _ADMIN: frozenset[Capability] = _AUTHORIZED_USER | {
     Capability.CHANNEL_APPROVE,
     Capability.REPORT_RESOLVE,
     Capability.USER_MANAGE,
+    Capability.ADMIN_DASHBOARD,
 }
 
 _BY_ROLE: dict[Role, frozenset[Capability]] = {

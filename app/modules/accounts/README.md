@@ -62,7 +62,9 @@ every request, so a suspension takes effect immediately, not when the token expi
 Error wording is fixed by the Test Plan: `Enter a valid email address` (UT_02),
 `Invalid username or password` (IT_02), `Unauthorized` (IT_28). An unknown account,
 a wrong password and a suspended account all get the same 401 in the same time, so
-sign-in cannot be used to discover which accounts exist.
+sign-in cannot be used to discover which accounts exist. A suspended account's open
+sessions stop working on their next request. Admins suspend and reinstate accounts
+through `/api/v1/admin/users/{id}/suspend|reinstate` (S14.2, `app/modules/admin`).
 
 ## Roles and capabilities
 
@@ -74,6 +76,7 @@ sign-in cannot be used to discover which accounts exist.
 | `report:submit` | ✓ | ✓ | ✓ |
 | `channel:create_authorized`, `official_content:manage` | | ✓ | ✓ |
 | `channel:approve`, `report:resolve`, `user:manage` | | | ✓ |
+| `admin:dashboard` (admin dashboard and audit log, S14.2) | | | ✓ |
 
 `official_content:manage` lets a member of an approved Authorized Channel add, edit and
 remove its official materials, questions and quizzes (S03.1); outside one it grants
