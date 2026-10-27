@@ -17,6 +17,17 @@ from sqlalchemy.orm import Session
 
 Handler = Callable[..., None]
 
+# Events another module subscribes to without importing the publisher. Each names its
+# payload; handlers receive it as keyword arguments after the session.
+
+# chat: channel_id, channel_name, message_id, sender_id, reply_to_user_id (the author
+# of the message replied to, or None) and mentioned_user_ids (members named @username).
+CHANNEL_MESSAGE_POSTED = "chat.channel_message_posted"
+# channels: channel_id, channel_name, post_id, author_id, member_ids.
+CHANNEL_POST_CREATED = "channels.post_created"
+# quizzes: quiz_id, title, channel_id, channel_name, creator_id, member_ids.
+QUIZ_PUBLISHED = "quizzes.quiz_published"
+
 _handlers: dict[str, list[Handler]] = defaultdict(list)
 
 

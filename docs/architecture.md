@@ -33,7 +33,7 @@ public service interface keeps its promises (NFR-07).
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
 | moderation_queue | FR-13 | none (the S13.2 report queue and moderator actions, assembled from other modules' services) | accounts, channels, materials, moderation, questions |
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
-| notifications | FR-14 | notifications, notification_preferences | – |
+| notifications | FR-14 | notifications, notification_preferences | accounts (reacts to chat, channels and quizzes through events) |
 | profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |
 
 The web UI (`app/web/`, UI-1) is not a module. It is static files served at `/app/`
@@ -71,6 +71,13 @@ publisher's transaction, so an attempt and its analytics figures commit together
 Analytics also reconciles the figures with the raw attempts before the dashboard is
 read, so a missed event can never leave them wrong. See
 `app/modules/analytics/README.md`.
+
+Notifications (S14.1) use the same hub so that nothing has to depend on notifications:
+chat publishes `chat.channel_message_posted` (with who a message replies to and which
+members it @mentions), channels publishes `channels.post_created` and quizzes publishes
+`quizzes.quiz_published`, each carrying the recipients; notifications subscribes and
+writes a notification for each recipient who has not switched that category off. The
+event names live in `app/core/events.py`. See `app/modules/notifications/README.md`.
 
 Cross-cutting references that point at "any content" (a shared resource in a chat
 message, the target of a report) are stored as a type plus an id rather than a

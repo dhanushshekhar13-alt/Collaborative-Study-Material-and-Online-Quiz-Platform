@@ -111,6 +111,15 @@ def get_user_by_email(db: Session, email: str) -> UserSummary | None:
     return _summary(user) if user else None
 
 
+def get_users_by_username(db: Session, usernames: Collection[str]) -> dict[str, UserSummary]:
+    """Users by username (case-insensitive), keyed by the lower-cased name (S14.1 mentions)."""
+    names = {n.strip().lower() for n in usernames if n.strip()}
+    if not names:
+        return {}
+    rows = db.scalars(select(User).where(User.username.in_(names)))
+    return {u.username: _summary(u) for u in rows}
+
+
 def set_suspended(db: Session, user_id: int, suspended: bool) -> None:
     user = db.get(User, user_id)
     if user is None:
@@ -364,6 +373,7 @@ __all__ = [
     "get_profile_picture",
     "get_user",
     "get_user_by_email",
+    "get_users_by_username",
     "get_users",
     "list_accounts",
     "register_account",

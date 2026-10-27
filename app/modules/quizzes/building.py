@@ -13,6 +13,8 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import events
+from app.modules.channels import service as channels
 from app.modules.questions import service as questions
 from app.modules.questions.service import Difficulty, QuestionStatus
 from app.modules.quizzes import service
@@ -200,4 +202,16 @@ def publish(db: Session, quiz_id: int, channel_id: int | None) -> QuizDetails:
     quiz.channel_id = channel_id
     quiz.status = QuizStatus.PUBLISHED
     db.flush()
+    if channel_id is not None:
+        channel = channels.describe_channel(db, channel_id)
+        events.publish(
+            events.QUIZ_PUBLISHED,
+            db,
+            quiz_id=quiz.id,
+            title=quiz.title,
+            channel_id=channel_id,
+            channel_name=channel.name if channel else None,
+            creator_id=quiz.creator_id,
+            member_ids=[m.user_id for m in channels.list_members(db, channel_id)],
+        )
     return get_quiz(db, quiz.id)
