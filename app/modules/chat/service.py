@@ -1,11 +1,15 @@
 """Public interface of the chat module (channel threads and direct messages)."""
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import events
+from app.modules.accounts import service as accounts
+from app.modules.channels import service as channels
 from app.modules.chat.models import (
     ChannelMessage,
     Conversation,
@@ -41,7 +45,48 @@ def post_channel_message(
         msg.shared_resource_type, msg.shared_resource_id = shared_resource
     db.add(msg)
     db.flush()
+    _announce(db, msg)
     return msg.id
+
+
+# @username, as accounts allows it (letters, digits, "_", "." and "-"), not inside an
+# email address or another word.
+_MENTION = re.compile(r"(?<![\w.@-])@([A-Za-z0-9_.-]{3,50})")
+
+
+def mentioned_members(db: Session, channel_id: int, body: str) -> list[int]:
+    """The channel members a message names with @username, in order (S14.1)."""
+    names = [m.rstrip(".-") for m in _MENTION.findall(body)]
+    users = accounts.get_users_by_username(db, names)
+    found: list[int] = []
+    for name in names:
+        user = users.get(name.lower())
+        if user and user.id not in found and channels.is_member(db, channel_id, user.id):
+            found.append(user.id)
+    return found
+
+
+def _announce(db: Session, msg: ChannelMessage) -> None:
+    """Tell subscribers (notifications) who a new message replies to or mentions."""
+    reply_to = None
+    if msg.parent_id is not None:
+        parent = db.get(ChannelMessage, msg.parent_id)
+        if parent is not None and not parent.is_deleted and parent.sender_id != msg.sender_id:
+            reply_to = parent.sender_id
+    mentioned = [u for u in mentioned_members(db, msg.channel_id, msg.body) if u != msg.sender_id]
+    if reply_to is None and not mentioned:
+        return
+    channel = channels.describe_channel(db, msg.channel_id)
+    events.publish(
+        events.CHANNEL_MESSAGE_POSTED,
+        db,
+        channel_id=msg.channel_id,
+        channel_name=channel.name if channel else None,
+        message_id=msg.id,
+        sender_id=msg.sender_id,
+        reply_to_user_id=reply_to,
+        mentioned_user_ids=mentioned,
+    )
 
 
 def channel_history(db: Session, channel_id: int, limit: int = 50) -> list[MessageView]:

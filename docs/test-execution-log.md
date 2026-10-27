@@ -579,3 +579,24 @@ Schema change: migration `0011` adds `recommendation_opens` (analytics module).
 Analytics now also calls channels (the user's scope), materials and questions; none of
 them reaches chat. The LLM is not used: the UC-13 ranking is deterministic, so it works
 with `LLM_PROVIDER=none`.
+
+## S14.1 (#44) — Notifications with user preferences
+
+Test Plan cases are automated in `tests/test_notifications.py` under their case IDs,
+run against the endpoints the notification bell and Notification Settings use
+(`/api/v1/notifications`). Replies are posted through S10.2's
+`POST /api/v1/channels/{id}/messages` with `parent_id`; the notification is raised in
+`chat.service.post_channel_message`.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `UT_27` | A reply or mention generates a notification linking to the relevant message | `test_UT_27_reply_mentioning_the_user_notifies_them_with_a_link`, `test_a_reply_notifies_the_author_of_the_message`, `test_a_mention_notifies_each_named_member_once`, `test_mentions_reach_channel_members_only` | Pass |
+| — | Notifications show an unread count and can be marked read | `test_unread_count_and_mark_read`, `test_someone_elses_notification_cannot_be_marked` | Pass |
+| — | A notification is generated for relevant quiz and channel updates | `test_quiz_and_channel_updates_generate_notifications` | Pass |
+| `UT_28` | Disabling a category stops those notifications being generated | `test_UT_28_disabled_quiz_updates_stop_while_other_categories_continue`, `test_unknown_category_is_rejected` | Pass |
+| `UT_28` | Other categories continue to arrive unaffected | `test_UT_28_disabled_quiz_updates_stop_while_other_categories_continue`, `test_disabling_a_category_stops_only_that_category`, `test_a_reply_that_mentions_still_arrives_when_replies_are_off` | Pass |
+| — | Preferences persist across sessions | `test_preferences_persist_across_sessions` | Pass |
+
+No schema change: `notifications` and `notification_preferences` exist since migration
+`0001`. New routes under `/api/v1/notifications`; `docs/api/openapi-v1.json` is
+regenerated.

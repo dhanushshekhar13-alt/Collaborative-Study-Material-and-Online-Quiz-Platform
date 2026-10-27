@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core import events
 from app.modules.channels.models import (
     ApprovalStatus,
     Channel,
@@ -312,6 +313,16 @@ def create_post(db: Session, channel_id: int, author_id: int, body: str) -> Post
     db.add(post)
     db.flush()
     db.refresh(post)
+    channel = db.get(Channel, channel_id)
+    events.publish(
+        events.CHANNEL_POST_CREATED,
+        db,
+        channel_id=channel_id,
+        channel_name=channel.name if channel else None,
+        post_id=post.id,
+        author_id=author_id,
+        member_ids=[m.user_id for m in list_members(db, channel_id)],
+    )
     return _post(post)
 
 
