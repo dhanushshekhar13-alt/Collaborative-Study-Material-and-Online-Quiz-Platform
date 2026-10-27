@@ -2811,6 +2811,18 @@
             "maxLength": 2000,
             "title": "Body",
             "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
           }
         },
         "title": "MessageRequest",
@@ -2840,6 +2852,34 @@
           },
           "id": {
             "title": "Id",
+            "type": "integer"
+          },
+          "last_reply_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reply At"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "reply_count": {
+            "default": 0,
+            "title": "Reply Count",
             "type": "integer"
           },
           "sender_id": {
@@ -4919,6 +4959,37 @@
         "title": "SubmitRequest",
         "type": "object"
       },
+      "ThreadPageResponse": {
+        "description": "A thread: the message replied to, then a page of its replies oldest first.",
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/MessageResponse"
+          }
+        },
+        "required": [
+          "items",
+          "has_more",
+          "limit",
+          "parent"
+        ],
+        "title": "ThreadPageResponse",
+        "type": "object"
+      },
       "ThresholdsResponse": {
         "properties": {
           "min_attempts": {
@@ -6985,7 +7056,7 @@
     },
     "/api/v1/channels/{channel_id}/messages": {
       "get": {
-        "description": "The channel chat, oldest first within each page (ST_19, ST_20).\n\nWith no cursor this is the newest ``limit`` messages. Scroll up with\n``before=<oldest id shown>`` until ``has_more`` is false; poll for new messages\nwith ``after=<newest id shown>``. Messages are stored, so they survive logout.",
+        "description": "The channel chat, oldest first within each page (ST_19, ST_20).\n\nWith no cursor this is the newest ``limit`` messages. Scroll up with\n``before=<oldest id shown>`` until ``has_more`` is false; poll for new messages\nwith ``after=<newest id shown>``. Messages are stored, so they survive logout.\n\nThe main stream holds top-level messages; replies are shown under their parent,\nwhich carries ``reply_count`` and ``last_reply_at`` (S10.2).",
         "operationId": "read_messages_api_v1_channels__channel_id__messages_get",
         "parameters": [
           {
@@ -7081,7 +7152,7 @@
         ]
       },
       "post": {
-        "description": "Send a message to the channel chat (UT_19). Members only.\n\nThe sender is always the signed-in user and the timestamp is the server's, so\nevery member sees the same sender and time. A blank message is refused (UT_20).",
+        "description": "Send a message to the channel chat (UT_19), or a reply in a thread (IT_19).\n\nMembers only. The sender is always the signed-in user and the timestamp is the\nserver's, so every member sees the same sender and time. A blank message is\nrefused (UT_20). With ``parent_id`` the message is a reply stored with a link to\nthe message it answers; replying to a reply joins that reply's thread.",
         "operationId": "send_message_api_v1_channels__channel_id__messages_post",
         "parameters": [
           {
@@ -7132,6 +7203,113 @@
           }
         ],
         "summary": "Send Message",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/channels/{channel_id}/messages/{message_id}/replies": {
+      "get": {
+        "description": "A message's thread: the message itself, then its replies oldest first (IT_19).\n\nPaged like the main stream. Members only, checked on every request (IT_20). A\nreply's id opens the thread it belongs to.",
+        "operationId": "read_thread_api_v1_channels__channel_id__messages__message_id__replies_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Older than this reply id",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Older than this reply id",
+              "title": "Before"
+            }
+          },
+          {
+            "description": "Newer than this reply id",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Newer than this reply id",
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Thread",
         "tags": [
           "chat"
         ]
