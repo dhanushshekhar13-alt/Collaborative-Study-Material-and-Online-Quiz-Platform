@@ -298,3 +298,27 @@ legend { font-weight: 600; padding: 0 4px; }
 .table-wrap { overflow-x: auto; }
 .history { width: 100%; border-collapse: collapse; }
 .history th, .history td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+
+/* Dashboard (NFR-03): checklist, quick actions and progress. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.get-started { margin-bottom: 16px; }
+.get-started progress { width: 100%; height: 10px; accent-color: var(--strong); margin-bottom: 8px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.step { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); }
+.step:first-child { border-top: none; }
+.step-mark { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); text-align: center; line-height: 18px; font-size: 0.8rem; }
+.step.done .step-mark { background: var(--strong); border-color: var(--strong); color: var(--surface); }
+.step.done strong { color: var(--muted); }
+.quick-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 760px) { .quick-actions { grid-template-columns: minmax(0, 1fr); } }
+.quick-actions .action {
+  display: block; padding: 12px 14px; border-radius: 10px; text-decoration: none;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+}
+.quick-actions .action:hover, .quick-actions .action:focus-visible { border-color: var(--accent); outline: none; }
+.quick-actions .action strong { display: block; color: var(--accent); }
+.quick-actions .action span { display: block; font-size: 0.85rem; margin-top: 2px; }
+.progress-card .chart { margin-bottom: 12px; }
+.links { list-style: none; margin: 0; padding: 0; }
+.links li { padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.links li:first-child { border-top: none; }

@@ -231,11 +231,17 @@
       load();
     });
     const channel = scope ? channels.find((c) => String(c.id) === scope) : null;
+    const upload = uploadForm(ui, channels, scope, load);
     render(
       h("h1", {}, channel ? `Materials in ${channel.name}` : "Study materials"),
       scope ? h("p", {}, h("a", { href: "#/materials" }, "← All materials")) : null,
-      h("div", { class: "grid" }, h("section", { class: "card" }, search, status, total, list), uploadForm(ui, channels, scope, load)),
+      h("div", { class: "grid" }, h("section", { class: "card" }, search, status, total, list), upload),
     );
+    if (params.get("upload")) {
+      // The dashboard's "Upload material" (NFR-03) lands straight in the form.
+      upload.scrollIntoView({ block: "start" });
+      upload.elements.title.focus();
+    }
     await load();
   };
 

@@ -208,6 +208,8 @@ def test_UI_1_acceptance_criteria_in_the_browser(live_server, browser):
     expect(page.locator(".alert")).to_have_text("Invalid username or password")
     page.fill("[name=password]", "Pass@1234")
     page.click("button:has-text('Log in')")
+    expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()
+    page.click("#nav [data-nav=channels]")
     expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
 
     # Search results carry the type label (ST_04).
@@ -261,6 +263,8 @@ def test_UI_1_acceptance_criteria_in_the_browser(live_server, browser):
     page.fill("[name=username]", "faculty@example.com")
     page.fill("[name=password]", "Seed@1234")
     page.click("button:has-text('Log in')")
+    expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()
+    page.click("#nav [data-nav=channels]")
     expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
     assert not _disabled(page, authorized_option)
     page.click("text=Operating Systems (official)")
@@ -331,7 +335,7 @@ def test_S12_1_performance_dashboard_in_the_browser(live_server, browser):
         page.fill("[name=username]", who)
         page.fill("[name=password]", "Seed@1234")
         page.click("button:has-text('Log in')")
-        expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+        expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()
 
     log_in("student@example.com")
     page.click("nav >> text=Performance")
@@ -378,7 +382,7 @@ def test_S13_1_leaderboard_screen_in_the_browser(live_server, browser):
     page.fill("[name=username]", "student@example.com")
     page.fill("[name=password]", "Seed@1234")
     page.click("button:has-text('Log in')")
-    expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+    expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()
 
     page.click("#nav >> text=Leaderboard")
     expect(page.get_by_role("heading", name="Leaderboard")).to_be_visible()
@@ -427,7 +431,7 @@ def test_S12_2_recommended_for_you_in_the_browser(live_server, browser):
     page.fill("[name=username]", "student@example.com")
     page.fill("[name=password]", "Seed@1234")
     page.click("button:has-text('Log in')")
-    expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+    expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()
 
     page.click("nav >> text=Recommended")
     expect(page.get_by_role("heading", name="Recommended for You")).to_be_visible()
@@ -522,7 +526,7 @@ def test_UI_2_acceptance_criteria_in_the_browser(live_app, browser, tmp_path):
         page.fill("[name=username]", who)
         page.fill("[name=password]", "Seed@1234")
         page.click("button:has-text('Log in')")
-        expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+        expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()
 
     # ---- Upload Material: blank subject (UT_08), then a full upload (UT_07) ----
     notes = tmp_path / "OS_Scheduling_Notes.pdf"
