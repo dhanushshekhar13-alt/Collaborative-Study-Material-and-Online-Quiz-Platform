@@ -685,6 +685,27 @@ is removed (404 afterwards) and its uploader's inbox holds the explanation; the 
 is suspended (login 401) and reinstated; the audit log lists all four actions with the
 admin as actor.
 
+## S11.2 (#39) — In-chat sharing of materials, questions and quizzes
+
+Test Plan cases are automated in `tests/test_in_chat_sharing.py` under their case IDs,
+run against the endpoints the chat screens call (`/api/v1/conversations/{id}/messages`
+and `/api/v1/channels/{id}/messages`), then following the card's `api_path`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `ST_21` | A shared resource renders as a preview card; opening it navigates to the original | `test_ST_21_shared_material_stays_linked_and_opens_the_original[direct]`, `[channel]` ("OS_Scheduling_Notes.pdf") | Pass |
+| `ST_22` | Opening a shared quiz goes to its start screen and it can be attempted | `test_ST_22_shared_quiz_opens_the_start_screen_and_can_be_attempted` | Pass |
+| — | A shared resource renders as a preview card in the chat | `test_a_shared_resource_renders_as_a_preview_card`, `test_sharing_with_a_comment_keeps_both`, `test_a_share_can_be_a_thread_reply`, `test_the_conversation_list_shows_a_shared_last_message` | Pass |
+| — | Opening it navigates to the original content | `test_opening_the_card_navigates_to_the_original_content` (material, question, quiz) | Pass |
+| — | The link keeps working after the content is edited | `test_the_link_keeps_working_after_the_content_is_edited`, `test_the_message_stores_a_reference_not_a_copy` | Pass |
+| — | Access and safety rules | `test_a_removed_resource_shows_an_unavailable_card`, `test_the_card_respects_what_the_reader_may_open`, `test_you_cannot_share_what_does_not_exist[...]`, `test_you_cannot_share_what_you_may_not_open`, `test_an_adaptive_run_cannot_be_shared`, `test_a_question_card_never_shows_the_answer_key`, `test_a_blank_message_without_a_share_is_still_refused`, `test_an_unknown_resource_type_is_refused`, `test_blocking_still_stops_shares` | Pass |
+
+No schema change: `shared_resource_type` / `shared_resource_id` exist on
+`channel_messages` and `direct_messages` since migration `0001`. Chat may now call
+materials, questions and quizzes (`docs/architecture.md`); quizzes gains
+`describe_quiz`. `docs/api/openapi-v1.json` is regenerated. The chat screens that
+render the cards are UI-3 (#64).
+
 ## NFR-02 (#47) — Security: credentials and role-based authorization
 
 Automated in `tests/test_security.py`. The authorization matrix is built from the

@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.accounts import service as accounts
 from app.modules.accounts.service import Capability, UserSummary, current_user, require_capability
-from app.modules.chat import service
+from app.modules.chat import service, sharing
+from app.modules.chat.sharing import SharedCardResponse, SharedResourceRequest
 from app.modules.moderation import service as moderation
 from app.modules.moderation.service import ReportReason, ReportTarget
 
@@ -59,6 +60,8 @@ class DirectMessageResponse(BaseModel):
     sender_name: str | None
     body: str
     created_at: datetime | None
+    # The preview card of a shared resource, built from the original on every read.
+    shared_resource: SharedCardResponse | None = None
 
 
 class ConversationResponse(BaseModel):
@@ -75,6 +78,8 @@ class ConversationResponse(BaseModel):
 class MessageRequest(BaseModel):
     # A missing body is treated like a blank one, so both get the same wording.
     body: str = Field(default="", max_length=MAX_MESSAGE_LENGTH)
+    # Share a material, question or quiz as a live link (S11.2); the body may be blank.
+    shared_resource: SharedResourceRequest | None = None
 
 
 class MessagePageResponse(BaseModel):
@@ -145,7 +150,7 @@ def _conversation(db: Session, conversation_id: int, user: UserSummary):
 
 
 def _message(
-    db: Session, m: service.DirectMessageView, names: dict[int, str | None]
+    db: Session, m: service.DirectMessageView, names: dict[int, str | None], viewer: UserSummary
 ) -> DirectMessageResponse:
     if m.sender_id not in names:
         names[m.sender_id] = _participant(db, m.sender_id).display_name
@@ -156,6 +161,9 @@ def _message(
         sender_name=names[m.sender_id],
         body=m.body,
         created_at=m.created_at,
+        shared_resource=sharing.message_card(
+            db, m.shared_resource_type, m.shared_resource_id, viewer
+        ),
     )
 
 
@@ -170,7 +178,7 @@ def _conversation_response(
         blocked=blocked,
         blocked_by_me=by_me,
         can_send=not blocked,
-        last_message=_message(db, conv.last_message, {}) if conv.last_message else None,
+        last_message=_message(db, conv.last_message, {}, user) if conv.last_message else None,
         created_at=conv.created_at,
     )
 
@@ -247,13 +255,14 @@ def send_message(
     if service.has_blocked(db, conv.other_user_id, user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=THEY_BLOCKED_YOU)
     body = payload.body.strip()
-    if not body:
+    if not body and payload.shared_resource is None:
         raise _invalid(EMPTY_MESSAGE)
+    shared = sharing.checked_share(db, payload.shared_resource, user)
     message_id = service.send_direct_message(
-        db, conversation_id=conversation_id, sender_id=user.id, body=body
+        db, conversation_id=conversation_id, sender_id=user.id, body=body, shared_resource=shared
     )
     db.commit()
-    return _message(db, service.get_direct_message(db, message_id), {})
+    return _message(db, service.get_direct_message(db, message_id), {}, user)
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=MessagePageResponse)
@@ -279,7 +288,7 @@ def read_messages(
     )
     names: dict[int, str | None] = {}
     return MessagePageResponse(
-        items=[_message(db, m, names) for m in messages], has_more=has_more, limit=limit
+        items=[_message(db, m, names, user) for m in messages], has_more=has_more, limit=limit
     )
 
 

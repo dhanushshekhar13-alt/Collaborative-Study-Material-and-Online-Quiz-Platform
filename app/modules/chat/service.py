@@ -260,8 +260,17 @@ def open_conversation(db: Session, user_a: int, user_b: int) -> int:
     return conv.id
 
 
-def send_direct_message(db: Session, *, conversation_id: int, sender_id: int, body: str) -> int:
+def send_direct_message(
+    db: Session,
+    *,
+    conversation_id: int,
+    sender_id: int,
+    body: str,
+    shared_resource: tuple[SharedResourceType, int] | None = None,
+) -> int:
     msg = DirectMessage(conversation_id=conversation_id, sender_id=sender_id, body=body)
+    if shared_resource:
+        msg.shared_resource_type, msg.shared_resource_id = shared_resource
     db.add(msg)
     db.flush()
     return msg.id

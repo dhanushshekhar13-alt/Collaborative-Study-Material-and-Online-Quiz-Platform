@@ -255,6 +255,44 @@ def published_in_scope(
     ]
 
 
+@dataclass(frozen=True)
+class QuizInfo:
+    """What another module may show about one quiz (a chat preview card, S11.2)."""
+
+    id: int
+    title: str
+    subject: str
+    topic: str
+    difficulty: str
+    duration_minutes: int
+    channel_id: int | None
+    creator_id: int
+    status: QuizStatus
+    is_adaptive: bool
+    question_count: int
+
+
+def describe_quiz(db: Session, quiz_id: int) -> QuizInfo | None:
+    """One quiz's current details, whatever its status (callers check access)."""
+    quiz = db.get(Quiz, quiz_id)
+    if quiz is None:
+        return None
+    count = db.scalar(select(func.count(QuizQuestion.id)).where(QuizQuestion.quiz_id == quiz.id))
+    return QuizInfo(
+        quiz.id,
+        quiz.title,
+        quiz.subject,
+        quiz.topic,
+        quiz.difficulty,
+        quiz.duration_minutes,
+        quiz.channel_id,
+        quiz.creator_id,
+        quiz.status,
+        bool(quiz.is_adaptive),
+        int(count or 0),
+    )
+
+
 def attempted_quiz_ids(db: Session, user_id: int) -> set[int]:
     """Quizzes the user has submitted at least one attempt at."""
     return set(
