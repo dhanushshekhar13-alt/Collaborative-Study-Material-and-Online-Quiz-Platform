@@ -705,3 +705,25 @@ No schema change: `shared_resource_type` / `shared_resource_id` exist on
 materials, questions and quizzes (`docs/architecture.md`); quizzes gains
 `describe_quiz`. `docs/api/openapi-v1.json` is regenerated. The chat screens that
 render the cards are UI-3 (#64).
+
+## NFR-02 (#47) — Security: credentials and role-based authorization
+
+Automated in `tests/test_security.py`. The authorization matrix is built from the
+published API contract and the route guards, not a hand-kept list, so routes added later
+are covered automatically: 107 operations, of which 102 require a token, each called
+anonymously and with nine kinds of bad token (1,020 refusals), plus every role-guarded
+route called by every role that lacks its capability. The Test Plan cases the NFR maps
+to (IT_28, UT_06, IT_20) run here under their IDs, alongside their feature tests.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| — | Credentials are stored hashed using an accepted algorithm, never plain text | `test_registered_password_is_stored_as_a_salted_scrypt_hash`, `test_the_same_password_never_produces_the_same_stored_value`, `test_no_stored_credential_is_plain_text`, `test_a_tampered_or_foreign_hash_never_verifies` | Pass |
+| — | Credentials never leave the server | `test_no_response_schema_can_carry_a_password_or_its_hash`, `test_account_responses_never_include_the_password_or_hash`, `test_a_wrong_password_is_refused_without_saying_which_part_was_wrong` | Pass |
+| — | Every tested unauthorized access attempt is denied (no or bad credentials) | `test_every_operation_outside_the_public_list_requires_a_token`, `test_every_protected_operation_refuses_every_bad_credential` (no header, empty, wrong scheme, malformed, foreign key, edited role claim, `alg: none`, expired, suspended, deleted), `test_a_refused_request_does_not_reach_the_data` | Pass |
+| `IT_28` | Every tested unauthorized access attempt is denied (insufficient role) | `test_every_role_guarded_route_refuses_each_role_without_the_capability`, `test_roles_with_the_capability_pass_the_guard`, `test_IT_28_non_admin_roles_are_denied_every_admin_route` (12 admin-only routes × student, authorized user), `test_a_role_change_takes_effect_on_the_next_request` | Pass |
+| `UT_06` | A user can modify only resources they have permission for (official content) | `test_UT_06_a_regular_member_cannot_manage_official_content` ("Insufficient permissions") | Pass |
+| `IT_20` | A user can access only resources they have permission for (channel chat) | `test_IT_20_a_non_member_is_denied_the_channel_chat` | Pass |
+| — | A user can modify only resources they have permission for (other users' data) | `test_another_users_material_cannot_be_edited_or_removed`, `test_another_users_channel_posts_and_members_cannot_be_changed`, `test_another_users_quiz_draft_and_attempt_cannot_be_touched`, `test_another_users_ai_work_cannot_be_reviewed_or_continued`, `test_another_users_conversation_and_notifications_stay_private`, `test_reports_and_the_moderation_queue_are_limited_to_who_may_see_them`, `test_profile_changes_apply_only_to_the_caller` | Pass |
+
+No schema or route change; `docs/api/openapi-v1.json` is unchanged. The security rules
+are written up in `docs/architecture.md` ("Security (NFR-02)").
