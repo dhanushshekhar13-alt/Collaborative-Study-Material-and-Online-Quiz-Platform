@@ -85,6 +85,26 @@ Cross-cutting references that point at "any content" (a shared resource in a cha
 message, the target of a report) are stored as a type plus an id rather than a
 foreign key, so the owning modules stay independent.
 
+## Security (NFR-02)
+
+- **Credentials.** Passwords are hashed with salted scrypt (`app/core/security.py`,
+  N=2^14, r=8, 16-byte salt) and compared in constant time. No response model has a
+  password field; the hash never leaves the accounts module.
+- **Authentication.** Every route except the public list (health, register, login,
+  session policy, profile pictures) depends on `accounts.service.current_user`, which
+  verifies an HS256 bearer token signed with `AUTH_TOKEN_SECRET` and re-reads the account
+  on every request, so suspension or a role change applies at once.
+- **Role authorization.** Routes declare the capability they need with
+  `require_capability` (`app/modules/accounts/permissions.py`); a role without it gets
+  403 `Unauthorized`.
+- **Resource authorization.** Ownership and membership (my attempt, my draft, my
+  conversation, a channel's members, official content) are checked in each module's
+  service before anything changes; a private resource answers 404, a visible one 403.
+
+`tests/test_security.py` checks this across the whole published contract: a route that
+appears without bearer security, or a role guard that admits a role it should not,
+fails the build.
+
 ## Data model
 
 ```mermaid
