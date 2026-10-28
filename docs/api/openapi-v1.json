@@ -2017,6 +2017,16 @@
               }
             ],
             "title": "Sender Name"
+          },
+          "shared_resource": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharedCardResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3416,6 +3426,16 @@
               }
             ],
             "title": "Sender Name"
+          },
+          "shared_resource": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharedCardResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -6241,6 +6261,118 @@
         "title": "ServedResponse",
         "type": "object"
       },
+      "SharedCardResponse": {
+        "properties": {
+          "api_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "API resource of the original",
+            "title": "Api Path"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SharedResourceType"
+          },
+          "web_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Web UI route that opens the original",
+            "title": "Web Path"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "available",
+          "title",
+          "subtitle",
+          "web_path",
+          "api_path",
+          "channel_id"
+        ],
+        "title": "SharedCardResponse",
+        "type": "object"
+      },
+      "SharedResourceRequest": {
+        "properties": {
+          "id": {
+            "minimum": 1.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SharedResourceType",
+            "description": "\"material\", \"question\" or \"quiz\""
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "title": "SharedResourceRequest",
+        "type": "object"
+      },
+      "SharedResourceType": {
+        "enum": [
+          "material",
+          "question",
+          "quiz"
+        ],
+        "title": "SharedResourceType",
+        "type": "string"
+      },
       "Standing": {
         "enum": [
           "strong",
@@ -6988,6 +7120,16 @@
             "maxLength": 2000,
             "title": "Body",
             "type": "string"
+          },
+          "shared_resource": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharedResourceRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "MessageRequest",
@@ -7038,6 +7180,16 @@
               }
             ],
             "title": "Parent Id"
+          },
+          "shared_resource": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharedResourceRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "MessageRequest",

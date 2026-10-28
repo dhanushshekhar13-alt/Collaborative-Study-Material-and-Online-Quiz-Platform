@@ -17,7 +17,8 @@ from app.core.database import get_db
 from app.modules.accounts import service as accounts
 from app.modules.accounts.service import UserSummary, current_user
 from app.modules.channels import service as channels
-from app.modules.chat import service
+from app.modules.chat import service, sharing
+from app.modules.chat.sharing import SharedCardResponse, SharedResourceRequest
 
 router = APIRouter(prefix="/channels", tags=["chat"])
 
@@ -36,6 +37,9 @@ class MessageRequest(BaseModel):
     body: str = Field(default="", max_length=MAX_MESSAGE_LENGTH)
     # Set to reply in a thread (S10.2). Replying to a reply joins its parent's thread.
     parent_id: int | None = Field(default=None, ge=1)
+    # Share a material, question or quiz as a live link (S11.2). The body may then be
+    # blank: the card is the message.
+    shared_resource: SharedResourceRequest | None = None
 
 
 class MessageResponse(BaseModel):
@@ -50,6 +54,8 @@ class MessageResponse(BaseModel):
     # Visible replies under a top-level message, and when the latest one was sent.
     reply_count: int = 0
     last_reply_at: datetime | None = None
+    # The preview card of a shared resource, built from the original on every read.
+    shared_resource: SharedCardResponse | None = None
 
 
 class MessagePageResponse(BaseModel):
@@ -84,6 +90,7 @@ def _response(
     channel_id: int,
     m: service.MessageView,
     names: dict[int, str | None],
+    viewer: UserSummary,
     threads: dict[int, service.ThreadSummary] | None = None,
 ) -> MessageResponse:
     if m.sender_id not in names:
@@ -100,16 +107,19 @@ def _response(
         parent_id=m.parent_id,
         reply_count=thread.reply_count if thread else 0,
         last_reply_at=thread.last_reply_at if thread else None,
+        shared_resource=sharing.message_card(
+            db, m.shared_resource_type, m.shared_resource_id, viewer
+        ),
     )
 
 
 def _responses(
-    db: Session, channel_id: int, messages: list[service.MessageView]
+    db: Session, channel_id: int, messages: list[service.MessageView], viewer: UserSummary
 ) -> list[MessageResponse]:
     """Responses for a page, with sender names and reply counts read once per page."""
     names: dict[int, str | None] = {}
     threads = service.thread_summaries(db, [m.id for m in messages if m.parent_id is None])
-    return [_response(db, channel_id, m, names, threads) for m in messages]
+    return [_response(db, channel_id, m, names, viewer, threads) for m in messages]
 
 
 @router.post(
@@ -132,18 +142,25 @@ def send_message(
     """
     _member_channel(db, channel_id, user, SEND_MEMBERS_ONLY_MESSAGE)
     body = payload.body.strip()
-    if not body:
+    if not body and payload.shared_resource is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=EMPTY_MESSAGE)
+    shared = sharing.checked_share(db, payload.shared_resource, user)
     parent_id = None
     if payload.parent_id is not None:
         parent_id = service.thread_root(db, channel_id, payload.parent_id)
         if parent_id is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MESSAGE_NOT_FOUND)
     message_id = service.post_channel_message(
-        db, channel_id=channel_id, sender_id=user.id, body=body, parent_id=parent_id
+        db,
+        channel_id=channel_id,
+        sender_id=user.id,
+        body=body,
+        parent_id=parent_id,
+        shared_resource=shared,
     )
     db.commit()
-    return _response(db, channel_id, service.get_channel_message(db, channel_id, message_id), {})
+    message = service.get_channel_message(db, channel_id, message_id)
+    return _response(db, channel_id, message, {}, user)
 
 
 @router.get("/{channel_id}/messages", response_model=MessagePageResponse)
@@ -173,7 +190,7 @@ def read_messages(
         db, channel_id, limit=limit, before=before, after=after
     )
     return MessagePageResponse(
-        items=_responses(db, channel_id, messages), has_more=has_more, limit=limit
+        items=_responses(db, channel_id, messages, user), has_more=has_more, limit=limit
     )
 
 
@@ -204,5 +221,5 @@ def read_thread(
     replies, has_more = service.channel_messages_page(
         db, channel_id, limit=limit, before=before, after=after, thread_of=root.id
     )
-    parent, *items = _responses(db, channel_id, [root, *replies])
+    parent, *items = _responses(db, channel_id, [root, *replies], user)
     return ThreadPageResponse(parent=parent, items=items, has_more=has_more, limit=limit)

@@ -44,8 +44,7 @@ Rules:
   Passing both cursors is **422** `Use either before or after, not both`.
 - Deleted messages (`is_deleted`) are never returned.
 
-Shared resources are in the table already but not exposed by these endpoints yet;
-S11.2 adds them to the request and response.
+Shared resources are covered under [In-chat sharing (S11.2)](#in-chat-sharing-s112).
 
 ## Threads (S10.2)
 
@@ -140,6 +139,45 @@ All under `/api/v1`, signed in.
 (one direction), `is_blocked` (either direction), `block_user`, `unblock_user`,
 `blocked_by`. All return ids or dataclasses, never ORM objects.
 
+## In-chat sharing (S11.2, issue #39)
+
+Any message, in a channel chat, a thread or a direct conversation, can carry a
+material, question or quiz as a **live link**. Send it with the message:
+
+```json
+{"body": "Read this before Friday", "shared_resource": {"type": "material", "id": 12}}
+```
+
+`body` may be blank when a resource is shared (the card is the message); a blank
+message with nothing shared still gets `Message cannot be empty`. Every message in a
+response carries `shared_resource`: `null`, or the preview card:
+
+| Field | Meaning |
+| --- | --- |
+| `type`, `id` | What was shared. |
+| `available` | False when the item was removed or this reader may not open it. |
+| `title`, `subtitle` | Live from the original (material title / question text / quiz title; type, subject, topic, size). Null title and `This item is no longer available` when unavailable. |
+| `web_path` | Web UI route that opens the original: `#/materials/<id>`, `#/questions/<id>`, `#/quizzes/<id>/attempt` (the quiz start screen, ST_22). |
+| `api_path` | The original's API resource (`/api/v1/materials/<id>`, ...). |
+| `channel_id` | The channel the original belongs to, if any. |
+
+Rules:
+
+- **A reference, not a copy.** The message stores only `shared_resource_type` and
+  `shared_resource_id` (columns since migration `0001`). The card is rebuilt from the
+  original on every read, so edits show in old messages and the link keeps working.
+- **The sender must be able to open it**, otherwise **404** `Shared item not found`
+  and nothing is stored (so a share can't probe for hidden content). Adaptive quiz runs
+  are one person's session and can't be shared.
+- **The card follows the reader's access**, using the same rules as the owning
+  module's `GET` endpoint (`app/modules/chat/sharing.py`): a channel-only material
+  shared with a non-member shows as unavailable with no title, and opening it is still
+  refused by `/materials/{id}`. A question card never includes the answer key.
+- Blocking still stops shares like any other direct message.
+
+The chat screens that render the cards are UI-3 (#64); the question detail route
+`#/questions/<id>` arrives with it.
+
 ## Service interface for other modules
 
 `app.modules.chat.service`: `post_channel_message`, `channel_history`,
@@ -147,8 +185,9 @@ All under `/api/v1`, signed in.
 for a thread's replies), `thread_root`, `thread_summaries` (`ThreadSummary`), `is_blocked`,
 `open_conversation`, `send_direct_message`. All return dataclasses or plain values.
 No other module may depend on chat (`test_no_module_imports_chat`); chat itself calls
-accounts (route guards, sender names), channels (visibility, membership) and
-moderation (reporting a direct message).
+accounts (route guards, sender names), channels (visibility, membership),
+moderation (reporting a direct message) and materials, questions and quizzes (preview
+cards for shared resources, S11.2).
 
 ## Tests
 
@@ -157,6 +196,9 @@ under their IDs, plus a test per S10.1 acceptance criterion and the access rules
 
 `tests/test_direct_chat.py` — S11.1 Test Plan cases and acceptance criteria for
 direct conversations, blocking and reporting.
+
+`tests/test_in_chat_sharing.py` — S11.2 cases `ST_21`, `ST_22`, a test per acceptance
+criterion and the sharing rules above.
 
 `tests/test_channel_threads.py` — S10.2 cases `IT_19`, `IT_20` and a test per
 acceptance criterion and thread rule.
