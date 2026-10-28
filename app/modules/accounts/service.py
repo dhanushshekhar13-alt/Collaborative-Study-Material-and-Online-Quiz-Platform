@@ -46,6 +46,7 @@ class AccountDetails:
     display_name: str
     role: Role
     created_at: datetime
+    is_suspended: bool = False
 
 
 class DuplicateAccountError(Exception):
@@ -68,6 +69,7 @@ def _details(user: User) -> AccountDetails:
         display_name=user.display_name,
         role=user.role,
         created_at=user.created_at,
+        is_suspended=bool(user.is_suspended),
     )
 
 

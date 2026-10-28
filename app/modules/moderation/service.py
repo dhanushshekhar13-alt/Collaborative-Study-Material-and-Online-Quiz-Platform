@@ -4,7 +4,7 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.moderation.models import (
@@ -288,3 +288,98 @@ def actions_on(db: Session, target_type: ReportTarget, target_id: int) -> list[A
         )
         for a in rows
     ]
+
+
+# --------------------------------------------------------------------------- #
+# S14.2 - admin review queue summary and audit log
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class FlaggedTarget:
+    """One reported item in the admin queue: every open report on it, grouped."""
+
+    target_type: ReportTarget
+    target_id: int
+    channel_id: int | None
+    report_count: int
+    reasons: tuple[ReportReason, ...]
+    first_reported_at: datetime
+    last_reported_at: datetime
+
+
+def flagged_targets(db: Session, target_type: ReportTarget | None = None) -> list[FlaggedTarget]:
+    """Open reports grouped by what they report, most-reported first (ST_28)."""
+    stmt = select(Report).where(Report.status == ReportStatus.OPEN)
+    if target_type is not None:
+        stmt = stmt.where(Report.target_type == target_type)
+    grouped: dict[tuple[ReportTarget, int], list[Report]] = {}
+    for r in db.scalars(stmt.order_by(Report.created_at, Report.id)):
+        grouped.setdefault((r.target_type, r.target_id), []).append(r)
+    flagged = [
+        FlaggedTarget(
+            target_type=kind,
+            target_id=target_id,
+            channel_id=reports[0].channel_id,
+            report_count=len(reports),
+            reasons=tuple(dict.fromkeys(r.reason for r in reports)),
+            first_reported_at=reports[0].created_at,
+            last_reported_at=reports[-1].created_at,
+        )
+        for (kind, target_id), reports in grouped.items()
+    ]
+    return sorted(flagged, key=lambda f: (-f.report_count, f.first_reported_at))
+
+
+def count_open_reports(db: Session) -> int:
+    return db.scalar(select(func.count(Report.id)).where(Report.status == ReportStatus.OPEN)) or 0
+
+
+@dataclass(frozen=True)
+class AuditEntry:
+    """One admin action as the audit log records it: actor, action, target and time."""
+
+    id: int
+    actor_id: int
+    action: ModerationActionType
+    target_type: ReportTarget
+    target_id: int
+    report_id: int | None
+    note: str | None
+    created_at: datetime
+
+
+def audit_log(
+    db: Session,
+    *,
+    limit: int = 50,
+    before: int | None = None,
+    target_type: ReportTarget | None = None,
+    target_id: int | None = None,
+) -> tuple[list[AuditEntry], bool]:
+    """Admin actions newest first, paged with ``before=<oldest id shown>``.
+
+    Returns the page and whether older entries remain.
+    """
+    stmt = select(ModerationAction)
+    if before is not None:
+        stmt = stmt.where(ModerationAction.id < before)
+    if target_type is not None:
+        stmt = stmt.where(ModerationAction.target_type == target_type)
+    if target_id is not None:
+        stmt = stmt.where(ModerationAction.target_id == target_id)
+    rows = list(db.scalars(stmt.order_by(ModerationAction.id.desc()).limit(limit + 1)))
+    entries = [
+        AuditEntry(
+            a.id,
+            a.actor_id,
+            a.action,
+            a.target_type,
+            a.target_id,
+            a.report_id,
+            a.note,
+            a.created_at,
+        )
+        for a in rows[:limit]
+    ]
+    return entries, len(rows) > limit

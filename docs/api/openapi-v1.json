@@ -441,6 +441,67 @@
         "title": "AddToQuizResponse",
         "type": "object"
       },
+      "AdminUserResponse": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "enum": [
+              "Active",
+              "Suspended"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "display_name",
+          "role",
+          "status",
+          "created_at"
+        ],
+        "title": "AdminUserResponse",
+        "type": "object"
+      },
       "AnswerEvaluationResponse": {
         "properties": {
           "covered_concepts": {
@@ -1070,6 +1131,92 @@
         "title": "AttemptStatus",
         "type": "string"
       },
+      "AuditEntryResponse": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ModerationActionType"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/PersonResponse"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          }
+        },
+        "required": [
+          "id",
+          "actor",
+          "action",
+          "target_type",
+          "target_id",
+          "report_id",
+          "note",
+          "created_at"
+        ],
+        "title": "AuditEntryResponse",
+        "type": "object"
+      },
+      "AuditLogResponse": {
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "has_more",
+          "limit"
+        ],
+        "title": "AuditLogResponse",
+        "type": "object"
+      },
       "BadgeLevelResponse": {
         "properties": {
           "code": {
@@ -1375,6 +1522,110 @@
         "title": "ChannelCreate",
         "type": "object"
       },
+      "ChannelDecision": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "ChannelDecision",
+        "type": "object"
+      },
+      "ChannelRequestResponse": {
+        "properties": {
+          "approval_status": {
+            "$ref": "#/components/schemas/ApprovalStatus"
+          },
+          "channel_type": {
+            "$ref": "#/components/schemas/ChannelType"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested At"
+          },
+          "requester": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "channel_type",
+          "approval_status",
+          "subject",
+          "topic",
+          "description",
+          "requested_at",
+          "requester"
+        ],
+        "title": "ChannelRequestResponse",
+        "type": "object"
+      },
       "ChannelResponse": {
         "properties": {
           "approval_status": {
@@ -1633,107 +1884,6 @@
           "created_at"
         ],
         "title": "ConversationResponse",
-        "type": "object"
-      },
-      "DashboardResponse": {
-        "properties": {
-          "accuracy": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Accuracy"
-          },
-          "attempts": {
-            "title": "Attempts",
-            "type": "integer"
-          },
-          "empty": {
-            "title": "Empty",
-            "type": "boolean"
-          },
-          "empty_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Empty Message"
-          },
-          "not_enough_data": {
-            "items": {
-              "$ref": "#/components/schemas/TopicResponse"
-            },
-            "title": "Not Enough Data",
-            "type": "array"
-          },
-          "strengths": {
-            "items": {
-              "$ref": "#/components/schemas/TopicResponse"
-            },
-            "title": "Strengths",
-            "type": "array"
-          },
-          "subjects": {
-            "items": {
-              "$ref": "#/components/schemas/SubjectResponse"
-            },
-            "title": "Subjects",
-            "type": "array"
-          },
-          "thresholds": {
-            "$ref": "#/components/schemas/ThresholdsResponse"
-          },
-          "topics": {
-            "description": "Every topic, by subject then topic",
-            "items": {
-              "$ref": "#/components/schemas/TopicResponse"
-            },
-            "title": "Topics",
-            "type": "array"
-          },
-          "total_possible": {
-            "title": "Total Possible",
-            "type": "number"
-          },
-          "total_score": {
-            "title": "Total Score",
-            "type": "number"
-          },
-          "trend": {
-            "$ref": "#/components/schemas/TrendResponse"
-          },
-          "weak_areas": {
-            "items": {
-              "$ref": "#/components/schemas/TopicResponse"
-            },
-            "title": "Weak Areas",
-            "type": "array"
-          }
-        },
-        "required": [
-          "attempts",
-          "total_score",
-          "total_possible",
-          "accuracy",
-          "empty",
-          "empty_message",
-          "subjects",
-          "topics",
-          "trend",
-          "strengths",
-          "weak_areas",
-          "not_enough_data",
-          "thresholds"
-        ],
-        "title": "DashboardResponse",
         "type": "object"
       },
       "DescriptiveFeedbackResponse": {
@@ -2061,6 +2211,88 @@
           "examples"
         ],
         "title": "ExplanationResponse",
+        "type": "object"
+      },
+      "FlaggedItemResponse": {
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "first_reported_at": {
+            "format": "date-time",
+            "title": "First Reported At",
+            "type": "string"
+          },
+          "last_reported_at": {
+            "format": "date-time",
+            "title": "Last Reported At",
+            "type": "string"
+          },
+          "poster": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReportReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "removable": {
+            "title": "Removable",
+            "type": "boolean"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "title",
+          "poster",
+          "channel_id",
+          "report_count",
+          "reasons",
+          "first_reported_at",
+          "last_reported_at",
+          "removable"
+        ],
+        "title": "FlaggedItemResponse",
         "type": "object"
       },
       "FocusTopicResponse": {
@@ -3590,6 +3822,43 @@
           "name"
         ],
         "title": "Person",
+        "type": "object"
+      },
+      "PersonResponse": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "username"
+        ],
+        "title": "PersonResponse",
         "type": "object"
       },
       "PostListResponse": {
@@ -5231,6 +5500,36 @@
         "title": "RegistrationResponse",
         "type": "object"
       },
+      "ReinstateRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "ReinstateRequest",
+        "type": "object"
+      },
+      "RemoveContentRequest": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "RemoveContentRequest",
+        "type": "object"
+      },
       "RemoveRequest": {
         "properties": {
           "confirm": {
@@ -5252,6 +5551,60 @@
           }
         },
         "title": "RemoveRequest",
+        "type": "object"
+      },
+      "RemovedContentResponse": {
+        "properties": {
+          "audit_entry_id": {
+            "title": "Audit Entry Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "poster_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Id"
+          },
+          "poster_notified": {
+            "title": "Poster Notified",
+            "type": "boolean"
+          },
+          "resolved_reports": {
+            "title": "Resolved Reports",
+            "type": "integer"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_type",
+          "target_id",
+          "title",
+          "poster_id",
+          "resolved_reports",
+          "poster_notified",
+          "audit_entry_id",
+          "message"
+        ],
+        "title": "RemovedContentResponse",
         "type": "object"
       },
       "ReportDetailResponse": {
@@ -6020,6 +6373,29 @@
         "title": "SubmitRequest",
         "type": "object"
       },
+      "SuspendRequest": {
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "SuspendRequest",
+        "type": "object"
+      },
       "ThreadPageResponse": {
         "description": "A thread: the message replied to, then a page of its replies oldest first.",
         "properties": {
@@ -6445,6 +6821,140 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "app__modules__admin__router__DashboardResponse": {
+        "properties": {
+          "flagged_items": {
+            "title": "Flagged Items",
+            "type": "integer"
+          },
+          "open_reports": {
+            "title": "Open Reports",
+            "type": "integer"
+          },
+          "pending_channel_requests": {
+            "title": "Pending Channel Requests",
+            "type": "integer"
+          },
+          "suspended_users": {
+            "title": "Suspended Users",
+            "type": "integer"
+          },
+          "total_users": {
+            "title": "Total Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_users",
+          "suspended_users",
+          "pending_channel_requests",
+          "open_reports",
+          "flagged_items"
+        ],
+        "title": "DashboardResponse",
+        "type": "object"
+      },
+      "app__modules__analytics__router__DashboardResponse": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "empty": {
+            "title": "Empty",
+            "type": "boolean"
+          },
+          "empty_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Message"
+          },
+          "not_enough_data": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Not Enough Data",
+            "type": "array"
+          },
+          "strengths": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectResponse"
+            },
+            "title": "Subjects",
+            "type": "array"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdsResponse"
+          },
+          "topics": {
+            "description": "Every topic, by subject then topic",
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "total_possible": {
+            "title": "Total Possible",
+            "type": "number"
+          },
+          "total_score": {
+            "title": "Total Score",
+            "type": "number"
+          },
+          "trend": {
+            "$ref": "#/components/schemas/TrendResponse"
+          },
+          "weak_areas": {
+            "items": {
+              "$ref": "#/components/schemas/TopicResponse"
+            },
+            "title": "Weak Areas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attempts",
+          "total_score",
+          "total_possible",
+          "accuracy",
+          "empty",
+          "empty_message",
+          "subjects",
+          "topics",
+          "trend",
+          "strengths",
+          "weak_areas",
+          "not_enough_data",
+          "thresholds"
+        ],
+        "title": "DashboardResponse",
+        "type": "object"
+      },
       "app__modules__chat__direct_router__MessagePageResponse": {
         "properties": {
           "has_more": {
@@ -6740,6 +7250,502 @@
         "tags": [
           "accounts",
           "operations"
+        ]
+      }
+    },
+    "/api/v1/admin/audit-log": {
+      "get": {
+        "description": "Every admin action, newest first: actor, action, target and timestamp.",
+        "operationId": "audit_log_api_v1_admin_audit_log_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Older than this entry id",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Older than this entry id",
+              "title": "Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReportTarget"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Audit Log",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/channel-requests": {
+      "get": {
+        "description": "Admin > Channel Requests: pending Authorized Channels with their requester.\n\nDecide with ``POST /api/v1/channels/{id}/approve`` or ``/reject``.",
+        "operationId": "list_channel_requests_api_v1_admin_channel_requests_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelRequestResponse"
+                  },
+                  "title": "Response List Channel Requests Api V1 Admin Channel Requests Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Channel Requests",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/content/{target_type}/{target_id}/remove": {
+      "post": {
+        "description": "Remove Content \u2014 Rule Violation (ST_28).\n\nThe material or question is removed platform-wide, its open reports are resolved,\nthe poster is notified with the reason, and the action goes to the audit log.",
+        "operationId": "remove_content_api_v1_admin_content__target_type___target_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "material",
+                "question"
+              ],
+              "title": "Target Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "title": "Target Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveContentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedContentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Content",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "description": "The admin dashboard: counts of the work waiting for an admin.\n\nAdmins only; anyone else gets 403 ``Unauthorized`` and nothing of the dashboard.",
+        "operationId": "admin_dashboard_api_v1_admin_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__admin__router__DashboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Dashboard",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/reports": {
+      "get": {
+        "description": "Flagged content: open reports grouped by item, most-reported first.",
+        "operationId": "review_queue_api_v1_admin_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "target_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReportTarget"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FlaggedItemResponse"
+                  },
+                  "title": "Response Review Queue Api V1 Admin Reports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review Queue",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "description": "Admin > User Management: every account with its status, oldest first.",
+        "operationId": "list_users_api_v1_admin_users_get",
+        "parameters": [
+          {
+            "description": "Name, username or email",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Name, username or email",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "active",
+                    "suspended"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserResponse"
+                  },
+                  "title": "Response List Users Api V1 Admin Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/reinstate": {
+      "post": {
+        "description": "Lift a suspension; the user can log in again. Written to the audit log.",
+        "operationId": "reinstate_user_api_v1_admin_users__user_id__reinstate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReinstateRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reinstate User",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/suspend": {
+      "post": {
+        "description": "Suspend an account (IT_27): status becomes Suspended and the user cannot log in.\n\nNeeds ``confirm: true`` (the UI's confirmation step). Written to the audit log.",
+        "operationId": "suspend_user_api_v1_admin_users__user_id__suspend_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Suspend User",
+        "tags": [
+          "admin"
         ]
       }
     },
@@ -7374,7 +8380,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResponse"
+                  "$ref": "#/components/schemas/app__modules__analytics__router__DashboardResponse"
                 }
               }
             },
@@ -8206,6 +9212,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ChannelDecision"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -8959,7 +9982,7 @@
     },
     "/api/v1/channels/{channel_id}/reject": {
       "post": {
-        "description": "Reject a pending Authorized Channel; it stays visible only to its requester.",
+        "description": "Reject a pending Authorized Channel; it stays out of the Authorized listing.",
         "operationId": "reject_channel_api_v1_channels__channel_id__reject_post",
         "parameters": [
           {
@@ -8972,6 +9995,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ChannelDecision"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

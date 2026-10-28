@@ -7,6 +7,7 @@ from sqlalchemy.exc import OperationalError
 from app import __version__
 from app.core.config import settings
 from app.modules.accounts.router import router as accounts_router
+from app.modules.admin.router import router as admin_router
 from app.modules.analytics.router import router as analytics_router
 from app.modules.channels.router import router as channels_router
 from app.modules.chat.direct_router import router as direct_messages_router
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "version": __version__}
 
     app.include_router(accounts_router, prefix=API_PREFIX)
+    app.include_router(admin_router, prefix=API_PREFIX)
     app.include_router(channels_router, prefix=API_PREFIX)
     app.include_router(chat_router, prefix=API_PREFIX)
     app.include_router(direct_messages_router, prefix=API_PREFIX)

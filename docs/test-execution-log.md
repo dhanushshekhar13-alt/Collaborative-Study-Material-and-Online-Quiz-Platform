@@ -653,3 +653,34 @@ the attempt.
 | — | Usable at phone width (no horizontal scroll at 375 px) | browser test, phone step on all four screens | Pass (local) |
 
 No API or schema change: `docs/api/openapi-v1.json` is unchanged.
+
+## S14.2 (#45) — Admin management of users, channels and content
+
+Test Plan cases are automated in `tests/test_admin.py` under their case IDs, run against
+the endpoints the admin screens call (`/api/v1/admin/...`, the channel approve/reject
+routes and `/api/v1/notifications`).
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `IT_27` | Suspending sets the account status to Suspended and prevents login | `test_IT_27_admin_suspends_a_user_who_can_then_no_longer_log_in` (`spam_user01`; earlier session also refused), `test_suspending_sets_the_status_and_prevents_login`, `test_suspension_needs_confirmation_and_a_valid_target` | Pass |
+| — | Suspension is reversible by an admin | `test_suspension_is_reversible_by_an_admin` | Pass |
+| `IT_28` | A non-admin navigating to the admin dashboard is denied as Unauthorized and the dashboard does not render | `test_IT_28_a_student_opening_the_admin_dashboard_is_denied`, `test_every_admin_route_refuses_non_admins_on_the_server` (8 routes × student, authorized user, anonymous), `test_a_refused_admin_action_changes_nothing`, `test_the_dashboard_counts_the_work_waiting` | Pass |
+| `ST_27` | Approving sets the channel status to Approved and makes it visible platform-wide as Authorized | `test_ST_27_admin_approves_a_pending_authorized_channel` ("Official CS301") | Pass |
+| — | Rejecting keeps the channel out of the Authorized listing | `test_rejecting_keeps_the_channel_out_of_the_authorized_listing`, `test_a_decided_request_cannot_be_decided_again_or_logged_twice` | Pass |
+| `ST_27` | Pending requests are listed for the admin with their requester | `test_pending_requests_are_listed_with_their_requester` | Pass |
+| `ST_28` | Removed content is no longer visible on the platform | `test_ST_28_removing_reported_content_notifies_the_poster_and_is_logged`, `test_removed_content_is_no_longer_visible_on_the_platform`, `test_a_question_can_be_removed_and_its_author_notified`, `test_removal_needs_a_reason_and_existing_content` | Pass |
+| `ST_28` | The original poster receives a notification explaining the removal | `test_ST_28_removing_reported_content_notifies_the_poster_and_is_logged`, `test_notifications_are_private_and_can_be_marked_read`, `test_channel_decisions_are_logged_and_the_requester_is_told` | Pass |
+| `ST_28` | The action is written to the admin audit log with actor, target and timestamp | `test_the_audit_log_records_actor_target_and_time_newest_first`, `test_suspend_and_reinstate_are_written_to_the_audit_log`, `test_channel_decisions_are_logged_and_the_requester_is_told` | Pass |
+
+No schema change: `users.is_suspended`, `reports`, `moderation_actions` and
+`notifications` exist since migration `0001`. New module `admin` (no tables); new
+capability `admin:dashboard`; channels may now call moderation and notifications
+(`docs/architecture.md`). The notifications inbox routes come from S14.1. `docs/api/openapi-v1.json` is
+regenerated.
+
+Manually verified on a migrated, seeded SQLite database: the student gets
+`Unauthorized` from `/admin/dashboard`; the faculty user's "Official CS301" request is
+listed with its requester and approved; a reported material appears in the review queue,
+is removed (404 afterwards) and its uploader's inbox holds the explanation; the student
+is suspended (login 401) and reinstated; the audit log lists all four actions with the
+admin as actor.

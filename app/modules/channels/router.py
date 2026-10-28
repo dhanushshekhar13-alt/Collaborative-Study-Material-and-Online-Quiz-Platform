@@ -20,6 +20,10 @@ from app.modules.accounts.service import (
 )
 from app.modules.channels import service
 from app.modules.channels.models import ApprovalStatus, ChannelType, MemberRole
+from app.modules.moderation import service as moderation
+from app.modules.moderation.service import ModerationActionType, ReportTarget
+from app.modules.notifications import service as notifications
+from app.modules.notifications.service import NotificationKind
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
@@ -201,7 +205,29 @@ def read_channel(
     return _response(summary, _role(db, channel_id, user.id), user)
 
 
-def _decide(db: Session, channel_id: int, decision: ApprovalStatus) -> ChannelResponse:
+class ChannelDecision(BaseModel):
+    # Optional note for the requester and the audit log, e.g. why a request was rejected.
+    note: str | None = Field(default=None, max_length=1000)
+
+
+_DECISION_ACTION = {
+    ApprovalStatus.APPROVED: ModerationActionType.APPROVE_CHANNEL,
+    ApprovalStatus.REJECTED: ModerationActionType.REJECT_CHANNEL,
+}
+
+
+def _decide(
+    db: Session,
+    channel_id: int,
+    decision: ApprovalStatus,
+    admin: UserSummary,
+    payload: ChannelDecision | None,
+) -> ChannelResponse:
+    """Record an admin's decision on a pending request (S02.1, S14.2).
+
+    The decision is written to the admin audit log with actor, target and time, and the
+    requester is notified of the outcome.
+    """
     summary = service.describe_channel(db, channel_id)
     if summary is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MESSAGE)
@@ -210,29 +236,54 @@ def _decide(db: Session, channel_id: int, decision: ApprovalStatus) -> ChannelRe
             status_code=status.HTTP_409_CONFLICT,
             detail=f"This channel is already {summary.approval_status.value}",
         )
+    note = (payload.note or "").strip() or None if payload else None
     service.set_approval(db, channel_id, decision)
+    moderation.log_action(
+        db,
+        actor_id=admin.id,
+        action=_DECISION_ACTION[decision],
+        target_type=ReportTarget.CHANNEL,
+        target_id=channel_id,
+        note=note,
+    )
+    if summary.created_by is not None:
+        approved = decision is ApprovalStatus.APPROVED
+        notifications.notify(
+            db,
+            user_id=summary.created_by,
+            kind=NotificationKind.MODERATION,
+            title=(
+                f'Your Authorized Channel "{summary.name}" was approved'
+                if approved
+                else f'Your Authorized Channel request "{summary.name}" was rejected'
+            ),
+            body=note,
+            link=f"/channels/{channel_id}",
+        )
     db.commit()
     return _response(service.describe_channel(db, channel_id))
 
 
-@router.post(
-    "/{channel_id}/approve",
-    response_model=ChannelResponse,
-    dependencies=[Depends(require_capability(Capability.CHANNEL_APPROVE))],
-)
-def approve_channel(channel_id: int, db: Session = Depends(get_db)) -> ChannelResponse:
+@router.post("/{channel_id}/approve", response_model=ChannelResponse)
+def approve_channel(
+    channel_id: int,
+    payload: ChannelDecision | None = None,
+    admin: UserSummary = Depends(require_capability(Capability.CHANNEL_APPROVE)),
+    db: Session = Depends(get_db),
+) -> ChannelResponse:
     """Approve a pending Authorized Channel; it becomes visible platform-wide (ST_27)."""
-    return _decide(db, channel_id, ApprovalStatus.APPROVED)
+    return _decide(db, channel_id, ApprovalStatus.APPROVED, admin, payload)
 
 
-@router.post(
-    "/{channel_id}/reject",
-    response_model=ChannelResponse,
-    dependencies=[Depends(require_capability(Capability.CHANNEL_APPROVE))],
-)
-def reject_channel(channel_id: int, db: Session = Depends(get_db)) -> ChannelResponse:
-    """Reject a pending Authorized Channel; it stays visible only to its requester."""
-    return _decide(db, channel_id, ApprovalStatus.REJECTED)
+@router.post("/{channel_id}/reject", response_model=ChannelResponse)
+def reject_channel(
+    channel_id: int,
+    payload: ChannelDecision | None = None,
+    admin: UserSummary = Depends(require_capability(Capability.CHANNEL_APPROVE)),
+    db: Session = Depends(get_db),
+) -> ChannelResponse:
+    """Reject a pending Authorized Channel; it stays out of the Authorized listing."""
+    return _decide(db, channel_id, ApprovalStatus.REJECTED, admin, payload)
 
 
 # --------------------------------------------------------------------------- #
