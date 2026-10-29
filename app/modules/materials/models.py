@@ -88,4 +88,7 @@ class MaterialFile(Base):
     # from the client's Content-Type.
     content_type: Mapped[str] = mapped_column(String(100))
     size_bytes: Mapped[int] = mapped_column(Integer)
+    # SHA-256 of ``data``, taken when the upload is accepted (NFR-04). Every download is
+    # checked against it, so a damaged file is refused instead of served.
+    sha256: Mapped[str] = mapped_column(String(64))
     data: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)

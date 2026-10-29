@@ -2839,6 +2839,18 @@
             "title": "Previewable",
             "type": "boolean"
           },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SHA-256 of the stored bytes, so the uploader can confirm the file arrived intact (NFR-04); downloads are checked against it",
+            "title": "Sha256"
+          },
           "size_bytes": {
             "title": "Size Bytes",
             "type": "integer"

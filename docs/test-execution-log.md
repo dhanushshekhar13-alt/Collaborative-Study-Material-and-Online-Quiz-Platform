@@ -751,3 +751,26 @@ CHECK constraints and `llm_requests.withdrawn`; it upgrades and downgrades clean
 matches the models (`tests/test_migrations.py`). llm may now call moderation and
 moderation_queue may call llm (`docs/architecture.md`, "LLM reliability (NFR-06)").
 `docs/api/openapi-v1.json` is regenerated.
+
+## NFR-04 (#48) — Reliability: never lose a committed attempt or upload
+
+Verified by fault injection in `tests/test_reliability.py`, as the NFR specifies: a
+child process running the real app over a file database is killed (`os._exit`) after
+its writes are flushed but before they commit, mid-submission and mid-upload, and
+transient database failures are injected part-way through requests. The database is
+then reopened from a new engine, as a restarted server would see it. The NFR maps to no
+Test Plan case ID. The earlier submission fault-injection tests are in
+`tests/test_quiz_history.py`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| — | No committed quiz attempt or uploaded material is lost during a simulated transient failure | `test_killing_the_service_mid_submission_loses_no_committed_attempt`, `test_killing_the_service_mid_upload_leaves_no_partial_material`, `test_committed_attempts_and_uploads_survive_a_restart`, `test_a_transient_failure_mid_upload_saves_nothing_and_can_be_retried[while storing the file]`, `[at commit]`, `test_a_failing_reaction_never_costs_the_user_their_submission`; `tests/test_quiz_history.py::test_NFR_04_*` | Pass |
+| — | The system recovers to a consistent state after the failure | Same tests: nothing half-written after the kill (no half-scored answers, no material without its file, analytics rows only for committed attempts, SQLite `integrity_check` ok) and the same request succeeds on retry; `test_a_database_failure_inside_a_reaction_still_rolls_the_request_back`, `test_a_damaged_file_is_refused_rather_than_served`, `test_migration_0013_backfills_checksums_for_existing_files` | Pass |
+| — | Uploads and attempt writes are transactional | `test_an_upload_is_one_transaction`, `test_a_submission_is_one_transaction` (one commit each, analytics figures included), `test_handlers_are_isolated_from_each_other` | Pass |
+
+Event handlers now run in savepoints (`app/core/events.py`), so a failing subscriber
+cannot fail the submission or upload that triggered it; a database failure inside one
+still rolls the request back with a 503. Material files keep a SHA-256 checksum
+(migration `0013`, backfilled; upgrades, downgrades and matches the models), returned as
+`file.sha256` and checked on every preview and download. `docs/api/openapi-v1.json` is
+regenerated. Rules are written up in `docs/architecture.md` ("Reliability (NFR-04)").
