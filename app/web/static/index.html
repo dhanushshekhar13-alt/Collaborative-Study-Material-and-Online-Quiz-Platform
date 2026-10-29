@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="api.js" defer></script>
     <script src="study.js" defer></script>
+    <script src="community.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -23,7 +24,12 @@
         <a href="#/leaderboard" data-nav="leaderboard">Leaderboard</a>
         <a href="#/performance" data-nav="performance">Performance</a>
         <a href="#/recommended" data-nav="recommended">Recommended</a>
+        <a href="#/messages" data-nav="messages">Messages</a>
+        <a href="#/ask" data-nav="ask">Ask AI</a>
+        <a href="#/moderation" data-nav="moderation" data-cap="report:resolve official_content:manage" hidden>Moderation</a>
+        <a href="#/admin" data-nav="admin" data-cap="admin:dashboard" hidden>Admin</a>
         <a href="#/profile" data-nav="profile">Profile</a>
+        <a href="#/notifications" data-nav="notifications" id="bell" class="bell" aria-label="Notifications" title="Notifications">🔔<span id="bell-count" class="bell-count" hidden></span></a>
         <span id="whoami" class="muted"></span>
         <button id="logout" type="button" class="link">Log out</button>
       </nav>

@@ -20,9 +20,9 @@ import pytest
 from app.main import API_PREFIX, create_app
 from app.web import STATIC_DIR
 
-SCRIPTS = ["api.js", "app.js", "study.js"]
+SCRIPTS = ["api.js", "app.js", "study.js", "community.js"]
 # Scripts whose ``API.*("/path")`` calls are matched against the API's routes.
-PAGE_SCRIPTS = ["app.js", "study.js"]
+PAGE_SCRIPTS = ["app.js", "study.js", "community.js"]
 
 
 def test_root_redirects_to_the_ui(client):
@@ -38,6 +38,7 @@ def test_root_redirects_to_the_ui(client):
         ("/app/app.js", "javascript"),
         ("/app/api.js", "javascript"),
         ("/app/study.js", "javascript"),
+        ("/app/community.js", "javascript"),
         ("/app/styles.css", "text/css"),
     ],
 )

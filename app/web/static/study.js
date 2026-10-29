@@ -833,11 +833,13 @@
     return n === 1 ? "1 question is unanswered" : `${n} questions are unanswered`;
   }
 
-  async function attemptPage(ui, quizId) {
+  // `running` is an in-progress attempt already read by id (UI-3: a private Ask AI
+  // topic quiz is started with POST /ai/ask/{id}/start, not from the quiz list).
+  async function attemptPage(ui, quizId, running) {
     const { h, render, alertBox, show, busy, go } = ui;
-    let attempt;
+    let attempt = running;
     try {
-      attempt = await API.post(`/quizzes/${quizId}/attempts`);
+      if (!attempt) attempt = await API.post(`/quizzes/${quizId}/attempts`);
     } catch (err) {
       render(h("h1", {}, "Quiz"), h("p", { class: "alert error" }, err.message), h("a", { href: "#/quizzes" }, "Back to quizzes"));
       return;
@@ -990,7 +992,8 @@
       render(h("h1", {}, "Result"), h("p", { class: "alert error" }, err.message), h("a", { href: "#/history" }, "My Quiz History"));
       return;
     }
-    if (a.status === "in_progress" || !a.result) {
+    if (a.status === "in_progress") return attemptPage(ui, a.quiz_id, a);
+    if (!a.result) {
       render(h("h1", {}, a.quiz_title), h("p", { class: "alert info" }, "This attempt is still running."), h("a", { href: `#/quizzes/${a.quiz_id}/attempt`, class: "button" }, "Resume quiz"));
       return;
     }
