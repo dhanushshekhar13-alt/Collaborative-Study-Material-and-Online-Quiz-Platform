@@ -166,3 +166,21 @@ failure, review-gate and access tests.
 `tests/test_channel_ai.py`: Test Plan cases `IT_18` and `ST_17`, plus one test per S09.2
 acceptance criterion (subject scoping, named topics, full and empty banks,
 peer/generated labels, review gating, membership, Authorized Channels, no LLM).
+
+## Reporting AI output (NFR-06)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/ai/responses/{id}/reports` | signed in (`report:submit`) | Report an AI explanation, generated batch, topic quiz or LLM evaluation as `incorrect`, `inappropriate`, … with optional `details`. |
+
+`{id}` is the `llm_requests` id each AI response carries: `id` from `POST /ai/ask`, a
+batch's `id` from `/ai/generations`, and `ai_response_id` on an evaluation scored by the
+LLM (`null` for concept matching, which is deterministic). Only the requester may report
+it (anyone else gets 404). The report answers **201** `Report submitted for moderation`
+and appears in `/api/v1/moderation/queue` as `target_type: "ai_response"`, scoped to
+the request's channel (admins only when there is none), with `content.ai_generated`
+and an `excerpt` of the output. Reporting it again while open returns the same report.
+A moderator who upholds it (Remove Content) withdraws the output
+(`llm_requests.withdrawn`, migration `0012`): `POST /ai/ask/{id}/start` and the batch's
+review screen then answer 404. `service.get_response` and `service.set_withdrawn` are
+the interface moderation uses.

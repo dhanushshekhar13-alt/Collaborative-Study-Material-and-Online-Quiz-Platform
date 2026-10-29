@@ -27,11 +27,11 @@ public service interface keeps its promises (NFR-07).
 | materials | FR-04 | study_materials, material_files, material_reviews | accounts, channels, moderation, reputation |
 | questions | FR-05, FR-07 | questions, question_ratings | accounts, channels, moderation, reputation |
 | quizzes | FR-05, FR-06, FR-07 | quizzes, quiz_questions, quiz_attempts, attempt_answers | accounts, channels, questions |
-| llm | FR-07, FR-08, FR-09 | llm_requests, adaptive_sessions | accounts, channels, questions, quizzes |
+| llm | FR-07, FR-08, FR-09 | llm_requests, adaptive_sessions | accounts, channels, moderation (filing reports on AI output, NFR-06), questions, quizzes |
 | chat | FR-10, FR-11 | channel_messages, conversations, conversation_participants, direct_messages, user_blocks | accounts, channels, materials, moderation, questions, quizzes (preview cards for shared resources, S11.2) |
 | analytics | FR-12 | performance_attempts, performance_topics (rebuildable from quiz attempts), recommendation_opens | accounts, channels, materials, questions, quizzes |
 | moderation | FR-13, FR-14 | reports, moderation_actions | – |
-| moderation_queue | FR-13 | none (the S13.2 report queue and moderator actions, assembled from other modules' services) | accounts, channels, materials, moderation, questions |
+| moderation_queue | FR-13 | none (the S13.2 report queue and moderator actions, assembled from other modules' services) | accounts, channels, llm (AI responses in the queue, NFR-06), materials, moderation, questions |
 | reputation | FR-01, FR-13 | reputation_events, badges, user_badges | accounts |
 | notifications | FR-14 | notifications, notification_preferences | accounts (reacts to chat, channels and quizzes through events) |
 | profiles | FR-01 | none (assembled from other modules' services) | accounts, materials, questions, quizzes, reputation |
@@ -60,6 +60,27 @@ questions come from the same generation path, so they stay review-gated drafts.
 Descriptive answer evaluation (S08.1, `evaluation.py`) uses the same provider and
 validates the model's score and concept lists against the question before returning
 them; with no real model it falls back to deterministic concept matching.
+
+## LLM reliability (NFR-06)
+
+- **Review gate.** `questions.create_question` stores every `source=llm` question as a
+  draft, and every reader of the bank, quiz builder and `quizzes.publish` accepts
+  published questions only. Generation, Ask AI and Ask AI in a channel all go through
+  that path, so no generated question reaches a bank or a published quiz until its
+  requester approves it on the review screen (`/ai/generations/{id}`).
+- **Reporting.** Each AI output is one `llm_requests` row and its id is on the
+  response (`id` of an Ask AI answer or a generated batch, `ai_response_id` of an LLM
+  evaluation). `POST /ai/responses/{id}/reports` files a `reports` row with
+  `target_type = ai_response`, scoped to the request's channel, so it appears in the
+  same moderation queue as materials and questions, marked `ai_generated` with an
+  excerpt of the output. AI questions already in a bank are reported as questions and
+  marked `ai_generated` too. Upholding the report (Remove Content) sets
+  `llm_requests.withdrawn`: the topic quiz can no longer be started and the review
+  screen closes. llm files the report through moderation's service; the queue reads the
+  output through llm's service. Neither path reaches chat.
+- **Deterministic scoring.** See below; `tests/test_llm_reliability.py` also scores a
+  quiz with a provider that fails on any call and checks that nothing quizzes may call
+  can reach llm.
 
 Quiz scoring lives in `app/modules/quizzes/scoring.py` as pure functions. No module
 that quizzes depends on can reach chat, so a change to chat can never require a change

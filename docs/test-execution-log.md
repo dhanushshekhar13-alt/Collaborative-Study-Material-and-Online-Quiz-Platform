@@ -727,3 +727,27 @@ to (IT_28, UT_06, IT_20) run here under their IDs, alongside their feature tests
 
 No schema or route change; `docs/api/openapi-v1.json` is unchanged. The security rules
 are written up in `docs/architecture.md` ("Security (NFR-02)").
+
+## NFR-06 (#49) — LLM reliability: review gate, reporting and deterministic scoring
+
+Automated in `tests/test_llm_reliability.py`, with the offline fake provider or a
+scripted one. The NFR's verification cases (UT_14, IT_13, ST_16) run there under their
+IDs across every path LLM output can take, alongside their feature tests in
+`tests/test_llm_generation.py` and `tests/test_descriptive_results.py`; the scoring
+code-path review is kept as an automated check.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_14` | LLM-generated questions require review and approval before publication | `test_UT_14_generated_questions_reach_no_bank_or_quiz_before_review`, `test_UT_14_an_ask_ai_topic_quiz_cannot_be_published_until_its_questions_are_approved`, `test_UT_14_channel_ask_ai_questions_stay_out_of_the_channel_bank_until_approved`; `tests/test_llm_generation.py::test_UT_14_add_to_quiz_is_unavailable_until_every_question_is_reviewed` | Pass |
+| `IT_13` | Only reviewed questions are published; edited ones keep the correction, rejected ones never are | `test_IT_13_only_approved_questions_are_published_and_rejected_ones_never_are`; `tests/test_llm_generation.py::test_IT_13_a_flawed_question_can_be_edited_and_saved_with_the_correction`, `test_IT_13_a_rejected_question_is_discarded_and_never_reaches_bank_or_quiz` | Pass |
+| — | Reports on AI-generated content are captured | `test_a_report_on_an_ai_explanation_is_captured_and_reaches_the_moderation_queue`, `test_a_generated_batch_and_a_topic_quiz_can_be_reported`, `test_an_llm_evaluation_can_be_reported_but_concept_matching_has_nothing_to_report`, `test_reporting_the_same_ai_response_twice_returns_the_open_report`, `test_only_the_person_the_ai_answered_can_report_it` | Pass |
+| — | Reports on AI-generated content are routed to moderation | `test_an_ai_report_in_a_channel_is_routed_to_that_channels_moderators`, `test_an_ai_report_outside_any_channel_goes_to_admins_only`, `test_upholding_a_report_withdraws_the_ai_output`, `test_a_dismissed_ai_report_keeps_the_output`, `test_a_reported_ai_question_in_the_bank_is_marked_ai_generated` | Pass |
+| `ST_16` | Objective questions are scored deterministically, never by the LLM alone | `test_ST_16_objective_answers_are_scored_with_the_llm_unreachable`, `test_ST_16_an_llm_verdict_never_changes_the_objective_part`, `test_the_scoring_code_path_cannot_reach_the_llm_module`; `tests/test_descriptive_results.py::test_ST_16_*`, `tests/test_quiz_attempts.py::test_objective_scoring_is_deterministic_and_never_uses_the_llm` | Pass |
+
+New route `POST /api/v1/ai/responses/{id}/reports`; descriptive evaluations now return
+`ai_response_id`, and moderation queue entries carry `content.ai_generated` and
+`content.excerpt`. Migration `0012` adds `ai_response` to the report and action target
+CHECK constraints and `llm_requests.withdrawn`; it upgrades and downgrades cleanly and
+matches the models (`tests/test_migrations.py`). llm may now call moderation and
+moderation_queue may call llm (`docs/architecture.md`, "LLM reliability (NFR-06)").
+`docs/api/openapi-v1.json` is regenerated.

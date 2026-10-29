@@ -18,6 +18,7 @@ class ReportTarget(enum.StrEnum):
     DIRECT_MESSAGE = "direct_message"
     USER = "user"
     CHANNEL = "channel"
+    AI_RESPONSE = "ai_response"  # an llm_requests row: explanation, generation, evaluation
 
 
 class ReportReason(enum.StrEnum):
