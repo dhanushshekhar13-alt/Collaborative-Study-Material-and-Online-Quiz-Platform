@@ -89,7 +89,7 @@ def test_UI_3_acceptance_criteria_in_the_browser(live_app, browser, fake_llm):  
         page.fill("[name=username]", who)
         page.fill("[name=password]", PASSWORD)
         page.click("button:has-text('Log in')")
-        expect(page.get_by_role("heading", name="Channels", exact=True)).to_be_visible()
+        expect(page.get_by_role("heading", name="Dashboard")).to_be_visible()  # NFR-03
         return page
 
     student = new_page("student@example.com")

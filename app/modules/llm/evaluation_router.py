@@ -57,6 +57,16 @@ class EvaluationResponse(BaseModel):
     evaluator: str = Field(
         description='"llm", or "concept-match" when no real LLM is configured or it failed'
     )
+    ai_response_id: int | None = Field(
+        default=None,
+        description="When the LLM scored the answer: report a wrong evaluation at "
+        "POST /ai/responses/{id}/reports (NFR-06). None for concept matching.",
+    )
+
+
+def _ai_response_id(result: evaluation.DescriptiveEvaluation) -> int | None:
+    """The reportable AI output behind a score; concept matching has none."""
+    return result.llm_request_id if result.evaluator == "llm" else None
 
 
 def _is_admin(user: UserSummary) -> bool:
@@ -120,6 +130,7 @@ def evaluate_descriptive(
         weaknesses=list(result.weaknesses),
         summary=result.summary,
         evaluator=result.evaluator,
+        ai_response_id=_ai_response_id(result),
     )
 
 
@@ -184,6 +195,7 @@ def _evaluation_response(question_id: int, result: evaluation.DescriptiveEvaluat
         "weaknesses": list(result.weaknesses),
         "summary": result.summary,
         "evaluator": result.evaluator,
+        "ai_response_id": _ai_response_id(result),
     }
 
 

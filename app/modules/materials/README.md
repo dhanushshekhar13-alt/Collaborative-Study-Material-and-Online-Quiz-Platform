@@ -35,6 +35,13 @@ listings show them the same way everywhere (UT_07).
 - Files are stored in the database (`material_files`, one per material), like profile
   pictures, so every instance serves the same file and redeploys lose nothing. The
   `data` column is deferred: listings read only name, type and size.
+- **Reliability (NFR-04).** An upload is one transaction: the material and its file
+  commit together, so a crash or dropped connection never leaves a material without its
+  file (a transient database failure answers **503**; retry the upload). The SHA-256 of
+  the bytes is stored with the file and returned as `file.sha256`; previews and
+  downloads check it and send it as `X-Content-SHA256`, and a file that no longer
+  matches is refused with **500** `This file is damaged and cannot be downloaded…`
+  instead of being served damaged.
 - Previews are served `inline`, downloads as `attachment` with the original name
   (`filename*` for non-ASCII). Both send `nosniff`, `no-store`, and a `default-src
   'none'` CSP on images and text, so an uploaded file can never run script.

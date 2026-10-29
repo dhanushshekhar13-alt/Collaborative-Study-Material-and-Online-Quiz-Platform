@@ -728,6 +728,76 @@ to (IT_28, UT_06, IT_20) run here under their IDs, alongside their feature tests
 No schema or route change; `docs/api/openapi-v1.json` is unchanged. The security rules
 are written up in `docs/architecture.md` ("Security (NFR-02)").
 
+## NFR-06 (#49) — LLM reliability: review gate, reporting and deterministic scoring
+
+Automated in `tests/test_llm_reliability.py`, with the offline fake provider or a
+scripted one. The NFR's verification cases (UT_14, IT_13, ST_16) run there under their
+IDs across every path LLM output can take, alongside their feature tests in
+`tests/test_llm_generation.py` and `tests/test_descriptive_results.py`; the scoring
+code-path review is kept as an automated check.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_14` | LLM-generated questions require review and approval before publication | `test_UT_14_generated_questions_reach_no_bank_or_quiz_before_review`, `test_UT_14_an_ask_ai_topic_quiz_cannot_be_published_until_its_questions_are_approved`, `test_UT_14_channel_ask_ai_questions_stay_out_of_the_channel_bank_until_approved`; `tests/test_llm_generation.py::test_UT_14_add_to_quiz_is_unavailable_until_every_question_is_reviewed` | Pass |
+| `IT_13` | Only reviewed questions are published; edited ones keep the correction, rejected ones never are | `test_IT_13_only_approved_questions_are_published_and_rejected_ones_never_are`; `tests/test_llm_generation.py::test_IT_13_a_flawed_question_can_be_edited_and_saved_with_the_correction`, `test_IT_13_a_rejected_question_is_discarded_and_never_reaches_bank_or_quiz` | Pass |
+| — | Reports on AI-generated content are captured | `test_a_report_on_an_ai_explanation_is_captured_and_reaches_the_moderation_queue`, `test_a_generated_batch_and_a_topic_quiz_can_be_reported`, `test_an_llm_evaluation_can_be_reported_but_concept_matching_has_nothing_to_report`, `test_reporting_the_same_ai_response_twice_returns_the_open_report`, `test_only_the_person_the_ai_answered_can_report_it` | Pass |
+| — | Reports on AI-generated content are routed to moderation | `test_an_ai_report_in_a_channel_is_routed_to_that_channels_moderators`, `test_an_ai_report_outside_any_channel_goes_to_admins_only`, `test_upholding_a_report_withdraws_the_ai_output`, `test_a_dismissed_ai_report_keeps_the_output`, `test_a_reported_ai_question_in_the_bank_is_marked_ai_generated` | Pass |
+| `ST_16` | Objective questions are scored deterministically, never by the LLM alone | `test_ST_16_objective_answers_are_scored_with_the_llm_unreachable`, `test_ST_16_an_llm_verdict_never_changes_the_objective_part`, `test_the_scoring_code_path_cannot_reach_the_llm_module`; `tests/test_descriptive_results.py::test_ST_16_*`, `tests/test_quiz_attempts.py::test_objective_scoring_is_deterministic_and_never_uses_the_llm` | Pass |
+
+New route `POST /api/v1/ai/responses/{id}/reports`; descriptive evaluations now return
+`ai_response_id`, and moderation queue entries carry `content.ai_generated` and
+`content.excerpt`. Migration `0012` adds `ai_response` to the report and action target
+CHECK constraints and `llm_requests.withdrawn`; it upgrades and downgrades cleanly and
+matches the models (`tests/test_migrations.py`). llm may now call moderation and
+moderation_queue may call llm (`docs/architecture.md`, "LLM reliability (NFR-06)").
+`docs/api/openapi-v1.json` is regenerated.
+
+## NFR-04 (#48) — Reliability: never lose a committed attempt or upload
+
+Verified by fault injection in `tests/test_reliability.py`, as the NFR specifies: a
+child process running the real app over a file database is killed (`os._exit`) after
+its writes are flushed but before they commit, mid-submission and mid-upload, and
+transient database failures are injected part-way through requests. The database is
+then reopened from a new engine, as a restarted server would see it. The NFR maps to no
+Test Plan case ID. The earlier submission fault-injection tests are in
+`tests/test_quiz_history.py`.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| — | No committed quiz attempt or uploaded material is lost during a simulated transient failure | `test_killing_the_service_mid_submission_loses_no_committed_attempt`, `test_killing_the_service_mid_upload_leaves_no_partial_material`, `test_committed_attempts_and_uploads_survive_a_restart`, `test_a_transient_failure_mid_upload_saves_nothing_and_can_be_retried[while storing the file]`, `[at commit]`, `test_a_failing_reaction_never_costs_the_user_their_submission`; `tests/test_quiz_history.py::test_NFR_04_*` | Pass |
+| — | The system recovers to a consistent state after the failure | Same tests: nothing half-written after the kill (no half-scored answers, no material without its file, analytics rows only for committed attempts, SQLite `integrity_check` ok) and the same request succeeds on retry; `test_a_database_failure_inside_a_reaction_still_rolls_the_request_back`, `test_a_damaged_file_is_refused_rather_than_served`, `test_migration_0013_backfills_checksums_for_existing_files` | Pass |
+| — | Uploads and attempt writes are transactional | `test_an_upload_is_one_transaction`, `test_a_submission_is_one_transaction` (one commit each, analytics figures included), `test_handlers_are_isolated_from_each_other` | Pass |
+
+Event handlers now run in savepoints (`app/core/events.py`), so a failing subscriber
+cannot fail the submission or upload that triggered it; a database failure inside one
+still rolls the request back with a 503. Material files keep a SHA-256 checksum
+(migration `0013`, backfilled; upgrades, downgrades and matches the models), returned as
+`file.sha256` and checked on every preview and download. `docs/api/openapi-v1.json` is
+regenerated. Rules are written up in `docs/architecture.md` ("Reliability (NFR-04)").
+
+## NFR-03 (#50) — Usability: intuitive navigation and visual analytics
+
+Executed 2026-10-28. The Test Plan has no case of its own for NFR-03; `IT_01` expects a
+signed-in user to land on a dashboard, which this story adds (`#/dashboard`, see
+`app/web/README.md`). The browser walk-through runs a brand-new user through every core
+flow from the dashboard in a real browser (Playwright + Chromium) against a live, seeded
+server, counting clicks. Like the other browser tests it runs locally and is skipped in
+CI, which has no browser; the static and API tests run everywhere.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `IT_01` | Log in lands on the dashboard | `test_signed_in_users_land_on_the_dashboard`; browser test, log-in step (Dashboard heading, Dashboard active in the nav) | Pass |
+| — | A new user can find a channel, upload material and attempt a quiz unaided | `test_NFR_03_new_user_walkthrough_in_the_browser`: the Get started checklist goes 0 → 1 → 2 of 3 and disappears; join, upload and a submitted quiz with its result; `test_the_dashboard_endpoints_give_a_new_user_a_clean_start` | Pass (local) |
+| — | Analytics are presented as charts or graphs rather than raw numbers only | `test_the_dashboard_shows_progress_as_charts`; browser test, dashboard progress (subject bars and score trend as SVG `role=img`) and Performance | Pass (local) |
+| — | Core flows are reachable within three clicks from the dashboard | `test_every_core_flow_starts_from_a_dashboard_link`; browser test counts: join a channel 2, upload form 1 (upload 2), start a quiz 3, Performance 1 | Pass (local) |
+| — | The dashboard fits a phone (no horizontal scroll at 375 px) | browser test, phone step | Pass (local) |
+
+Moderated walkthrough with first-time users (the issue's "How it is verified") is for
+the team to run on the deployed app; this log covers the automated part.
+
+No API or schema change: `docs/api/openapi-v1.json` is unchanged. The UI-1, S12.1, S12.2,
+S13.1 and UI-2 browser tests now expect the dashboard after log in.
+
 ## UI-3 (#64) — Web UI for chat, AI help, analytics, notifications, moderation and admin
 
 Executed 2026-10-29. The screens are in `app/web/static/community.js` (plus small hooks

@@ -163,6 +163,7 @@ class QuestionOwner:
     author_id: int
     headline: str
     channel_id: int | None
+    ai_generated: bool = False  # NFR-06: moderation marks reports on LLM output
 
 
 def get_question_owner(db: Session, question_id: int) -> QuestionOwner | None:
@@ -170,7 +171,9 @@ def get_question_owner(db: Session, question_id: int) -> QuestionOwner | None:
     q = db.get(Question, question_id)
     if q is None or q.status is not QuestionStatus.PUBLISHED:
         return None
-    return QuestionOwner(q.id, q.author_id, _headline(q.text), q.channel_id)
+    return QuestionOwner(
+        q.id, q.author_id, _headline(q.text), q.channel_id, q.source is QuestionSource.LLM
+    )
 
 
 def set_removed(db: Session, question_id: int, removed: bool) -> None:

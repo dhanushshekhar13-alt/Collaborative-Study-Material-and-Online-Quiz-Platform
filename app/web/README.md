@@ -17,8 +17,29 @@ origin as the API, so no CORS setup is needed.
 | `static/api.js` | `API.get/post/put/patch/del` for `/api/v1`, plus `API.upload` (multipart) and `API.blob` (an authenticated file fetch for preview and download). It adds the bearer token, turns error responses into `ApiError(status, detail)` and sends the user back to Log in when a token expires. |
 | `static/study.js` | UI-2 (#63): `#/materials` (search, Upload Material), `#/materials/<id>` (preview, download, rate and review, helpful, report), `#/questions` (search, rate, report, Add Question), `#/quizzes` (lists by channel, My quizzes with Publish, Create Quiz), `#/quizzes/<id>/attempt` (countdown timer, autosave, unanswered warning, auto-submit), `#/attempts/<id>` (result) and `#/history` (My Quiz History). Pages register in `window.StudyHubPages`; `app.js` routes to them with its shared helpers, so the file loads before `app.js`. |
 | `static/community.js` | UI-3 (#64): the channel chat (mounted on `#/channels/<id>` through `window.StudyHubChat`: messages with sender and time, Send disabled while blank, threads opened inline, "Load older messages", polling for new ones every 5 s, and `?message=<id>` from a notification opens that thread), `#/users/<id>` (a member's profile with **Message**), `#/messages` and `#/messages/<id>` (direct conversations, Block/Unblock User with the blocked indicator, Report a message with a reason), `#/ask` (Ask AI: explanations, topic quizzes with Start quiz, Generate practice questions) and `#/ask/review/<id>` (approve, edit or reject each generated question, then add the approved ones to a quiz), `#/notifications` (the list behind the 🔔 bell, mark read, Notification settings), `#/moderation` (pending reports with content, reporters and reasons; Remove Content or Dismiss) and `#/admin` (counts, user management with Suspend/Reinstate, Authorized Channel requests with Approve/Reject, flagged content removal with a reason, and the admin action log). Loads before `app.js`. |
-| `static/app.js` | Hash routes (`#/login`, `#/register`, `#/channels`, `#/channels/<id>`, `#/my-channels`, `#/profile`, `#/leaderboard` (S13.1), `#/performance` (S12.1), `#/recommended` (S12.2)), one function per page. The performance page draws its charts as inline SVG with `createElementNS`. |
+| `static/app.js` | Hash routes (`#/login`, `#/register`, `#/dashboard` (NFR-03), `#/channels`, `#/channels/<id>`, `#/my-channels`, `#/profile`, `#/leaderboard` (S13.1), `#/performance` (S12.1), `#/recommended` (S12.2)), one function per page. The performance page draws its charts as inline SVG with `createElementNS`. |
 | `static/styles.css` | Design tokens on `:root` with a dark-mode set, and the `channel-normal` / `channel-authorized` badge styles named by the API's `type_style`. |
+
+## Dashboard and navigation (NFR-03)
+
+`#/dashboard` is where a signed-in user lands: after log in, on `/app/` with no page
+named, and from the StudyHub brand link, which always leads home. It shows:
+
+- **Get started**, for a new user: join a channel, upload a material, attempt a quiz,
+  each one click away and ticked off from `/channels/mine`, `/profiles/me`
+  (`contributions.materials`) and `/analytics/dashboard`. It disappears once all three
+  are done.
+- **Quick actions**: the first link of every core flow (`CORE_FLOWS` in `app.js`).
+  "Upload material" opens `#/materials?upload=1`, which focuses the upload form.
+- **Your progress**: accuracy by subject and the score trend, drawn with the same SVG
+  charts as Performance, or the API's empty-state message before any attempt.
+- **My channels**: up to six joined channels, one click each.
+
+From the dashboard, joining a channel takes 2 clicks, reaching the upload form 1,
+starting a quiz 3 (Take a quiz, pick the channel, Start quiz) and Performance 1.
+`tests/test_usability.py` checks the links statically and walks each flow in the
+browser as a brand-new user, counting clicks. **New screens should keep a core flow
+within three clicks of the dashboard**: add its first link to `CORE_FLOWS`.
 
 ## Rules for adding screens
 

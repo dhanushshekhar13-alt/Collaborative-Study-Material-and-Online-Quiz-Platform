@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.modules.accounts import service as accounts
 from app.modules.accounts.service import UserSummary, current_user
 from app.modules.channels import service as channels
+from app.modules.llm import service as llm
 from app.modules.materials import service as materials
 from app.modules.moderation import service as moderation
 from app.modules.moderation.service import (
@@ -38,7 +39,13 @@ CONTENT_NOT_FOUND = "Content not found"
 CANNOT_REMOVE_KIND = "This kind of content cannot be removed from the moderation queue"
 
 # Content the queue can take off the platform, and the API path a moderator opens it at.
-REMOVABLE = {ReportTarget.MATERIAL: "materials", ReportTarget.QUESTION: "questions"}
+# An AI response (NFR-06) is private to its requester, so it has no link: the queue
+# shows an excerpt instead, and removing it withdraws the output.
+REMOVABLE = {
+    ReportTarget.MATERIAL: "materials",
+    ReportTarget.QUESTION: "questions",
+    ReportTarget.AI_RESPONSE: None,
+}
 
 
 class Person(BaseModel):
@@ -50,6 +57,13 @@ class ReportedContent(BaseModel):
     title: str | None = Field(description="Material title or question headline")
     available: bool = Field(description="False once the content has been removed")
     link: str | None
+    ai_generated: bool = Field(
+        default=False,
+        description="True for AI output: an AI response, or a question the LLM generated",
+    )
+    excerpt: str | None = Field(
+        default=None, description="What the AI said, for an AI response (it has no link)"
+    )
 
 
 class QueueReport(BaseModel):
@@ -131,17 +145,32 @@ class _Names:
 
 
 def _content(db: Session, kind: ReportTarget, target_id: int) -> ReportedContent:
-    title = None
+    title, ai_generated = None, False
     if kind is ReportTarget.MATERIAL:
         material = materials.get_material(db, target_id)
         title = material.title if material else None
     elif kind is ReportTarget.QUESTION:
         question = questions.get_question_owner(db, target_id)
         title = question.headline if question else None
+        ai_generated = bool(question and question.ai_generated)
+    elif kind is ReportTarget.AI_RESPONSE:
+        found = llm.get_response(db, target_id)
+        if found is None:
+            return ReportedContent(title=None, available=False, link=None, ai_generated=True)
+        about = found.topic or found.subject
+        return ReportedContent(
+            title=f"{found.label}: {about}" if about else found.label,
+            available=not found.withdrawn,
+            link=None,
+            ai_generated=True,
+            excerpt=found.excerpt or None,
+        )
     else:
         return ReportedContent(title=None, available=True, link=None)
     link = f"/api/v1/{REMOVABLE[kind]}/{target_id}" if title else None
-    return ReportedContent(title=title, available=title is not None, link=link)
+    return ReportedContent(
+        title=title, available=title is not None, link=link, ai_generated=ai_generated
+    )
 
 
 def _channel_name(db: Session, channel_id: int | None) -> str | None:
@@ -298,7 +327,8 @@ def remove_content(
     """Remove Content (IT_26): hide the reported item and resolve its reports.
 
     Needs ``confirm: true``. The material or question is taken off the platform (it
-    disappears from search, channels and direct links), every open report on it
+    disappears from search, channels and direct links); a reported AI response is
+    withdrawn, so its topic quiz and review screen close (NFR-06). Every open report on it
     becomes Resolved, and the removal is logged with the moderator and time.
     """
     report = _moderated_report(db, report_id, user)
@@ -313,6 +343,8 @@ def remove_content(
     try:
         if report.target_type is ReportTarget.MATERIAL:
             materials.set_removed(db, report.target_id, True)
+        elif report.target_type is ReportTarget.AI_RESPONSE:
+            llm.set_withdrawn(db, report.target_id, True)
         else:
             questions.set_removed(db, report.target_id, True)
     except LookupError:
