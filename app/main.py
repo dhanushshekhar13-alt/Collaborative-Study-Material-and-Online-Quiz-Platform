@@ -14,6 +14,7 @@ from app.modules.chat.direct_router import router as direct_messages_router
 from app.modules.chat.router import router as chat_router
 from app.modules.llm.assistant_router import router as assistant_router
 from app.modules.llm.evaluation_router import router as evaluation_router
+from app.modules.llm.report_router import router as ai_report_router
 from app.modules.llm.router import router as llm_router
 from app.modules.materials.router import router as materials_router
 from app.modules.moderation_queue.router import router as moderation_router
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(assistant_router, prefix=API_PREFIX)
+    app.include_router(ai_report_router, prefix=API_PREFIX)
     app.include_router(reputation_router, prefix=API_PREFIX)
     app.include_router(analytics_router, prefix=API_PREFIX)
 

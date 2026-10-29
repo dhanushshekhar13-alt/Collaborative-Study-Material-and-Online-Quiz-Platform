@@ -4,16 +4,27 @@ The publisher names an event and passes the database session it is working in; e
 handler runs synchronously in that same transaction. A handler's writes therefore
 commit or roll back together with the change that triggered them.
 
+Each handler runs inside its own savepoint (NFR-04). If a handler fails, only its own
+writes are undone and the publisher's change still commits: a bug in a reaction such as
+analytics figures or a notification can never cost a user their submitted attempt.
+Subscribers must be able to catch up later (analytics reconciles its figures with the
+attempts). A database failure (``OperationalError``) is not a handler bug: it is
+re-raised so the whole request rolls back and the client is told to retry.
+
 This keeps the dependency graph pointing one way: quizzes publishes "an attempt was
 scored" without knowing analytics exists, and analytics (which may call quizzes)
 subscribes to it.
 """
 
+import logging
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
 
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 Handler = Callable[..., None]
 
@@ -38,5 +49,12 @@ def subscribe(event: str, handler: Handler) -> None:
 
 
 def publish(event: str, db: Session, **payload: Any) -> None:
+    """Run every handler for ``event``, each isolated in a savepoint."""
     for handler in list(_handlers.get(event, ())):
-        handler(db, **payload)
+        try:
+            with db.begin_nested():
+                handler(db, **payload)
+        except OperationalError:
+            raise
+        except Exception:
+            logger.exception("handler %s for %s failed; its writes were undone", handler, event)

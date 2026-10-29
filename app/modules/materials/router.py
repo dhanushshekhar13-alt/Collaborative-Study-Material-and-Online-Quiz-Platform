@@ -4,6 +4,7 @@ S04.1 upload, search and download; S04.2 rate, review and report; S03.1 official
 content in Authorized Channels (tagging, edit and remove).
 """
 
+import logging
 from datetime import datetime
 from pathlib import PurePosixPath
 from urllib.parse import quote
@@ -39,6 +40,7 @@ from app.modules.materials.models import MaterialType
 from app.modules.moderation import service as moderation
 from app.modules.moderation.service import ReportReason, ReportTarget
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/materials", tags=["materials"])
 
 # Wording fixed by the Test Plan (UT_08); the other tags follow the same pattern.
@@ -53,6 +55,10 @@ MEMBERS_ONLY = "Join this channel to view its content"
 MEMBERS_ONLY_UPLOAD = "Join this channel to add materials"
 AUTHORIZED_ONLY_UPLOAD = "Only authorized users can add content to Authorized Channels"
 NO_FILE = "This material has no file to download"
+FILE_DAMAGED = (
+    "This file is damaged and cannot be downloaded. The problem has been logged for an "
+    "administrator to restore it."
+)
 NOT_PREVIEWABLE = "Preview isn't available for this file type. Download it instead"
 RATING_REQUIRED = "Select a rating from 1 to 5 stars"
 REASON_REQUIRED = "Select a reason for reporting this material"
@@ -83,6 +89,11 @@ class MaterialFileResponse(BaseModel):
     content_type: str
     size_bytes: int
     previewable: bool
+    sha256: str | None = Field(
+        default=None,
+        description="SHA-256 of the stored bytes, so the uploader can confirm the file "
+        "arrived intact (NFR-04); downloads are checked against it",
+    )
 
 
 class MaterialResponse(BaseModel):
@@ -186,6 +197,7 @@ def _response(
             content_type=file.content_type,
             size_bytes=file.size_bytes,
             previewable=file.previewable,
+            sha256=file.sha256,
         )
         if file
         else None,
@@ -445,7 +457,13 @@ def _file_response(db: Session, material_id: int, user: UserSummary, *, inline: 
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=NOT_PREVIEWABLE
         )
-    stored = service.get_material_file(db, material_id)
+    try:
+        stored = service.get_material_file(db, material_id)
+    except service.DamagedFileError:
+        logger.error("material %s: stored file failed its integrity check", material_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=FILE_DAMAGED
+        ) from None
     if stored is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NO_FILE)
     ascii_name = stored.filename.encode("ascii", "ignore").decode().replace('"', "") or "material"
@@ -456,6 +474,7 @@ def _file_response(db: Session, material_id: int, user: UserSummary, *, inline: 
         ),
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
+        "X-Content-SHA256": stored.sha256,
     }
     if stored.content_type != "application/pdf":
         # Images and text never need scripts; the browser's PDF viewer is left alone.

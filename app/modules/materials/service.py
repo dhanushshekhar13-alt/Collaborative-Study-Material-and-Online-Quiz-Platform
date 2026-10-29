@@ -1,5 +1,6 @@
 """Public interface of the materials module."""
 
+import hashlib
 import unicodedata
 from collections.abc import Collection
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ class MaterialFileInfo:
     filename: str
     content_type: str
     size_bytes: int
+    sha256: str | None = None
 
     @property
     def previewable(self) -> bool:
@@ -274,11 +276,12 @@ def attach_file(
             filename=filename,
             content_type=content_type,
             size_bytes=len(data),
+            sha256=checksum(data),
             data=data,
         )
     )
     db.flush()
-    return MaterialFileInfo(filename, content_type, len(data))
+    return MaterialFileInfo(filename, content_type, len(data), checksum(data))
 
 
 def _file_info(db: Session, material_ids: Collection[int]) -> dict[int, MaterialFileInfo]:
@@ -290,9 +293,13 @@ def _file_info(db: Session, material_ids: Collection[int]) -> dict[int, Material
             MaterialFile.filename,
             MaterialFile.content_type,
             MaterialFile.size_bytes,
+            MaterialFile.sha256,
         ).where(MaterialFile.material_id.in_(material_ids))
     )
-    return {r.material_id: MaterialFileInfo(r.filename, r.content_type, r.size_bytes) for r in rows}
+    return {
+        r.material_id: MaterialFileInfo(r.filename, r.content_type, r.size_bytes, r.sha256)
+        for r in rows
+    }
 
 
 def describe_material(db: Session, material_id: int) -> MaterialSummary | None:
@@ -308,19 +315,38 @@ class MaterialFileData:
     filename: str
     content_type: str
     data: bytes
+    sha256: str
+
+
+class DamagedFileError(Exception):
+    """A stored file no longer matches the checksum taken at upload (NFR-04)."""
+
+
+def checksum(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def get_material_file(db: Session, material_id: int) -> MaterialFileData | None:
-    """The bytes of an active material's file, or ``None`` if it has no file."""
+    """The bytes of an active material's file, or ``None`` if it has no file.
+
+    The bytes are checked against the upload's SHA-256 first; a mismatch raises
+    ``DamagedFileError`` so a damaged file is never served as if it were intact.
+    """
     row = db.execute(
-        select(MaterialFile.filename, MaterialFile.content_type, MaterialFile.data)
+        select(
+            MaterialFile.filename, MaterialFile.content_type, MaterialFile.data, MaterialFile.sha256
+        )
         .join(StudyMaterial, StudyMaterial.id == MaterialFile.material_id)
         .where(
             MaterialFile.material_id == material_id,
             StudyMaterial.status == ContentStatus.ACTIVE,
         )
     ).first()
-    return MaterialFileData(row.filename, row.content_type, row.data) if row else None
+    if row is None:
+        return None
+    if checksum(row.data) != row.sha256:
+        raise DamagedFileError(f"material {material_id} file failed its integrity check")
+    return MaterialFileData(row.filename, row.content_type, row.data, row.sha256)
 
 
 @dataclass(frozen=True)

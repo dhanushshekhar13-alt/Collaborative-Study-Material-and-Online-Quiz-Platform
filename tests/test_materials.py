@@ -4,6 +4,7 @@ Test Plan cases are named after their IDs: UT_07, UT_08, IT_07, IT_08. The plan'
 steps run in the web UI (UI-2 #63); these call the endpoints that UI will use.
 """
 
+import hashlib
 import time
 
 import pytest
@@ -100,6 +101,7 @@ def test_UT_07_tagged_upload_succeeds_and_is_listed_with_all_tags(client, aditi)
         "content_type": "application/pdf",
         "size_bytes": len(PDF),
         "previewable": True,
+        "sha256": hashlib.sha256(PDF).hexdigest(),
     }
     assert body["uploader_name"] == "Aditi_R"
 
@@ -566,7 +568,9 @@ def test_listing_never_loads_file_bytes(db, users):
 
     page = materials.search_materials(db)
 
-    assert page.items[0].file == materials.MaterialFileInfo("n.pdf", "application/pdf", len(PDF))
+    assert page.items[0].file == materials.MaterialFileInfo(
+        "n.pdf", "application/pdf", len(PDF), hashlib.sha256(PDF).hexdigest()
+    )
     assert materials.get_material_file(db, created.id).data == PDF
 
 

@@ -502,8 +502,77 @@
         "title": "AdminUserResponse",
         "type": "object"
       },
+      "AiReportRequest": {
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason",
+            "description": "\"incorrect\" for a wrong explanation, answer key or score; \"inappropriate\" for unsuitable content"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "AiReportRequest",
+        "type": "object"
+      },
+      "AiReportResponse": {
+        "properties": {
+          "ai_response_id": {
+            "title": "Ai Response Id",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "ai_response_id",
+          "reason",
+          "status",
+          "message"
+        ],
+        "title": "AiReportResponse",
+        "type": "object"
+      },
       "AnswerEvaluationResponse": {
         "properties": {
+          "ai_response_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the LLM scored the answer: report a wrong evaluation at POST /ai/responses/{id}/reports (NFR-06). None for concept matching.",
+            "title": "Ai Response Id"
+          },
           "covered_concepts": {
             "items": {
               "type": "string"
@@ -2125,6 +2194,18 @@
       },
       "EvaluationResponse": {
         "properties": {
+          "ai_response_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the LLM scored the answer: report a wrong evaluation at POST /ai/responses/{id}/reports (NFR-06). None for concept matching.",
+            "title": "Ai Response Id"
+          },
           "covered_concepts": {
             "items": {
               "type": "string"
@@ -2757,6 +2838,18 @@
           "previewable": {
             "title": "Previewable",
             "type": "boolean"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SHA-256 of the stored bytes, so the uploader can confirm the file arrived intact (NFR-04); downloads are checked against it",
+            "title": "Sha256"
           },
           "size_bytes": {
             "title": "Size Bytes",
@@ -5844,17 +5937,36 @@
           "channel_message",
           "direct_message",
           "user",
-          "channel"
+          "channel",
+          "ai_response"
         ],
         "title": "ReportTarget",
         "type": "string"
       },
       "ReportedContent": {
         "properties": {
+          "ai_generated": {
+            "default": false,
+            "description": "True for AI output: an AI response, or a question the LLM generated",
+            "title": "Ai Generated",
+            "type": "boolean"
+          },
           "available": {
             "description": "False once the content has been removed",
             "title": "Available",
             "type": "boolean"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the AI said, for an AI response (it has no link)",
+            "title": "Excerpt"
           },
           "link": {
             "anyOf": [
@@ -8518,6 +8630,67 @@
           }
         ],
         "summary": "Add To Quiz",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/responses/{response_id}/reports": {
+      "post": {
+        "description": "Report incorrect or inappropriate AI-generated content to moderation (NFR-06).\n\nOnly the person the AI answered can report it (an AI response is private, so\nanyone else gets 404). The report is captured as open, with the reason and details,\nand routed to the moderators of the request's channel (admins when there is none).\nReporting the same response again while the first report is open returns that\nreport instead of filing a duplicate.",
+        "operationId": "report_ai_response_api_v1_ai_responses__response_id__reports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "response_id",
+            "required": true,
+            "schema": {
+              "title": "Response Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such AI response, or it is someone else's"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report Ai Response",
         "tags": [
           "ai"
         ]
@@ -11586,7 +11759,7 @@
     },
     "/api/v1/moderation/reports/{report_id}/remove": {
       "post": {
-        "description": "Remove Content (IT_26): hide the reported item and resolve its reports.\n\nNeeds ``confirm: true``. The material or question is taken off the platform (it\ndisappears from search, channels and direct links), every open report on it\nbecomes Resolved, and the removal is logged with the moderator and time.",
+        "description": "Remove Content (IT_26): hide the reported item and resolve its reports.\n\nNeeds ``confirm: true``. The material or question is taken off the platform (it\ndisappears from search, channels and direct links); a reported AI response is\nwithdrawn, so its topic quiz and review screen close (NFR-06). Every open report on it\nbecomes Resolved, and the removal is logged with the moderator and time.",
         "operationId": "remove_content_api_v1_moderation_reports__report_id__remove_post",
         "parameters": [
           {

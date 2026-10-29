@@ -35,7 +35,7 @@ from app.modules.accounts.service import (
     require_capability,
 )
 from app.modules.channels import service as channels
-from app.modules.llm import adaptive, generation
+from app.modules.llm import adaptive, generation, service
 from app.modules.llm.provider import LlmProvider, provider_from_settings
 from app.modules.questions.service import (
     Difficulty,
@@ -54,6 +54,7 @@ PROVIDER_FAILED = (
 )
 PROVIDER_TIMEOUT = "The AI service took too long to respond. Please try again."
 GENERATION_NOT_FOUND = "Generated question set not found"
+GENERATION_WITHDRAWN = "This generated question set was withdrawn after a report"
 QUESTION_NOT_FOUND = "Question not found in this set"
 ALREADY_REVIEWED = "This question has already been reviewed"
 CHANNEL_NOT_FOUND = "Channel not found"
@@ -219,6 +220,10 @@ def _own(db: Session, generation_id: int, user: UserSummary) -> generation.Gener
     found = generation.get_generation(db, generation_id)
     if found is None or found.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=GENERATION_NOT_FOUND)
+    if service.is_withdrawn(db, generation_id):
+        # A moderator upheld a report on this batch (NFR-06): it can no longer be
+        # reviewed or turned into a quiz.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=GENERATION_WITHDRAWN)
     return found
 
 
