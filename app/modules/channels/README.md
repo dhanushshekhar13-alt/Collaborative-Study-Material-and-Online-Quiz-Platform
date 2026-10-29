@@ -117,9 +117,15 @@ Rules:
 `member_role`, `is_member`, and from S02.2 `remove_member`, `list_members`
 (`MemberSummary`), `channels_for_member`, `can_manage_members`, `can_remove`, and from S03.1
 `manages_official_content`, and from S03.2 `create_post`, `get_post`, `list_posts`
-(`PostSummary`), `edit_post`, `delete_post`. All
+(`PostSummary`), `edit_post`, `delete_post`, and from NFR-05 `describe_channels` and
+`member_roles` (several channels in one query). All
 return dataclasses or plain values. Use `is_member` to gate channel-scoped content
 (materials, quizzes, chat).
+
+Lists (the directory, My Channels, the member list) cost a fixed number of queries
+however many channels or members there are: member counts come from one grouped
+query, the caller's roles and the members' names from one batched lookup each
+(NFR-05, see "Scalability" in `docs/architecture.md`).
 
 ## Tests
 

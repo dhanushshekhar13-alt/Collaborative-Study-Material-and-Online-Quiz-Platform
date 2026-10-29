@@ -58,7 +58,7 @@ class QuizQuestion(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"))
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"))
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), index=True)
     position: Mapped[int] = mapped_column(Integer)
     points: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
 
@@ -90,7 +90,7 @@ class AttemptAnswer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     attempt_id: Mapped[int] = mapped_column(ForeignKey("quiz_attempts.id", ondelete="CASCADE"))
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"))
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), index=True)
     response: Mapped[str | None] = mapped_column(Text)
     is_correct: Mapped[bool | None] = mapped_column(Boolean)
     score: Mapped[float | None] = mapped_column(Float)

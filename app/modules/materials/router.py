@@ -425,7 +425,8 @@ def search_materials(
         limit=limit,
         offset=offset,
     )
-    names: dict[int, str] = {}
+    uploaders = accounts.get_users(db, {m.uploader_id for m in page.items if m.uploader_id})
+    names: dict[int, str] = {uid: u.display_name for uid, u in uploaders.items()}
     managed: dict[int, bool] = {}
     feedback = service.feedback_for(db, [m.id for m in page.items], user.id)
     return MaterialListResponse(

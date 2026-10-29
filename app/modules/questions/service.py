@@ -176,6 +176,22 @@ def get_question_owner(db: Session, question_id: int) -> QuestionOwner | None:
     )
 
 
+def get_question_owners(db: Session, question_ids: Collection[int]) -> dict[int, QuestionOwner]:
+    """``get_question_owner`` for several questions in one query (NFR-05)."""
+    ids = set(question_ids)
+    if not ids:
+        return {}
+    rows = db.scalars(
+        select(Question).where(Question.id.in_(ids), Question.status == QuestionStatus.PUBLISHED)
+    )
+    return {
+        q.id: QuestionOwner(
+            q.id, q.author_id, _headline(q.text), q.channel_id, q.source is QuestionSource.LLM
+        )
+        for q in rows
+    }
+
+
 def set_removed(db: Session, question_id: int, removed: bool) -> None:
     """Take a question off the platform (or put it back); it keeps its history."""
     q = db.get(Question, question_id)
@@ -261,6 +277,18 @@ def get_bank_question(
     """One question with its rating summary, whatever its status (callers check access)."""
     q = db.get(Question, question_id)
     return _bank(db, [q], viewer_id)[0] if q else None
+
+
+def get_bank_questions(
+    db: Session, question_ids: Collection[int], viewer_id: int | None = None
+) -> dict[int, BankQuestion]:
+    """``get_bank_question`` for several questions with one query per kind of data
+    (NFR-05); unknown ids are left out."""
+    ids = set(question_ids)
+    if not ids:
+        return {}
+    rows = list(db.scalars(select(Question).where(Question.id.in_(ids))))
+    return {item.question.id: item for item in _bank(db, rows, viewer_id)}
 
 
 def search_bank(

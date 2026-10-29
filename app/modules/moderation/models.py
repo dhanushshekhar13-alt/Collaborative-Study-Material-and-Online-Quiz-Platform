@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -49,24 +49,32 @@ class ModerationActionType(enum.StrEnum):
 
 class Report(CreatedAtMixin, Base):
     __tablename__ = "reports"
+    __table_args__ = (
+        # The open queue, oldest first, and "every report on this item" (NFR-05).
+        Index("ix_reports_status_created_at", "status", "created_at"),
+        Index("ix_reports_target", "target_type", "target_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     target_type: Mapped[ReportTarget] = mapped_column(enum_column(ReportTarget, "report_target"))
     target_id: Mapped[int] = mapped_column(Integer)
-    channel_id: Mapped[int | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"))
+    channel_id: Mapped[int | None] = mapped_column(
+        ForeignKey("channels.id", ondelete="SET NULL"), index=True
+    )
     reason: Mapped[ReportReason] = mapped_column(enum_column(ReportReason, "report_reason"))
     details: Mapped[str | None] = mapped_column(Text)
     status: Mapped[ReportStatus] = mapped_column(
-        enum_column(ReportStatus, "report_status"), default=ReportStatus.OPEN, index=True
+        enum_column(ReportStatus, "report_status"), default=ReportStatus.OPEN
     )
-    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     resolution_note: Mapped[str | None] = mapped_column(Text)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ModerationAction(CreatedAtMixin, Base):
     __tablename__ = "moderation_actions"
+    __table_args__ = (Index("ix_moderation_actions_target", "target_type", "target_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -77,5 +85,7 @@ class ModerationAction(CreatedAtMixin, Base):
         enum_column(ReportTarget, "moderation_action_target")
     )
     target_id: Mapped[int] = mapped_column(Integer)
-    report_id: Mapped[int | None] = mapped_column(ForeignKey("reports.id", ondelete="SET NULL"))
+    report_id: Mapped[int | None] = mapped_column(
+        ForeignKey("reports.id", ondelete="SET NULL"), index=True
+    )
     note: Mapped[str | None] = mapped_column(Text)

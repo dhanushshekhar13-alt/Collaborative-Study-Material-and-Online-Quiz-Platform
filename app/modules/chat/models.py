@@ -22,7 +22,7 @@ class ChannelMessage(CreatedAtMixin, Base):
     channel_id: Mapped[int] = mapped_column(
         ForeignKey("channels.id", ondelete="CASCADE"), index=True
     )
-    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("channel_messages.id", ondelete="CASCADE"), index=True
     )
@@ -59,7 +59,7 @@ class DirectMessage(CreatedAtMixin, Base):
     conversation_id: Mapped[int] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
-    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     body: Mapped[str] = mapped_column(Text)
     shared_resource_type: Mapped[SharedResourceType | None] = mapped_column(
         enum_column(SharedResourceType, "direct_message_resource")
@@ -76,5 +76,5 @@ class UserBlock(CreatedAtMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     blocker_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    blocked_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    blocked_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     reason: Mapped[str | None] = mapped_column(String(255))

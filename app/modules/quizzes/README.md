@@ -105,6 +105,11 @@ and never evaluated.
 `service.attempts_for_user` keep their S00.2 signatures (analytics and the seed use
 them); they delegate to `attempts.py`, where the timer and scoring flow lives.
 
+Quiz lists (`building.list_published`, `building.list_by_creator`) load every listed
+quiz's questions with one query for the links and one batch from the question bank
+(`questions.get_bank_questions`), so a list costs the same few queries however many
+quizzes it holds (NFR-05).
+
 ## Tests
 
 `tests/test_quiz_attempts.py` — Test Plan cases `UT_11`, `UT_12`, `ST_11`, `IT_12`

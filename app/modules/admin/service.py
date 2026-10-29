@@ -220,10 +220,10 @@ class DashboardSummary:
 
 
 def dashboard(db: Session) -> DashboardSummary:
-    users = accounts.list_accounts(db)
+    # Counted in the database rather than by loading every account (NFR-05).
     return DashboardSummary(
-        total_users=len(users),
-        suspended_users=sum(1 for u in users if u.is_suspended),
+        total_users=accounts.count_accounts(db),
+        suspended_users=accounts.count_suspended_accounts(db),
         pending_channel_requests=len(channels.pending_requests(db)),
         open_reports=moderation.count_open_reports(db),
         flagged_items=len(moderation.flagged_targets(db)),
