@@ -1,6 +1,7 @@
 // StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance; S12.2: recommended.
-// UI-2's materials, question bank and quiz screens live in study.js and register
-// themselves in window.StudyHubPages; the router below hands them the shared helpers.
+// UI-2's materials, question bank and quiz screens live in study.js, and UI-3's chat,
+// messages, Ask AI, notifications, moderation and admin screens in community.js; both
+// register in window.StudyHubPages and the router below hands them the shared helpers.
 // Hash routes keep this a set of static files with no build step. All text from the
 // server is inserted with textContent, never as HTML.
 "use strict";
@@ -107,6 +108,12 @@
     for (const link of nav.querySelectorAll("[data-nav]")) {
       link.classList.toggle("active", link.dataset.nav === current);
     }
+    // Links to role pages show only to roles that can use them; the API still refuses
+    // anyone else (a direct URL shows its "Unauthorized").
+    for (const link of nav.querySelectorAll("[data-cap]")) {
+      link.hidden = !link.dataset.cap.split(" ").some(can);
+    }
+    if (window.StudyHubBell) window.StudyHubBell(!!me);
   }
 
   document.getElementById("logout").addEventListener("click", () => {
@@ -427,7 +434,7 @@
     await load();
   }
 
-  async function channelPage(id) {
+  async function channelPage(id, params) {
     const status = alertBox();
     let channel;
     try {
@@ -436,7 +443,7 @@
       render(h("h1", {}, "Channel"), h("p", { class: "alert error" }, err.message), h("a", { href: "#/channels" }, "Back to channels"));
       return;
     }
-    const reload = () => channelPage(id);
+    const reload = () => channelPage(id, params);
     const actions = h("div", { class: "row-actions" });
     if (!channel.my_role) actions.append(joinButton(channel, status, reload));
     else if (channel.my_role !== "owner") actions.append(leaveButton(channel, status, reload));
@@ -447,7 +454,7 @@
       try {
         const rows = await API.get(`/channels/${id}/members`);
         members.replaceChildren(
-          ...rows.map((m) => h("li", {}, m.display_name, m.username ? h("span", { class: "muted" }, ` @${m.username}`) : null, " ", h("span", { class: `badge role-${m.role}` }, m.role))),
+          ...rows.map((m) => h("li", {}, h("a", { href: `#/users/${m.user_id}` }, m.display_name), m.username ? h("span", { class: "muted" }, ` @${m.username}`) : null, " ", h("span", { class: `badge role-${m.role}` }, m.role))),
         );
       } catch (err) {
         members.replaceChildren(h("li", { class: "muted" }, err.message));
@@ -469,10 +476,13 @@
         h("p", { class: "channel-links" },
           h("a", { href: `#/materials?channel=${channel.id}` }, "Materials"), " · ",
           h("a", { href: `#/questions?channel=${channel.id}` }, "Question bank"), " · ",
-          h("a", { href: `#/quizzes?channel=${channel.id}` }, "Quizzes")),
+          h("a", { href: `#/quizzes?channel=${channel.id}` }, "Quizzes"), " · ",
+          h("a", { href: `#/ask?channel=${channel.id}` }, "Ask AI in this channel")),
         status,
         actions,
       ),
+      // UI-3: the channel chat; the API refuses non-members (IT_20).
+      window.StudyHubChat ? window.StudyHubChat(ui, channel, params) : null,
       h("section", { class: "card" }, h("h2", {}, "Members"), members),
     );
   }
@@ -586,15 +596,34 @@
     );
   }
 
+  // UI-3: the top of Recommended for You, shown on the Performance page.
+  async function recommendedPreview() {
+    let r;
+    try {
+      r = await API.get("/analytics/recommendations?limit=5");
+    } catch {
+      return null;
+    }
+    return h("section", { class: "card recommended-preview" },
+      h("h2", {}, "Recommended for You"),
+      h("p", { class: "muted" }, r.message),
+      r.items.length
+        ? h("ul", {}, r.items.map((item) => h("li", {}, h("span", { class: `badge kind-${item.item_type}` }, KIND_LABEL[item.item_type]), " ", h("strong", {}, item.title), h("span", { class: "muted" }, ` — ${item.reason}`))))
+        : h("p", { class: "muted" }, "Nothing to recommend yet."),
+      h("a", { href: "#/recommended" }, "See all recommendations"));
+  }
+
   async function performancePage() {
-    const d = await API.get("/analytics/dashboard");
+    const [d, recommended] = await Promise.all([API.get("/analytics/dashboard"), recommendedPreview()]);
     if (d.empty) {
       return render(
         h("h1", {}, "My performance"),
         h("section", { class: "card empty-state" },
           h("h2", {}, "Nothing to show yet"),
           h("p", {}, d.empty_message),
+          h("a", { href: "#/quizzes" }, "Attempt a quiz"), " · ",
           h("a", { href: "#/channels" }, "Find a channel with quizzes")),
+        recommended,
       );
     }
     const t = d.thresholds;
@@ -641,6 +670,7 @@
       h("section", { class: "card" }, overallTrend),
       h("h2", {}, "Trend by subject"),
       h("div", { class: "grid even" }, subjectTrends),
+      recommended,
     );
   }
 
@@ -750,7 +780,7 @@
       if (page === "recommended") return await recommendedPage();
       const extra = Object.prototype.hasOwnProperty.call(window.StudyHubPages || {}, page) ? window.StudyHubPages[page] : null;
       if (extra) return await extra(ui, parts.slice(1), params);
-      if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]));
+      if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]), params);
       if (page === "channels") return await channelsPage(params);
       render(h("h1", {}, "Page not found"), h("a", { href: "#/channels" }, "Go to channels"));
     } catch (err) {

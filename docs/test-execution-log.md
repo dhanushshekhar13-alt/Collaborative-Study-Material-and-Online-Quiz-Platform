@@ -727,3 +727,39 @@ to (IT_28, UT_06, IT_20) run here under their IDs, alongside their feature tests
 
 No schema or route change; `docs/api/openapi-v1.json` is unchanged. The security rules
 are written up in `docs/architecture.md` ("Security (NFR-02)").
+
+## UI-3 (#64) — Web UI for chat, AI help, analytics, notifications, moderation and admin
+
+Executed 2026-10-29. The screens are in `app/web/static/community.js` (plus small hooks
+in `app.js`: the chat on the channel page, the Recommended for You panel on the
+Performance page, capability-gated nav links and the bell). Every acceptance criterion
+is walked in a real browser (Playwright + Chromium) against a live, seeded server by
+`tests/test_web_ui_community.py::test_UI_3_acceptance_criteria_in_the_browser`, with
+three signed-in users at once (student, faculty, a newly registered `spam_user01`) and
+then the admin, using the offline `fake` LLM provider. Like the UI-1/UI-2 browser tests
+it runs locally and is skipped in CI, which has no browser; the contract tests run
+everywhere.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| `UT_19`, `UT_20` | The channel chat shows messages with sender and time and lets a member send | browser test: Send disabled while the box is blank or spaces; the sent message shows "Sample Student" and a time, and another member sees it with the same sender | Pass (local) |
+| `IT_19` | A member replies in a thread | browser test: Reply → "Yes, uploading now!" nested under the parent, attributed to "Sample Faculty"; the parent shows "1 reply" | Pass (local) |
+| `IT_20` | A non-member is refused with "Join the channel to view this chat" | browser test: `spam_user01` opens the channel URL; the chat shows the API's message and no composer | Pass (local) |
+| `UT_21` | Direct Messages: start a conversation and read its history | browser test: member list → profile → **Message** → message sent; the other user opens it from Messages | Pass (local) |
+| `UT_22` | Block a user; the blocked indicator is shown | browser test: Block User (confirmed) → "You have blocked …", composer hidden, Unblock offered; the other side sees "Blocked" and cannot send | Pass (local) |
+| `IT_22` | Report a message with a reason | browser test: no reason → "Select a reason for reporting this message"; "Inappropriate content" → report filed | Pass (local) |
+| `UT_18` | Ask AI shows "Please enter a question" for an empty query | browser test: the message is shown and no `/ai/ask` request is sent; `test_UI_3_blank_question_is_stopped_in_the_page_with_the_test_plan_wording` | Pass |
+| `UT_17`, `IT_17` | Ask AI explains a concept and offers a topic quiz to start | browser test: "Explain B-Trees with an example" → explanation with examples; "Give me a quiz on Binary Search Trees" → Start quiz opens the timed attempt | Pass (local) |
+| — | A review screen lets the user approve, edit or reject each generated question before it is added | browser test: Generate (DBMS › Indexing, 5) → approve one, reject one, edit one, approve the rest → Create quiz | Pass (local) |
+| `UT_23`, `UT_24` | Performance shows subject and topic charts with strong/weak topics, an invitation to attempt a quiz when there is no history, and Recommended for You | browser test: charts (S12.1) and the Recommended for You panel for the student; the empty state "… Attempt a quiz to see your performance here." with the panel for a new user | Pass (local) |
+| `UT_27` | The bell lists replies and mentions | browser test: the bell shows 1 unread; the reply notification opens the channel at that message with its thread open, and the count clears | Pass (local) |
+| `UT_28` | A category can be switched off | browser test: Notification settings → Quiz updates off; the API then reports `quiz_update` off and replies still on | Pass (local) |
+| `IT_25`, `IT_26` | Moderation lists pending reports with content, reporter and reason; a moderator removes content or dismisses | browser test: the reported material shows "Sample Faculty — Inappropriate content"; Remove Content → "Status: resolved". A student without channels to moderate sees "Only moderators can review reports" and no nav link | Pass (local) |
+| `IT_27` | Admin suspends a user | browser test: User management → `spam_user01` → Suspend (confirmed) → "Suspended"; that user's login is then refused | Pass (local) |
+| `ST_27` | Admin approves a pending Authorized Channel request | browser test: "Official CS301" → Approve → "is now approved"; it is then listed platform-wide as an Authorized Channel | Pass (local) |
+| `IT_28` | Anyone else sees "Unauthorized" | browser test: a student opening `#/admin` sees "Unauthorized", no dashboard, and no Admin nav link | Pass (local) |
+| — | Every endpoint the screens call exists; the screens are linked | `test_every_endpoint_the_ui_calls_exists` (now covers `community.js`), `test_UI_3_pages_are_registered_and_linked` | Pass |
+| — | Server text never parsed as HTML; files served with the CSP | `test_server_text_is_never_inserted_as_html`, `test_ui_files_are_served_with_a_strict_content_security_policy` (both now cover `community.js`) | Pass |
+| — | Usable at phone width (no horizontal scroll at 375 px) | browser test, phone step on chat, messages, Ask AI, notifications, moderation and admin | Pass (local) |
+
+No API or schema change: `docs/api/openapi-v1.json` is unchanged.
