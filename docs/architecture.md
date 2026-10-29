@@ -90,7 +90,9 @@ to scoring (checked by `test_quiz_scoring_does_not_depend_on_chat` and
 Performance analytics (S12.1) keeps stored figures without making quizzes depend on
 analytics: quizzes publishes `quizzes.attempt_scored` through the in-process event hub
 in `app/core/events.py`, and analytics subscribes to it. Handlers run in the
-publisher's transaction, so an attempt and its analytics figures commit together.
+publisher's transaction, so an attempt and its analytics figures commit together. Each
+handler runs in its own savepoint, so a failing handler undoes only its own writes and
+never the attempt (NFR-04).
 Analytics also reconciles the figures with the raw attempts before the dashboard is
 read, so a missed event can never leave them wrong. See
 `app/modules/analytics/README.md`.
@@ -125,6 +127,29 @@ foreign key, so the owning modules stay independent.
 `tests/test_security.py` checks this across the whole published contract: a route that
 appears without bearer security, or a role guard that admits a role it should not,
 fails the build.
+
+## Reliability (NFR-04)
+
+- **One transaction per request.** `get_db` gives each request one session and rolls
+  it back if the request fails; routes commit once, after all their work. An upload
+  (material, tags and file bytes, which live in `material_files`) and a submission
+  (answers, scores, attempt state and analytics figures) each commit together or not
+  at all, so a crash or dropped connection part-way leaves the last committed state.
+- **Transient failures.** A database `OperationalError` answers **503** with a message
+  saying nothing from the request was saved and earlier work is safe; the client
+  retries the same request.
+- **Isolated reactions.** Event handlers (analytics, notifications) run in savepoints:
+  a bug in one is logged and undone without failing the submission or upload that
+  triggered it. Analytics reconciles its figures with the stored attempts on read. A
+  database failure inside a handler still rolls the whole request back.
+- **Stored file integrity.** Each material file keeps the SHA-256 taken at upload
+  (migration `0013` backfills existing files). The upload response returns it, the
+  download sends it as `X-Content-SHA256`, and a file whose bytes no longer match is
+  refused rather than served damaged.
+
+`tests/test_reliability.py` checks all of this by fault injection: it kills a process
+running the real app mid-submission and mid-upload, injects transient failures, and
+reopens the database as a restarted server would.
 
 ## Data model
 
