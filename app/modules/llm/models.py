@@ -3,7 +3,7 @@
 import enum
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -39,6 +39,9 @@ class LlmRequest(CreatedAtMixin, Base):
     )
     output: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
+    # NFR-06: a moderator who upholds a report on this AI output withdraws it, so its
+    # topic quiz or review screen can no longer be opened. The row itself is kept.
+    withdrawn: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class AdaptiveSession(CreatedAtMixin, Base):

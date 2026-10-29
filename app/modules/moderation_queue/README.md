@@ -1,9 +1,9 @@
 # Moderation queue module
 
 The report queue and moderator actions (FR-13, story **S13.2**, issue #43). Reports
-filed with `POST /api/v1/materials/{id}/reports` and `POST /api/v1/questions/{id}/reports`
-land here; a moderator reviews them and either removes the content or clears the
-report. The module owns no tables: reports and the action log are the moderation
+filed with `POST /api/v1/materials/{id}/reports`, `POST /api/v1/questions/{id}/reports`
+and `POST /api/v1/ai/responses/{id}/reports` (AI output, NFR-06) land here; a
+moderator reviews them and either removes the content or clears the report. The module owns no tables: reports and the action log are the moderation
 module's `reports` and `moderation_actions`, and the content is hidden through the
 materials and questions services. Module rules are in
 [`docs/architecture.md`](../../../docs/architecture.md).
@@ -48,7 +48,12 @@ All under `/api/v1/moderation`, signed in.
 - **Remove Content** needs `confirm: true` (**400** `Confirm removing this content`).
   The material or question's status becomes removed, so it disappears from search,
   channel lists and direct links (404), and **every** open report on it becomes
-  `resolved`. Only materials and questions can be removed here (**422** otherwise).
+  `resolved`. Only materials, questions and AI responses can be removed here (**422**
+  otherwise); removing an AI response withdraws it (its topic quiz and review screen
+  close).
+- **AI content (NFR-06).** `content.ai_generated` is true for AI responses and for
+  questions the LLM generated. An AI response is private to its requester, so it has
+  no `link`; `content.excerpt` shows what the AI said.
 - **Dismiss** sets every open report on the item to `dismissed` and leaves the content.
 - A report that is already closed cannot be decided again (**409**
   `This report has already been closed`). An unknown report is **404** `Report not found`.

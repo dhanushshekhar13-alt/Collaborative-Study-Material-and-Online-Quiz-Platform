@@ -417,6 +417,7 @@ def _quiz_request(db: Session, request_id: int, user_id: int) -> dict[str, Any]:
         or req.user_id != user_id
         or req.task is not LlmTask.GENERATE_QUIZ
         or req.status is not LlmRequestStatus.SUCCEEDED
+        or req.withdrawn  # withdrawn by a moderator after a report (NFR-06)
     ):
         raise AskNotFoundError(f"topic quiz {request_id} not found")
     return dict(req.output or {})
