@@ -1,4 +1,5 @@
-// StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance; S12.2: recommended.
+// StudyHub web UI (UI-1): register, log in, profile, channels; S12.1: performance; S12.2: recommended;
+// NFR-03: the dashboard every signed-in user lands on.
 // UI-2's materials, question bank and quiz screens live in study.js and register
 // themselves in window.StudyHubPages; the router below hands them the shared helpers.
 // Hash routes keep this a set of static files with no build step. All text from the
@@ -30,7 +31,8 @@
   }
 
   function render(...nodes) {
-    view.replaceChildren(...nodes);
+    // A page may pass null for a section it leaves out; replaceChildren would print it.
+    view.replaceChildren(...nodes.filter((node) => node !== null && node !== undefined && node !== false));
     view.focus();
   }
 
@@ -177,7 +179,7 @@
           const result = await API.post("/accounts/login", body);
           API.setToken(result.access_token);
           await loadMe();
-          go("#/channels");
+          go("#/dashboard");
         } catch (err) {
           show(status, err.message, "error"); // "Invalid username or password"
         }
@@ -717,6 +719,116 @@
     );
   }
 
+  // ------------------------------------------------- dashboard (NFR-03) -----
+  // The page a signed-in user lands on (IT_01). Every core flow starts from one link
+  // here, so each is at most three clicks away; a new user gets a three-step
+  // checklist, and progress is drawn as charts rather than bare numbers.
+
+  // [label, hint, href]; the first link of each core flow. tests/test_usability.py
+  // checks each is reachable from here and walks them in the browser.
+  const CORE_FLOWS = [
+    ["Find a channel", "Search by subject or topic, then join", "#/channels"],
+    ["Upload material", "Share notes, slides or a link", "#/materials?upload=1"],
+    ["Take a quiz", "Pick a published quiz and start", "#/quizzes"],
+    ["Question bank", "Browse, rate or add questions", "#/questions"],
+    ["My performance", "Charts by subject, topic and over time", "#/performance"],
+    ["Recommended for you", "Materials and quizzes for weak topics", "#/recommended"],
+  ];
+
+  function checklist(steps) {
+    const done = steps.filter((x) => x.done).length;
+    return h(
+      "section",
+      { class: "card get-started", "aria-labelledby": "get-started-title" },
+      h("h2", { id: "get-started-title" }, "Get started"),
+      h("p", { class: "muted" }, `${done} of ${steps.length} done. Each step is one click from here.`),
+      h("progress", { max: steps.length, value: done, "aria-label": `${done} of ${steps.length} steps done` }),
+      h(
+        "ol",
+        { class: "steps" },
+        steps.map((x) =>
+          h(
+            "li",
+            { class: x.done ? "step done" : "step", "data-step": x.key },
+            h("span", { class: "step-mark", "aria-hidden": "true" }, x.done ? "✓" : ""),
+            h("div", {},
+              x.done ? h("strong", {}, x.title) : h("a", { href: x.href }, h("strong", {}, x.title)),
+              x.done ? h("span", { class: "visually-hidden" }, " (done)") : null,
+              h("div", { class: "muted" }, x.hint)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  function progressCard(d) {
+    if (d.empty) {
+      return h(
+        "section",
+        { class: "card progress-card empty-state" },
+        h("h2", {}, "Your progress"),
+        h("p", {}, d.empty_message),
+        h("a", { href: "#/quizzes", class: "button" }, "Take a quiz"),
+      );
+    }
+    const tiles = h(
+      "div", { class: "tiles" },
+      [["Attempts", d.attempts], ["Accuracy", pct(d.accuracy)], ["Subjects", d.subjects.length]]
+        .map(([k, v]) => h("div", { class: "tile" }, h("span", { class: "muted" }, k), h("strong", {}, String(v)))),
+    );
+    return h(
+      "section",
+      { class: "card progress-card" },
+      h("h2", {}, "Your progress"),
+      tiles,
+      chart(
+        "Accuracy by subject",
+        "Accuracy by subject: " + d.subjects.map((x) => `${x.subject} ${pct(x.accuracy)}`).join(", "),
+        barChart(d.subjects.map((x) => ({ label: x.subject, value: x.accuracy, note: `${x.attempts} attempts` }))),
+      ),
+      chart(
+        `Score trend — ${DIRECTION_LABEL[d.trend.direction]}`,
+        `Score trend: ${d.trend.points.map((p) => pct(p.percentage)).join(", ")}. ${DIRECTION_LABEL[d.trend.direction]}.`,
+        trendChart(d.trend),
+      ),
+      h("p", {}, h("a", { href: "#/performance" }, "See full performance →")),
+    );
+  }
+
+  async function dashboardPage() {
+    const [profile, channels, performance] = await Promise.all([
+      API.get("/profiles/me"),
+      API.get("/channels/mine"),
+      API.get("/analytics/dashboard"),
+    ]);
+    const steps = [
+      { key: "channel", title: "Join a channel", hint: "Find one for your subject and click Join.", href: "#/channels", done: channels.length > 0 },
+      { key: "upload", title: "Upload a study material", hint: "Notes, slides or a link, for everyone or one channel.", href: "#/materials?upload=1", done: profile.contributions.materials > 0 },
+      { key: "quiz", title: "Attempt a quiz", hint: "Your score and charts appear here afterwards.", href: "#/quizzes", done: !performance.empty },
+    ];
+    const actions = h(
+      "nav",
+      { class: "quick-actions", "aria-label": "Quick actions" },
+      CORE_FLOWS.map(([label, hint, href]) => h("a", { href, class: "action" }, h("strong", {}, label), h("span", { class: "muted" }, hint))),
+    );
+    const mine = h(
+      "section",
+      { class: "card my-channels-card" },
+      h("h2", {}, "My channels"),
+      channels.length
+        ? h("ul", { class: "links" }, channels.slice(0, 6).map((c) => h("li", {}, h("a", { href: `#/channels/${c.id}` }, c.name), " ", typeLabel(c))))
+        : h("p", { class: "muted" }, "You have not joined any channels yet. ", h("a", { href: "#/channels" }, "Find a channel")),
+      channels.length > 6 ? h("p", {}, h("a", { href: "#/my-channels" }, `All ${channels.length} channels →`)) : null,
+    );
+    render(
+      h("h1", {}, "Dashboard"),
+      h("p", { class: "muted" }, `Welcome, ${profile.display_name}.`),
+      steps.every((x) => x.done) ? null : checklist(steps),
+      actions,
+      h("div", { class: "grid even" }, progressCard(performance), mine),
+    );
+  }
+
   // --------------------------------------------------------------- router ----
 
   // Helpers shared with the pages other scripts register (UI-2, study.js).
@@ -727,7 +839,7 @@
   async function route() {
     const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
     const parts = path.split("/").filter(Boolean);
-    const page = parts[0] || (API.token() ? "channels" : "login");
+    const page = parts[0] || (API.token() ? "dashboard" : "login");
     const params = new URLSearchParams(query);
 
     if (!me && API.token()) await loadMe();
@@ -736,13 +848,14 @@
       return loginPage(params);
     }
     if (PUBLIC.has(page) && me) {
-      go("#/channels");
+      go("#/dashboard");
       return;
     }
     updateNav();
     try {
       if (page === "login") return loginPage(params);
       if (page === "register") return registerPage();
+      if (page === "dashboard") return await dashboardPage();
       if (page === "profile") return await profilePage();
       if (page === "my-channels") return await myChannelsPage();
       if (page === "leaderboard") return await leaderboardPage();
@@ -752,7 +865,7 @@
       if (extra) return await extra(ui, parts.slice(1), params);
       if (page === "channels" && parts[1]) return await channelPage(encodeURIComponent(parts[1]));
       if (page === "channels") return await channelsPage(params);
-      render(h("h1", {}, "Page not found"), h("a", { href: "#/channels" }, "Go to channels"));
+      render(h("h1", {}, "Page not found"), h("a", { href: "#/dashboard" }, "Go to the dashboard"));
     } catch (err) {
       if (err instanceof API.ApiError && err.status === 401) return;
       render(h("p", { class: "alert error" }, err.message || "Something went wrong"));

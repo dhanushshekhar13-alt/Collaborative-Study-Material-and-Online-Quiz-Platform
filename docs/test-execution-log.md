@@ -774,3 +774,27 @@ still rolls the request back with a 503. Material files keep a SHA-256 checksum
 (migration `0013`, backfilled; upgrades, downgrades and matches the models), returned as
 `file.sha256` and checked on every preview and download. `docs/api/openapi-v1.json` is
 regenerated. Rules are written up in `docs/architecture.md` ("Reliability (NFR-04)").
+
+## NFR-03 (#50) — Usability: intuitive navigation and visual analytics
+
+Executed 2026-10-28. The Test Plan has no case of its own for NFR-03; `IT_01` expects a
+signed-in user to land on a dashboard, which this story adds (`#/dashboard`, see
+`app/web/README.md`). The browser walk-through runs a brand-new user through every core
+flow from the dashboard in a real browser (Playwright + Chromium) against a live, seeded
+server, counting clicks. Like the other browser tests it runs locally and is skipped in
+CI, which has no browser; the static and API tests run everywhere.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| `IT_01` | Log in lands on the dashboard | `test_signed_in_users_land_on_the_dashboard`; browser test, log-in step (Dashboard heading, Dashboard active in the nav) | Pass |
+| — | A new user can find a channel, upload material and attempt a quiz unaided | `test_NFR_03_new_user_walkthrough_in_the_browser`: the Get started checklist goes 0 → 1 → 2 of 3 and disappears; join, upload and a submitted quiz with its result; `test_the_dashboard_endpoints_give_a_new_user_a_clean_start` | Pass (local) |
+| — | Analytics are presented as charts or graphs rather than raw numbers only | `test_the_dashboard_shows_progress_as_charts`; browser test, dashboard progress (subject bars and score trend as SVG `role=img`) and Performance | Pass (local) |
+| — | Core flows are reachable within three clicks from the dashboard | `test_every_core_flow_starts_from_a_dashboard_link`; browser test counts: join a channel 2, upload form 1 (upload 2), start a quiz 3, Performance 1 | Pass (local) |
+| — | The dashboard fits a phone (no horizontal scroll at 375 px) | browser test, phone step | Pass (local) |
+
+Moderated walkthrough with first-time users (the issue's "How it is verified") is for
+the team to run on the deployed app; this log covers the automated part.
+
+No API or schema change: `docs/api/openapi-v1.json` is unchanged. The UI-1, S12.1, S12.2,
+S13.1 and UI-2 browser tests now expect the dashboard after log in.
+
