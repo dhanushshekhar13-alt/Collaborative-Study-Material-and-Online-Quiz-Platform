@@ -107,6 +107,20 @@ def get_material(db: Session, material_id: int) -> MaterialSummary | None:
     return _summary(m) if m and m.status is ContentStatus.ACTIVE else None
 
 
+def get_materials(db: Session, material_ids: Collection[int]) -> dict[int, MaterialSummary]:
+    """Several active materials at once, keyed by id (NFR-05); like ``get_material``,
+    removed or unknown ids are left out."""
+    ids = set(material_ids)
+    if not ids:
+        return {}
+    rows = db.scalars(
+        select(StudyMaterial).where(
+            StudyMaterial.id.in_(ids), StudyMaterial.status == ContentStatus.ACTIVE
+        )
+    )
+    return {m.id: _summary(m) for m in rows}
+
+
 def set_removed(db: Session, material_id: int, removed: bool) -> None:
     m = db.get(StudyMaterial, material_id)
     if m is None:

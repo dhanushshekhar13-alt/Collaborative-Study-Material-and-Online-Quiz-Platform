@@ -132,43 +132,57 @@ def create_draft(
 
 def get_quiz(db: Session, quiz_id: int) -> QuizDetails | None:
     quiz = db.get(Quiz, quiz_id)
-    if quiz is None:
-        return None
+    return _details(db, [quiz])[0] if quiz is not None else None
+
+
+def _details(db: Session, quizzes: list[Quiz]) -> list[QuizDetails]:
+    """Quizzes with their questions, a fixed number of queries for any number of
+    quizzes (NFR-05): one for the links, then the bank questions in one batch."""
+    if not quizzes:
+        return []
     links = db.scalars(
-        select(QuizQuestion).where(QuizQuestion.quiz_id == quiz.id).order_by(QuizQuestion.position)
+        select(QuizQuestion)
+        .where(QuizQuestion.quiz_id.in_([q.id for q in quizzes]))
+        .order_by(QuizQuestion.quiz_id, QuizQuestion.position)
     ).all()
-    items = [questions.get_bank_question(db, link.question_id) for link in links]
-    return QuizDetails(
-        id=quiz.id,
-        title=quiz.title,
-        subject=quiz.subject,
-        topic=quiz.topic,
-        difficulty=quiz.difficulty,
-        duration_minutes=quiz.duration_minutes,
-        channel_id=quiz.channel_id,
-        creator_id=quiz.creator_id,
-        status=quiz.status,
-        created_at=quiz.created_at,
-        questions=tuple(item for item in items if item is not None),
-    )
+    bank = questions.get_bank_questions(db, {link.question_id for link in links})
+    per_quiz: dict[int, list[questions.BankQuestion]] = {}
+    for link in links:
+        if link.question_id in bank:
+            per_quiz.setdefault(link.quiz_id, []).append(bank[link.question_id])
+    return [
+        QuizDetails(
+            id=quiz.id,
+            title=quiz.title,
+            subject=quiz.subject,
+            topic=quiz.topic,
+            difficulty=quiz.difficulty,
+            duration_minutes=quiz.duration_minutes,
+            channel_id=quiz.channel_id,
+            creator_id=quiz.creator_id,
+            status=quiz.status,
+            created_at=quiz.created_at,
+            questions=tuple(per_quiz.get(quiz.id, ())),
+        )
+        for quiz in quizzes
+    ]
 
 
 def list_published(db: Session, channel_id: int | None) -> list[QuizDetails]:
     """Published quizzes in one channel's Quizzes tab (``None``: the general list),
     newest first."""
-    stmt = select(Quiz.id).where(Quiz.status == QuizStatus.PUBLISHED)
+    stmt = select(Quiz).where(Quiz.status == QuizStatus.PUBLISHED)
     if channel_id is None:
         stmt = stmt.where(Quiz.channel_id.is_(None))
     else:
         stmt = stmt.where(Quiz.channel_id == channel_id)
-    ids = db.scalars(stmt.order_by(Quiz.created_at.desc(), Quiz.id.desc())).all()
-    return [get_quiz(db, qid) for qid in ids]
+    return _details(db, list(db.scalars(stmt.order_by(Quiz.created_at.desc(), Quiz.id.desc()))))
 
 
 def list_by_creator(db: Session, creator_id: int) -> list[QuizDetails]:
     """The author's own drafts and published quizzes, newest first."""
-    ids = db.scalars(
-        select(Quiz.id)
+    found = db.scalars(
+        select(Quiz)
         .where(
             Quiz.creator_id == creator_id,
             Quiz.status != QuizStatus.REMOVED,
@@ -176,7 +190,7 @@ def list_by_creator(db: Session, creator_id: int) -> list[QuizDetails]:
         )
         .order_by(Quiz.created_at.desc(), Quiz.id.desc())
     ).all()
-    return [get_quiz(db, qid) for qid in ids]
+    return _details(db, list(found))
 
 
 def publish(db: Session, quiz_id: int, channel_id: int | None) -> QuizDetails:

@@ -62,7 +62,7 @@ class MaterialReview(CreatedAtMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     material_id: Mapped[int] = mapped_column(ForeignKey("study_materials.id", ondelete="CASCADE"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     # NULL when the user only marked the material helpful without rating it (S04.2).
     rating: Mapped[int | None] = mapped_column(Integer)
     review: Mapped[str | None] = mapped_column(Text)

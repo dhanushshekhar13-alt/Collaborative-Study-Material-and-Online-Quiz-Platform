@@ -129,7 +129,10 @@ def _invalid(detail: str) -> HTTPException:
 
 
 def _participant(db: Session, user_id: int) -> Participant:
-    user = accounts.get_user(db, user_id)
+    return _as_participant(user_id, accounts.get_user(db, user_id))
+
+
+def _as_participant(user_id: int, user: UserSummary | None) -> Participant:
     if user is None:
         return Participant(id=user_id, display_name=None, username=None)
     return Participant(id=user.id, display_name=user.display_name, username=user.username)
@@ -168,17 +171,36 @@ def _message(
 
 
 def _conversation_response(
-    db: Session, conv: service.ConversationSummary, user: UserSummary
+    db: Session,
+    conv: service.ConversationSummary,
+    user: UserSummary,
+    *,
+    people: dict[int, UserSummary] | None = None,
+    blocks: tuple[set[int], set[int]] | None = None,
 ) -> ConversationResponse:
-    by_me = service.has_blocked(db, user.id, conv.other_user_id)
-    blocked = by_me or service.has_blocked(db, conv.other_user_id, user.id)
+    """One conversation as the caller sees it.
+
+    A list passes ``people`` and ``blocks`` fetched once for every conversation, so
+    listing does not cost queries per conversation (NFR-05).
+    """
+    if blocks is None:
+        by_me = service.has_blocked(db, user.id, conv.other_user_id)
+        blocked = by_me or service.has_blocked(db, conv.other_user_id, user.id)
+    else:
+        by_me = conv.other_user_id in blocks[0]
+        blocked = by_me or conv.other_user_id in blocks[1]
+    if people is None:
+        other = _participant(db, conv.other_user_id)
+    else:
+        other = _as_participant(conv.other_user_id, people.get(conv.other_user_id))
+    names = {} if people is None else {uid: u.display_name for uid, u in people.items()}
     return ConversationResponse(
         id=conv.id,
-        other_user=_participant(db, conv.other_user_id),
+        other_user=other,
         blocked=blocked,
         blocked_by_me=by_me,
         can_send=not blocked,
-        last_message=_message(db, conv.last_message, {}, user) if conv.last_message else None,
+        last_message=_message(db, conv.last_message, names, user) if conv.last_message else None,
         created_at=conv.created_at,
     )
 
@@ -220,7 +242,16 @@ def list_conversations(
     user: UserSummary = Depends(current_user), db: Session = Depends(get_db)
 ) -> list[ConversationResponse]:
     """The caller's conversations, most recent activity first."""
-    return [_conversation_response(db, c, user) for c in service.conversations_for(db, user.id)]
+    conversations = service.conversations_for(db, user.id)
+    people = accounts.get_users(
+        db,
+        {c.other_user_id for c in conversations}
+        | {c.last_message.sender_id for c in conversations if c.last_message},
+    )
+    blocks = service.blocks_involving(db, user.id)
+    return [
+        _conversation_response(db, c, user, people=people, blocks=blocks) for c in conversations
+    ]
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)

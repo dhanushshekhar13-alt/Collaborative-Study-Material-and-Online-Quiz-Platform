@@ -197,6 +197,11 @@ def count_accounts(db: Session) -> int:
     return db.scalar(select(func.count(User.id))) or 0
 
 
+def count_suspended_accounts(db: Session) -> int:
+    """How many accounts are suspended, counted in the database (NFR-05)."""
+    return db.scalar(select(func.count(User.id)).where(User.is_suspended.is_(True))) or 0
+
+
 # --------------------------------------------------------------------------- #
 # S01.2 - profile fields and profile picture
 # --------------------------------------------------------------------------- #
@@ -367,6 +372,7 @@ __all__ = [
     "authenticate",
     "capabilities_for",
     "count_accounts",
+    "count_suspended_accounts",
     "create_user",
     "current_user",
     "detect_image_type",

@@ -170,7 +170,8 @@ def list_channels(
         query=q,
         channel_type=channel_type,
     )
-    return [_response(s, _role(db, s.id, user.id), user) for s in summaries]
+    roles = service.member_roles(db, user.id, [s.id for s in summaries])
+    return [_response(s, _value(roles.get(s.id)), user) for s in summaries]
 
 
 @router.get("/mine", response_model=list[ChannelResponse])
@@ -354,8 +355,10 @@ def list_members(
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MEMBERS_ONLY_MESSAGE)
     members = []
-    for m in service.list_members(db, channel_id):
-        account = accounts.get_user(db, m.user_id)
+    listed = service.list_members(db, channel_id)
+    people = accounts.get_users(db, [m.user_id for m in listed])
+    for m in listed:
+        account = people.get(m.user_id)
         members.append(
             MemberResponse(
                 user_id=m.user_id,
@@ -401,7 +404,10 @@ def remove_member(
 
 
 def _role(db: Session, channel_id: int, user_id: int) -> str | None:
-    role = service.member_role(db, channel_id, user_id)
+    return _value(service.member_role(db, channel_id, user_id))
+
+
+def _value(role: MemberRole | None) -> str | None:
     return role.value if role else None
 
 

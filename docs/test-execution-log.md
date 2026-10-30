@@ -833,3 +833,41 @@ everywhere.
 | — | Usable at phone width (no horizontal scroll at 375 px) | browser test, phone step on chat, messages, Ask AI, notifications, moderation and admin | Pass (local) |
 
 No API or schema change: `docs/api/openapi-v1.json` is unchanged.
+
+## NFR-05 (#51) — Scalability: hold performance as users and content grow
+
+Executed 2026-10-29. The Test Plan has no case of its own for NFR-05; the issue's "How
+it is verified" (seed a large dataset, re-run the performance suite, review schema
+indexes) is automated in `tests/test_scalability.py`. `scripts/seed_scale.py` seeds the
+tested range: factor 1 (50 users, 10 channels, 500 materials, 1,100 channel messages,
+1,000 direct messages, 1,000 notifications, 200 quiz attempts, 50 reports) to factor 10
+(ten times each). Everything runs in CI on in-memory SQLite; the new migration was also
+checked on PostgreSQL 16.
+
+| Test case | Acceptance criterion | Test | Result |
+| --- | --- | --- | --- |
+| — | Performance stays acceptable as users and content volume increase across the tested range | `test_NFR_05_hot_paths_stay_inside_the_target_across_the_tested_range[1]` and `[10]` (28 hot paths, median of 3, each under 1 s), `test_NFR_05_starting_and_submitting_a_quiz_stays_inside_the_target[1]` and `[10]` | Pass |
+| — | (same) the work per request does not grow with the data | `test_NFR_05_queries_per_request_do_not_grow_with_the_data` (factor 1 vs 10, same query count on every hot path except recommendations, which follow the user's topics), `test_NFR_05_lists_cost_a_fixed_number_of_queries` | Pass |
+| — | Hot query paths are indexed | `test_NFR_05_hot_paths_never_scan_a_growing_table` (every query of every hot path through SQLite's query planner; two intended scans listed with reasons), `test_NFR_05_every_foreign_key_is_indexed`, `test_NFR_05_the_moderation_queue_and_report_lookups_have_their_indexes`; migration `0014` checked by `tests/test_migrations.py` | Pass |
+| — | A new domain or feature can be added without redesigning the core architecture | `test_NFR_05_module_dependencies_form_layers_a_new_module_can_sit_on` with the existing `tests/test_module_boundaries.py`; checklist in `docs/architecture.md` ("Adding a domain") | Pass |
+| — | The seed covers the tested range | `test_the_scale_seed_covers_the_tested_range` | Pass |
+
+What the suite found at factor 10 before the fixes, and after (time in-process, queries
+per request):
+
+| Hot path | Before | After |
+| --- | --- | --- |
+| Moderation queue (500 open reports) | 316 ms, 1,620 queries | 39 ms, 6 |
+| Channel member list (busy channel, 500 members) | 87 ms, 505 | 18 ms, 6 |
+| Conversation list (50 conversations) | 77 ms, 352 | 12 ms, 5 |
+| Channel directory (100 channels) | 41 ms, 202 | 12 ms, 4 |
+| General quiz list (50 quizzes) | 652 queries | 26 ms, 6 |
+| Performance dashboard (100 attempts) | one query per attempt on every view | 15 ms, 8 |
+| Admin dashboard | loaded every account to count them | 20 ms, 6 (counts in SQL) |
+
+Known limits, written up in `docs/architecture.md`: the admin user list and the quiz
+list return every row (a fixed couple of queries, but the payload grows); they need
+paging before tens of thousands of accounts or quizzes.
+
+Migration `0014` adds indexes only (no route or response change);
+`docs/api/openapi-v1.json` is unchanged.

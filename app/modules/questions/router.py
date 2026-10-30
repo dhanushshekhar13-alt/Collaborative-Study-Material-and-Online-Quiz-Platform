@@ -293,7 +293,8 @@ def search_questions(
         limit=limit,
         offset=offset,
     )
-    names: dict[int, str | None] = {}
+    authors = accounts.get_users(db, {item.author_id for item in found})
+    names: dict[int, str | None] = {uid: u.display_name for uid, u in authors.items()}
     return [_response(item, db, names) for item in found]
 
 

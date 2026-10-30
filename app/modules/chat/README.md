@@ -183,7 +183,10 @@ The chat screens that render the cards are UI-3 (#64); the question detail route
 `app.modules.chat.service`: `post_channel_message`, `channel_history`,
 `get_channel_message`, `channel_messages_page` (all `MessageView`; pass `thread_of`
 for a thread's replies), `thread_root`, `thread_summaries` (`ThreadSummary`), `is_blocked`,
-`open_conversation`, `send_direct_message`. All return dataclasses or plain values.
+`open_conversation`, `send_direct_message`, and from NFR-05 `blocks_involving` (both
+directions of a user's blocks in one query). All return dataclasses or plain values.
+The conversation list (`conversations_for`) and a page of channel messages cost a
+fixed number of queries however many conversations or senders there are (NFR-05).
 No other module may depend on chat (`test_no_module_imports_chat`); chat itself calls
 accounts (route guards, sender names), channels (visibility, membership),
 moderation (reporting a direct message) and materials, questions and quizzes (preview

@@ -6,6 +6,7 @@ report. Both decisions close every open report on that item and are written to t
 moderation action log with the moderator and the time.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -129,70 +130,94 @@ class MyReportResponse(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
-class _Names:
-    """Looks up each person once per request."""
+class _Lookup:
+    """Names, channels and content titles for a set of queue items, fetched up front.
 
-    def __init__(self, db: Session) -> None:
-        self.db, self.cache = db, {}
+    The queue grows with the platform, so each kind of lookup is one query for the
+    whole page rather than one per report (NFR-05). Anything not prefetched (an
+    action's actor on the detail page) is looked up once and cached.
+    """
 
-    def __call__(self, user_id: int | None) -> Person | None:
+    def __init__(self, db: Session, items: Sequence[moderation.QueueItem] = ()) -> None:
+        self.db = db
+        people = {r.reporter_id for item in items for r in item.reports}
+        self.people = {uid: u.display_name for uid, u in accounts.get_users(db, people).items()}
+        self.channels = {
+            cid: c.name
+            for cid, c in channels.describe_channels(
+                db, {i.channel_id for i in items if i.channel_id is not None}
+            ).items()
+        }
+        self.titles: dict[tuple[ReportTarget, int], str] = {}
+        wanted = {
+            kind: {i.target_id for i in items if i.target_type is kind}
+            for kind in (ReportTarget.MATERIAL, ReportTarget.QUESTION)
+        }
+        for mid, m in materials.get_materials(db, wanted[ReportTarget.MATERIAL]).items():
+            self.titles[(ReportTarget.MATERIAL, mid)] = m.title
+        self.ai_questions: set[int] = set()
+        for qid, q in questions.get_question_owners(db, wanted[ReportTarget.QUESTION]).items():
+            self.titles[(ReportTarget.QUESTION, qid)] = q.headline
+            if q.ai_generated:
+                self.ai_questions.add(qid)
+        # Reports on AI responses (NFR-06) are rare next to materials and questions, so
+        # each is looked up on its own.
+        self.ai_responses = {
+            rid: llm.get_response(db, rid)
+            for rid in {i.target_id for i in items if i.target_type is ReportTarget.AI_RESPONSE}
+        }
+
+    def person(self, user_id: int | None) -> Person | None:
         if user_id is None:
             return None
-        if user_id not in self.cache:
+        if user_id not in self.people:
             user = accounts.get_user(self.db, user_id)
-            self.cache[user_id] = user.display_name if user else None
-        return Person(id=user_id, name=self.cache[user_id])
+            self.people[user_id] = user.display_name if user else None
+        return Person(id=user_id, name=self.people[user_id])
 
+    def channel_name(self, channel_id: int | None) -> str | None:
+        return self.channels.get(channel_id) if channel_id is not None else None
 
-def _content(db: Session, kind: ReportTarget, target_id: int) -> ReportedContent:
-    title, ai_generated = None, False
-    if kind is ReportTarget.MATERIAL:
-        material = materials.get_material(db, target_id)
-        title = material.title if material else None
-    elif kind is ReportTarget.QUESTION:
-        question = questions.get_question_owner(db, target_id)
-        title = question.headline if question else None
-        ai_generated = bool(question and question.ai_generated)
-    elif kind is ReportTarget.AI_RESPONSE:
-        found = llm.get_response(db, target_id)
-        if found is None:
-            return ReportedContent(title=None, available=False, link=None, ai_generated=True)
-        about = found.topic or found.subject
+    def content(self, kind: ReportTarget, target_id: int) -> ReportedContent:
+        if kind is ReportTarget.AI_RESPONSE:
+            if target_id not in self.ai_responses:
+                self.ai_responses[target_id] = llm.get_response(self.db, target_id)
+            found = self.ai_responses[target_id]
+            if found is None:
+                return ReportedContent(title=None, available=False, link=None, ai_generated=True)
+            about = found.topic or found.subject
+            return ReportedContent(
+                title=f"{found.label}: {about}" if about else found.label,
+                available=not found.withdrawn,
+                link=None,
+                ai_generated=True,
+                excerpt=found.excerpt or None,
+            )
+        if kind not in REMOVABLE:
+            return ReportedContent(title=None, available=True, link=None)
+        title = self.titles.get((kind, target_id))
+        link = f"/api/v1/{REMOVABLE[kind]}/{target_id}" if title else None
         return ReportedContent(
-            title=f"{found.label}: {about}" if about else found.label,
-            available=not found.withdrawn,
-            link=None,
-            ai_generated=True,
-            excerpt=found.excerpt or None,
+            title=title,
+            available=title is not None,
+            link=link,
+            ai_generated=kind is ReportTarget.QUESTION and target_id in self.ai_questions,
         )
-    else:
-        return ReportedContent(title=None, available=True, link=None)
-    link = f"/api/v1/{REMOVABLE[kind]}/{target_id}" if title else None
-    return ReportedContent(
-        title=title, available=title is not None, link=link, ai_generated=ai_generated
-    )
 
 
-def _channel_name(db: Session, channel_id: int | None) -> str | None:
-    if channel_id is None:
-        return None
-    summary = channels.describe_channel(db, channel_id)
-    return summary.name if summary else None
-
-
-def _item(db: Session, item: moderation.QueueItem, names: _Names) -> dict:
+def _item(item: moderation.QueueItem, lookup: _Lookup) -> dict:
     return {
         "target_type": item.target_type,
         "target_id": item.target_id,
         "channel_id": item.channel_id,
-        "channel_name": _channel_name(db, item.channel_id),
-        "content": _content(db, item.target_type, item.target_id),
+        "channel_name": lookup.channel_name(item.channel_id),
+        "content": lookup.content(item.target_type, item.target_id),
         "report_count": item.report_count,
         "reasons": list(item.reasons),
         "reports": [
             QueueReport(
                 report_id=r.id,
-                reporter=names(r.reporter_id),
+                reporter=lookup.person(r.reporter_id),
                 reason=r.reason,
                 details=r.details,
                 status=r.status,
@@ -217,22 +242,22 @@ def _moderated_report(db: Session, report_id: int, user: UserSummary) -> moderat
 
 def _detail(db: Session, report_id: int) -> ReportDetailResponse:
     report = moderation.get_report(db, report_id)
-    names = _Names(db)
     item = moderation.reports_on(db, report.target_type, report.target_id)
+    lookup = _Lookup(db, [item])
     entry = next(r for r in item.reports if r.id == report_id)
     history = moderation.actions_on(db, report.target_type, report.target_id)
     return ReportDetailResponse(
-        **_item(db, item, names),
+        **_item(item, lookup),
         report_id=report_id,
         status=entry.status,
-        resolved_by=names(entry.resolved_by),
+        resolved_by=lookup.person(entry.resolved_by),
         resolved_at=entry.resolved_at,
         resolution_note=entry.resolution_note,
         history=[
             ActionResponse(
                 id=a.id,
                 action=a.action,
-                actor=names(a.actor_id),
+                actor=lookup.person(a.actor_id),
                 report_id=a.report_id,
                 note=a.note,
                 at=a.created_at,
@@ -278,11 +303,9 @@ def report_queue(
                 status_code=status.HTTP_403_FORBIDDEN, detail=CANNOT_MODERATE_CHANNEL
             )
         scope = [channel_id]
-    names = _Names(db)
-    return [
-        QueueItemResponse(**_item(db, item, names))
-        for item in moderation.report_queue(db, channel_ids=scope)
-    ]
+    items = moderation.report_queue(db, channel_ids=scope)
+    lookup = _Lookup(db, items)
+    return [QueueItemResponse(**_item(item, lookup)) for item in items]
 
 
 @router.get("/reports/mine", response_model=list[MyReportResponse])
