@@ -398,3 +398,8 @@ legend { font-weight: 600; padding: 0 4px; }
 .links { list-style: none; margin: 0; padding: 0; }
 .links li { padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 .links li:first-child { border-top: none; }
+
+/* NFR-06: AI content in the moderation queue. */
+.badge.ai-generated { background: var(--info-bg); color: var(--text); margin-left: 4px; }
+.ai-excerpt { margin: 6px 0; padding: 6px 10px; border-left: 3px solid var(--border); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-report input { width: auto; flex: 1; min-width: 10em; }
