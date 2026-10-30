@@ -96,6 +96,7 @@ def create_user(
 
 
 def get_user(db: Session, user_id: int) -> UserSummary | None:
+    """Return the account's summary, or None if no user has that id."""
     user = db.get(User, user_id)
     return _summary(user) if user else None
 
@@ -109,6 +110,7 @@ def get_users(db: Session, user_ids: Collection[int]) -> dict[int, UserSummary]:
 
 
 def get_user_by_email(db: Session, email: str) -> UserSummary | None:
+    """Return the summary of the account with this email (case-insensitive), or None."""
     user = db.scalar(select(User).where(User.email == email.strip().lower()))
     return _summary(user) if user else None
 
@@ -123,6 +125,7 @@ def get_users_by_username(db: Session, usernames: Collection[str]) -> dict[str, 
 
 
 def set_suspended(db: Session, user_id: int, suspended: bool) -> None:
+    """Suspend or reinstate an account; raises LookupError for an unknown user."""
     user = db.get(User, user_id)
     if user is None:
         raise LookupError(f"user {user_id} not found")
@@ -184,6 +187,7 @@ def authenticate(db: Session, identifier: str, password: str) -> UserSummary | N
 
 
 def get_account(db: Session, user_id: int) -> AccountDetails | None:
+    """Return the account's details, or None if no user has that id."""
     user = db.get(User, user_id)
     return _details(user) if user else None
 
@@ -194,6 +198,7 @@ def list_accounts(db: Session) -> list[AccountDetails]:
 
 
 def count_accounts(db: Session) -> int:
+    """Return the number of accounts, counted in the database."""
     return db.scalar(select(func.count(User.id))) or 0
 
 
@@ -260,6 +265,7 @@ def _profile(db: Session, user: User) -> ProfileDetails:
 
 
 def get_profile(db: Session, user_id: int) -> ProfileDetails | None:
+    """Return the user's profile, or None if no user has that id."""
     user = db.get(User, user_id)
     return _profile(db, user) if user else None
 
@@ -331,6 +337,7 @@ def set_profile_picture(db: Session, user_id: int, data: bytes) -> ProfileDetail
 
 
 def remove_profile_picture(db: Session, user_id: int) -> ProfileDetails:
+    """Delete the user's profile picture if any and return the updated profile."""
     user = db.get(User, user_id)
     if user is None:
         raise LookupError(f"user {user_id} not found")
@@ -342,6 +349,7 @@ def remove_profile_picture(db: Session, user_id: int) -> ProfileDetails:
 
 
 def get_profile_picture(db: Session, user_id: int) -> ProfilePictureData | None:
+    """Return the stored profile picture bytes and type, or None if there is none."""
     picture = db.get(ProfilePicture, user_id)
     if picture is None:
         return None

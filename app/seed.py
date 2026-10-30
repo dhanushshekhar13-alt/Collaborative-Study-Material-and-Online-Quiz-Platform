@@ -15,8 +15,8 @@ import secrets
 
 from sqlalchemy.orm import Session
 
-import app.models  # noqa: F401  (register every table)
 from app.core.database import SessionLocal
+from app.models import load_models
 from app.modules.accounts import service as accounts
 from app.modules.accounts.models import Role
 from app.modules.channels import service as channels
@@ -29,6 +29,8 @@ from app.modules.questions import service as questions
 from app.modules.questions.models import Difficulty, QuestionType
 from app.modules.quizzes import service as quizzes
 from app.modules.reputation import service as reputation
+
+load_models()  # the seed writes to every module's tables
 
 SEED_USERS = {
     Role.STUDENT: ("student@example.com", "Sample Student"),

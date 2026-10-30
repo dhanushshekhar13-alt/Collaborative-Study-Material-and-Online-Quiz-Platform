@@ -25,8 +25,8 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
-import app.models  # noqa: F401  (register every table)
 from app.core.security import hash_password
+from app.models import load_models
 from app.modules.accounts.models import Role, User
 from app.modules.analytics.models import PerformanceAttempt, PerformanceTopic
 from app.modules.channels.models import Channel, ChannelMembership, ChannelType, MemberRole
@@ -49,6 +49,8 @@ from app.modules.quizzes.models import (
     QuizStatus,
 )
 from app.modules.reputation.models import ReputationEvent
+
+load_models()  # the seed writes to every module's tables
 
 SUBJECTS = {
     "Operating Systems": ["CPU Scheduling", "Paging", "Deadlocks", "File Systems"],

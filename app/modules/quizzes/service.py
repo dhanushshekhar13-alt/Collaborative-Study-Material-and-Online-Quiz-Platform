@@ -97,6 +97,7 @@ def submit_attempt(db: Session, attempt_id: int, responses: dict[int, str]) -> A
 
 
 def get_attempt_result(db: Session, attempt_id: int) -> AttemptResult:
+    """Return an attempt's score summary; raises LookupError if unknown."""
     a = db.get(QuizAttempt, attempt_id)
     if a is None:
         raise LookupError(f"attempt {attempt_id} not found")
@@ -341,6 +342,7 @@ def count_created_by(db: Session, user_id: int) -> int:
 
 
 def recent_created_by(db: Session, user_id: int, limit: int = 10) -> list[QuizContribution]:
+    """Return the user's latest published quizzes, newest first."""
     rows = db.scalars(
         select(Quiz)
         .where(Quiz.creator_id == user_id, Quiz.status == QuizStatus.PUBLISHED)

@@ -114,6 +114,7 @@ def create_channel(
 
 
 def set_approval(db: Session, channel_id: int, status: ApprovalStatus) -> None:
+    """Set an authorized channel's approval status; raises LookupError if unknown."""
     channel = db.get(Channel, channel_id)
     if channel is None:
         raise LookupError(f"channel {channel_id} not found")
@@ -121,6 +122,7 @@ def set_approval(db: Session, channel_id: int, status: ApprovalStatus) -> None:
 
 
 def get_channel(db: Session, channel_id: int) -> ChannelSummary | None:
+    """Return the channel's summary, or None if no channel has that id."""
     channel = db.get(Channel, channel_id)
     return _summary(channel) if channel else None
 
@@ -128,6 +130,7 @@ def get_channel(db: Session, channel_id: int) -> ChannelSummary | None:
 def add_member(
     db: Session, channel_id: int, user_id: int, role: MemberRole = MemberRole.MEMBER
 ) -> None:
+    """Add the user to the channel with ``role``; does nothing if already a member."""
     if member_role(db, channel_id, user_id) is None:
         db.add(ChannelMembership(channel_id=channel_id, user_id=user_id, role=role))
         db.flush()
@@ -167,6 +170,7 @@ def member_role(db: Session, channel_id: int, user_id: int) -> MemberRole | None
 
 
 def is_member(db: Session, channel_id: int, user_id: int) -> bool:
+    """Return whether the user belongs to the channel in any role."""
     return member_role(db, channel_id, user_id) is not None
 
 
@@ -254,6 +258,7 @@ def can_manage_members(role: MemberRole | None) -> bool:
 
 
 def can_remove(actor_role: MemberRole | None, target_role: MemberRole) -> bool:
+    """Return whether a member in ``actor_role`` may remove one in ``target_role``."""
     return actor_role is not None and target_role in _REMOVABLE_BY[actor_role]
 
 
@@ -369,6 +374,7 @@ def create_post(db: Session, channel_id: int, author_id: int, body: str) -> Post
 
 
 def get_post(db: Session, channel_id: int, post_id: int) -> PostSummary | None:
+    """Return the post if it belongs to the channel, otherwise None."""
     post = db.get(ChannelPost, post_id)
     return _post(post) if post is not None and post.channel_id == channel_id else None
 
@@ -401,6 +407,7 @@ def edit_post(db: Session, post_id: int, body: str) -> PostSummary:
 
 
 def delete_post(db: Session, post_id: int) -> None:
+    """Delete the post if it exists."""
     post = db.get(ChannelPost, post_id)
     if post is not None:
         db.delete(post)

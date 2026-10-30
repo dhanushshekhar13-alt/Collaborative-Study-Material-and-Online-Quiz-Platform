@@ -49,6 +49,7 @@ All settings come from environment variables or a git-ignored `.env` file (see
 | `LLM_BASE_URL`, `LLM_TIMEOUT_SECONDS` | Optional endpoint override and provider timeout in seconds (default 30) |
 | `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
 | `MATERIAL_MAX_UPLOAD_MB` | Largest study material upload accepted, in MB (default 20) |
+| `ENABLED_MODULES` | Comma-separated modules this process serves (with the modules they call), for example `quizzes`; blank serves all (NFR-07) |
 | `QUIZ_UNANSWERED_RULE` | Submitting a quiz with unanswered questions: `warn` (confirm first, default) or `block` |
 | `SEED_USER_PASSWORD` | Optional password for the seeded test users (local only) |
 
@@ -82,6 +83,7 @@ app/
 alembic/       database migrations
 tests/         unit and API tests
 Documents/     SRS, use cases, test plan, security requirements
-docs/          architecture.md, api/openapi-v1.json (API contract), test execution log
-scripts/       deploy.sh, export_openapi.py
+docs/          architecture.md, modules.md (module interfaces), api/openapi-v1.json
+               (API contract), test execution log
+scripts/       deploy.sh, export_openapi.py, export_module_interfaces.py
 ```

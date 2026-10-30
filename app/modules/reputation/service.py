@@ -79,6 +79,7 @@ def award(
 
 
 def total(db: Session, user_id: int) -> int:
+    """Return the user's total reputation points."""
     return db.scalar(
         select(func.coalesce(func.sum(ReputationEvent.points), 0)).where(
             ReputationEvent.user_id == user_id
@@ -87,6 +88,7 @@ def total(db: Session, user_id: int) -> int:
 
 
 def ensure_badge(db: Session, code: str, name: str, description: str | None = None) -> int:
+    """Return the id of the badge with ``code``, creating it if needed."""
     badge = db.scalar(select(Badge).where(Badge.code == code))
     if badge is None:
         badge = Badge(code=code, name=name, description=description)
@@ -96,6 +98,7 @@ def ensure_badge(db: Session, code: str, name: str, description: str | None = No
 
 
 def grant_badge(db: Session, user_id: int, badge_id: int) -> None:
+    """Award the badge to the user; does nothing if they already hold it."""
     exists = db.scalar(
         select(UserBadge.id).where(UserBadge.user_id == user_id, UserBadge.badge_id == badge_id)
     )

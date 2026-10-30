@@ -18,12 +18,12 @@ matrix, alongside their feature-level tests in ``test_admin.py``,
 """
 
 import base64
+import importlib
 import json
 import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import select
@@ -159,7 +159,7 @@ def role_guarded_routes() -> list[tuple[str, str, frozenset[Role]]]:
                 return nested
         return None
 
-    routers = [v for v in vars(main_module).values() if isinstance(v, APIRouter)]
+    routers = [importlib.import_module(path).router for _, path in main_module.MODULE_ROUTERS]
     for router in routers:
         for route in router.routes:
             roles = admitted(route.dependant)

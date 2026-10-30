@@ -194,12 +194,46 @@ A new feature domain is a new module; nothing existing has to be redesigned:
    row to the module table above. The dependency graph has no cycles
    (`test_NFR_05_module_dependencies_form_layers_a_new_module_can_sit_on`), so a new
    module can sit on top of any existing service without that module changing.
-3. Mount the router in `app/main.py` under `/api/v1` and regenerate the contract.
+3. Add its routers to `MODULE_ROUTERS` in `app/main.py` (mounted under `/api/v1`)
+   and regenerate the contract and `docs/modules.md`.
 4. Add a migration for its tables and an index on each foreign key.
 
 Modules that need to react to another module's activity subscribe to its events
 (`app/core/events.py`) instead of the other module calling them, as notifications and
 analytics do.
+
+## Maintainability (NFR-07)
+
+Channels, chat, quizzes, the question bank (`questions`), analytics and the LLM
+services (`llm`) are separate modules, each with its own tables, service and routes.
+Three things let one of them change and deploy without touching the others:
+
+- **One-way dependencies.** A module only calls the services listed for it in
+  `ALLOWED_DEPENDENCIES`. Nothing quizzes or questions may call reaches chat,
+  analytics or llm, so a chat release can never require an edit to quiz scoring.
+- **Selectable modules.** `app/main.py` is the only place that knows every module: it
+  lists each module's routers in `MODULE_ROUTERS` and imports them only when that
+  module is served. `ENABLED_MODULES` (comma-separated, blank for all) picks what a
+  process serves; each named module brings the modules it may call
+  (`required_modules`). For example `ENABLED_MODULES=quizzes` serves accounts,
+  channels, moderation, notifications, questions, quizzes and reputation, and chat,
+  analytics and llm code is never imported. `app.models` loads the tables of the served
+  modules only (every set a module brings holds the tables its tables reference);
+  Alembic and the seed scripts call `load_models()` for all of them, so there is still
+  one migration history and one schema. Web UI screens of a module that is not served
+  get 404 from the API.
+- **Documented interfaces.** [`docs/modules.md`](modules.md) lists each module's
+  tables, allowed callers and callees, events, routes and public service functions and
+  dataclasses. It is generated from the code by
+  `python scripts/export_module_interfaces.py`, and the build fails if it is out of
+  date, so an interface change shows up in review. Every public service function has a
+  docstring, and each module's `__init__.py` states the tables it owns.
+
+`tests/test_maintainability.py` checks all of this, including the issue's own
+check: it changes chat (schema and behaviour) in a copy of the project and confirms
+that chat's tests notice while quiz scoring's tests pass unedited; and it runs quiz
+scoring's tests with `ENABLED_MODULES=quizzes` while every unrelated module is made
+unimportable.
 
 ## Data model
 

@@ -46,9 +46,18 @@ class Settings(BaseSettings):
     # Comma-separated list of browser origins allowed to call the API.
     cors_origins: str = ""
 
+    # Feature modules this process serves (NFR-07), comma-separated, for example
+    # "quizzes,analytics". Each brings the modules it may call (ALLOWED_DEPENDENCIES in
+    # app/modules/__init__.py). Blank serves every module.
+    enabled_modules: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def enabled_module_list(self) -> list[str]:
+        return [name.strip() for name in self.enabled_modules.split(",") if name.strip()]
 
     @property
     def llm_enabled(self) -> bool:

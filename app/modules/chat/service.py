@@ -40,6 +40,7 @@ def post_channel_message(
     parent_id: int | None = None,
     shared_resource: tuple[SharedResourceType, int] | None = None,
 ) -> int:
+    """Store a channel message (optionally a reply or a shared resource); returns its id."""
     msg = ChannelMessage(channel_id=channel_id, sender_id=sender_id, body=body, parent_id=parent_id)
     if shared_resource:
         msg.shared_resource_type, msg.shared_resource_id = shared_resource
@@ -90,6 +91,7 @@ def _announce(db: Session, msg: ChannelMessage) -> None:
 
 
 def channel_history(db: Session, channel_id: int, limit: int = 50) -> list[MessageView]:
+    """Return the channel's visible messages, oldest first, up to ``limit``."""
     rows = db.scalars(
         select(ChannelMessage)
         .where(ChannelMessage.channel_id == channel_id, ChannelMessage.is_deleted.is_(False))
@@ -268,6 +270,7 @@ def send_direct_message(
     body: str,
     shared_resource: tuple[SharedResourceType, int] | None = None,
 ) -> int:
+    """Store a message in a conversation (optionally sharing a resource); returns its id."""
     msg = DirectMessage(conversation_id=conversation_id, sender_id=sender_id, body=body)
     if shared_resource:
         msg.shared_resource_type, msg.shared_resource_id = shared_resource
@@ -412,6 +415,7 @@ def blocks_involving(db: Session, user_id: int) -> tuple[set[int], set[int]]:
 
 
 def get_direct_message(db: Session, message_id: int) -> DirectMessageView | None:
+    """Return the direct message, or None if no message has that id."""
     m = db.get(DirectMessage, message_id)
     return _dm_view(m) if m else None
 

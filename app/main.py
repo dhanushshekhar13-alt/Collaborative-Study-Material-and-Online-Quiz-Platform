@@ -1,4 +1,7 @@
-from fastapi import FastAPI, Request
+import importlib
+from collections.abc import Iterable
+
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -6,27 +9,35 @@ from sqlalchemy.exc import OperationalError
 
 from app import __version__
 from app.core.config import settings
-from app.modules.accounts.router import router as accounts_router
-from app.modules.admin.router import router as admin_router
-from app.modules.analytics.router import router as analytics_router
-from app.modules.channels.router import router as channels_router
-from app.modules.chat.direct_router import router as direct_messages_router
-from app.modules.chat.router import router as chat_router
-from app.modules.llm.assistant_router import router as assistant_router
-from app.modules.llm.evaluation_router import router as evaluation_router
-from app.modules.llm.report_router import router as ai_report_router
-from app.modules.llm.router import router as llm_router
-from app.modules.materials.router import router as materials_router
-from app.modules.moderation_queue.router import router as moderation_router
-from app.modules.notifications.router import router as notifications_router
-from app.modules.profiles.router import router as profiles_router
-from app.modules.questions.router import router as questions_router
-from app.modules.quizzes.attempts_router import router as quiz_attempts_router
-from app.modules.quizzes.router import router as quizzes_router
-from app.modules.reputation.router import router as reputation_router
+from app.modules import ALLOWED_DEPENDENCIES, required_modules
 from app.web import mount_web
 
 API_PREFIX = "/api/v1"
+
+# The routers each feature module mounts under /api/v1, in contract order. They are
+# imported only when their module is served, so a process started with
+# ENABLED_MODULES=quizzes never loads chat's code (NFR-07). moderation has no routes of
+# its own; its queue and actions are served by moderation_queue.
+MODULE_ROUTERS: tuple[tuple[str, str], ...] = (
+    ("accounts", "app.modules.accounts.router"),
+    ("admin", "app.modules.admin.router"),
+    ("channels", "app.modules.channels.router"),
+    ("chat", "app.modules.chat.router"),
+    ("chat", "app.modules.chat.direct_router"),
+    ("materials", "app.modules.materials.router"),
+    ("moderation_queue", "app.modules.moderation_queue.router"),
+    ("notifications", "app.modules.notifications.router"),
+    ("profiles", "app.modules.profiles.router"),
+    ("questions", "app.modules.questions.router"),
+    ("quizzes", "app.modules.quizzes.router"),
+    ("quizzes", "app.modules.quizzes.attempts_router"),
+    ("llm", "app.modules.llm.router"),
+    ("llm", "app.modules.llm.evaluation_router"),
+    ("llm", "app.modules.llm.assistant_router"),
+    ("llm", "app.modules.llm.report_router"),
+    ("reputation", "app.modules.reputation.router"),
+    ("analytics", "app.modules.analytics.router"),
+)
 
 _PYDANTIC_PREFIX = "Value error, "
 
@@ -73,8 +84,18 @@ async def _temporary_failure(request: Request, exc: OperationalError) -> JSONRes
     return JSONResponse(status_code=503, content={"detail": TEMPORARY_FAILURE})
 
 
-def create_app() -> FastAPI:
+def served_modules(modules: Iterable[str] | None = None) -> set[str]:
+    """The modules a process serves: ``modules`` (or ``ENABLED_MODULES``) and their
+    dependencies, or every module when neither names any."""
+    wanted = list(modules or ()) or settings.enabled_module_list
+    return required_modules(wanted) if wanted else set(ALLOWED_DEPENDENCIES)
+
+
+def create_app(modules: Iterable[str] | None = None) -> FastAPI:
+    """Build the API serving ``modules`` (default ``ENABLED_MODULES``, blank for all)."""
+    served = served_modules(modules)
     app = FastAPI(title=settings.app_name, version=__version__)
+    app.state.modules = frozenset(served)
 
     if settings.cors_origin_list:
         app.add_middleware(
@@ -93,24 +114,10 @@ def create_app() -> FastAPI:
         """Return process health without exposing environment or database details."""
         return {"status": "ok", "version": __version__}
 
-    app.include_router(accounts_router, prefix=API_PREFIX)
-    app.include_router(admin_router, prefix=API_PREFIX)
-    app.include_router(channels_router, prefix=API_PREFIX)
-    app.include_router(chat_router, prefix=API_PREFIX)
-    app.include_router(direct_messages_router, prefix=API_PREFIX)
-    app.include_router(materials_router, prefix=API_PREFIX)
-    app.include_router(moderation_router, prefix=API_PREFIX)
-    app.include_router(notifications_router, prefix=API_PREFIX)
-    app.include_router(profiles_router, prefix=API_PREFIX)
-    app.include_router(questions_router, prefix=API_PREFIX)
-    app.include_router(quizzes_router, prefix=API_PREFIX)
-    app.include_router(quiz_attempts_router, prefix=API_PREFIX)
-    app.include_router(llm_router, prefix=API_PREFIX)
-    app.include_router(evaluation_router, prefix=API_PREFIX)
-    app.include_router(assistant_router, prefix=API_PREFIX)
-    app.include_router(ai_report_router, prefix=API_PREFIX)
-    app.include_router(reputation_router, prefix=API_PREFIX)
-    app.include_router(analytics_router, prefix=API_PREFIX)
+    for module, path in MODULE_ROUTERS:
+        if module in served:
+            router: APIRouter = importlib.import_module(path).router
+            app.include_router(router, prefix=API_PREFIX)
 
     mount_web(app)
 

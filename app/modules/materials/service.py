@@ -84,6 +84,7 @@ def create_material(
     description: str | None = None,
     is_official: bool = False,
 ) -> MaterialSummary:
+    """Store a study material's metadata and return its summary."""
     material = StudyMaterial(
         uploader_id=uploader_id,
         title=title,
@@ -103,6 +104,7 @@ def create_material(
 
 
 def get_material(db: Session, material_id: int) -> MaterialSummary | None:
+    """Return an active material's summary, or None if missing or removed."""
     m = db.get(StudyMaterial, material_id)
     return _summary(m) if m and m.status is ContentStatus.ACTIVE else None
 
@@ -122,6 +124,7 @@ def get_materials(db: Session, material_ids: Collection[int]) -> dict[int, Mater
 
 
 def set_removed(db: Session, material_id: int, removed: bool) -> None:
+    """Remove or restore a material (moderation); raises LookupError if unknown."""
     m = db.get(StudyMaterial, material_id)
     if m is None:
         raise LookupError(f"material {material_id} not found")
@@ -172,6 +175,7 @@ def count_uploaded_by(db: Session, user_id: int) -> int:
 
 
 def recent_uploaded_by(db: Session, user_id: int, limit: int = 10) -> list[MaterialContribution]:
+    """Return the user's latest active uploads, newest first."""
     rows = db.scalars(
         select(StudyMaterial)
         .where(StudyMaterial.uploader_id == user_id, StudyMaterial.status == ContentStatus.ACTIVE)
@@ -228,6 +232,7 @@ FILE_CONTENT_MESSAGE = "The file's contents do not match its type"
 
 
 def file_too_large_message(max_bytes: int) -> str:
+    """Return the user-facing message for a file over ``max_bytes``."""
     return f"File must be {max_bytes // (1024 * 1024)} MB or smaller"
 
 
@@ -337,6 +342,7 @@ class DamagedFileError(Exception):
 
 
 def checksum(data: bytes) -> str:
+    """Return the SHA-256 hex digest stored with an uploaded file (NFR-04)."""
     return hashlib.sha256(data).hexdigest()
 
 

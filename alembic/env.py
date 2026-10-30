@@ -2,10 +2,12 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-import app.models  # noqa: F401  (registers every module's tables on Base.metadata)
 from alembic import context
 from app.core.config import get_settings
 from app.core.database import Base
+from app.models import load_models
+
+load_models()  # autogenerate compares against every module's tables
 
 config = context.config
 database_url = get_settings().database_url

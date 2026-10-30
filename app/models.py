@@ -1,17 +1,30 @@
-"""Import every module's ORM models so ``Base.metadata`` is complete.
+"""Import the feature modules' ORM models so ``Base.metadata`` knows their tables.
 
-Alembic and the seed script import this module; each feature module registers its
-models here.
+Alembic and the seed script need every table and call ``load_models()``. Importing
+this module loads the tables of the modules this process serves (``ENABLED_MODULES``,
+blank for all), so a process serving quizzes alone never imports chat (NFR-07).
 """
 
-from app.modules.accounts import models as accounts  # noqa: F401
-from app.modules.analytics import models as analytics  # noqa: F401
-from app.modules.channels import models as channels  # noqa: F401
-from app.modules.chat import models as chat  # noqa: F401
-from app.modules.llm import models as llm  # noqa: F401
-from app.modules.materials import models as materials  # noqa: F401
-from app.modules.moderation import models as moderation  # noqa: F401
-from app.modules.notifications import models as notifications  # noqa: F401
-from app.modules.questions import models as questions  # noqa: F401
-from app.modules.quizzes import models as quizzes  # noqa: F401
-from app.modules.reputation import models as reputation  # noqa: F401
+import importlib
+from collections.abc import Iterable
+from pathlib import Path
+
+from app.core.config import settings
+from app.modules import ALLOWED_DEPENDENCIES, required_modules
+
+_MODULES_DIR = Path(__file__).resolve().parent / "modules"
+
+
+def load_models(modules: Iterable[str] | None = None) -> set[str]:
+    """Import the models of ``modules`` and the modules they may call (default: all).
+
+    Returns the modules whose tables are now registered on ``Base.metadata``.
+    """
+    selected = required_modules(modules) if modules else set(ALLOWED_DEPENDENCIES)
+    for name in sorted(selected):
+        if (_MODULES_DIR / name / "models.py").exists():
+            importlib.import_module(f"app.modules.{name}.models")
+    return selected
+
+
+load_models(settings.enabled_module_list)

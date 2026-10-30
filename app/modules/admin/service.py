@@ -220,6 +220,7 @@ class DashboardSummary:
 
 
 def dashboard(db: Session) -> DashboardSummary:
+    """Return the admin dashboard counts (users, suspensions, requests, reports, flags)."""
     # Counted in the database rather than by loading every account (NFR-05).
     return DashboardSummary(
         total_users=accounts.count_accounts(db),
