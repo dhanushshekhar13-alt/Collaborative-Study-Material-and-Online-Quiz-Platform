@@ -26,6 +26,7 @@ def is_enabled(db: Session, user_id: int, kind: NotificationKind) -> bool:
 
 
 def set_preference(db: Session, user_id: int, kind: NotificationKind, enabled: bool) -> None:
+    """Switch one notification category on or off for the user."""
     pref = db.scalar(
         select(NotificationPreference).where(
             NotificationPreference.user_id == user_id, NotificationPreference.kind == kind
@@ -58,6 +59,8 @@ def notify(
 
 @dataclass(frozen=True)
 class NotificationView:
+    """A notification as listed in the user's inbox."""
+
     id: int
     kind: NotificationKind
     title: str
@@ -82,6 +85,7 @@ def notifications_for(
 
 
 def unread_count(db: Session, user_id: int) -> int:
+    """How many of the user's notifications are unread."""
     return (
         db.scalar(
             select(func.count(Notification.id)).where(

@@ -82,6 +82,6 @@ app/
 alembic/       database migrations
 tests/         unit and API tests
 Documents/     SRS, use cases, test plan, security requirements
-docs/          architecture.md, api/openapi-v1.json (API contract), test execution log
-scripts/       deploy.sh, export_openapi.py
+docs/          architecture.md, module-interfaces.md, api/openapi-v1.json (API contract), test execution log
+scripts/       deploy.sh, export_openapi.py, export_interfaces.py, affected_modules.py
 ```

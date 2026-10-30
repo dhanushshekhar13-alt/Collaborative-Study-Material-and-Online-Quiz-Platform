@@ -29,6 +29,9 @@ from app.modules.accounts.models import ProfilePicture, Role, User
 
 @dataclass(frozen=True)
 class UserSummary:
+    """A user as other modules see them: identity, role and suspension, never
+    credentials."""
+
     id: int
     display_name: str
     role: Role
@@ -96,6 +99,7 @@ def create_user(
 
 
 def get_user(db: Session, user_id: int) -> UserSummary | None:
+    """The user with this id, or ``None``."""
     user = db.get(User, user_id)
     return _summary(user) if user else None
 
@@ -109,6 +113,7 @@ def get_users(db: Session, user_ids: Collection[int]) -> dict[int, UserSummary]:
 
 
 def get_user_by_email(db: Session, email: str) -> UserSummary | None:
+    """The user with this email (matched case-insensitively), or ``None``."""
     user = db.scalar(select(User).where(User.email == email.strip().lower()))
     return _summary(user) if user else None
 
@@ -123,6 +128,8 @@ def get_users_by_username(db: Session, usernames: Collection[str]) -> dict[str, 
 
 
 def set_suspended(db: Session, user_id: int, suspended: bool) -> None:
+    """Suspend or reinstate an account; raises ``LookupError`` if it does not exist.
+    Caller commits."""
     user = db.get(User, user_id)
     if user is None:
         raise LookupError(f"user {user_id} not found")
@@ -184,6 +191,7 @@ def authenticate(db: Session, identifier: str, password: str) -> UserSummary | N
 
 
 def get_account(db: Session, user_id: int) -> AccountDetails | None:
+    """The account's own details (email, profile fields), or ``None``."""
     user = db.get(User, user_id)
     return _details(user) if user else None
 
@@ -194,6 +202,7 @@ def list_accounts(db: Session) -> list[AccountDetails]:
 
 
 def count_accounts(db: Session) -> int:
+    """How many accounts exist, counted in the database."""
     return db.scalar(select(func.count(User.id))) or 0
 
 
@@ -230,6 +239,8 @@ class ProfileDetails:
 
 @dataclass(frozen=True)
 class ProfilePictureData:
+    """A stored profile picture's bytes, type and last change."""
+
     content_type: str
     data: bytes
     updated_at: datetime
@@ -260,6 +271,7 @@ def _profile(db: Session, user: User) -> ProfileDetails:
 
 
 def get_profile(db: Session, user_id: int) -> ProfileDetails | None:
+    """The user's public profile details, or ``None``."""
     user = db.get(User, user_id)
     return _profile(db, user) if user else None
 
@@ -331,6 +343,7 @@ def set_profile_picture(db: Session, user_id: int, data: bytes) -> ProfileDetail
 
 
 def remove_profile_picture(db: Session, user_id: int) -> ProfileDetails:
+    """Delete the user's profile picture (if any) and return the updated profile."""
     user = db.get(User, user_id)
     if user is None:
         raise LookupError(f"user {user_id} not found")
@@ -342,6 +355,7 @@ def remove_profile_picture(db: Session, user_id: int) -> ProfileDetails:
 
 
 def get_profile_picture(db: Session, user_id: int) -> ProfilePictureData | None:
+    """The user's profile picture, or ``None`` if they have none."""
     picture = db.get(ProfilePicture, user_id)
     if picture is None:
         return None

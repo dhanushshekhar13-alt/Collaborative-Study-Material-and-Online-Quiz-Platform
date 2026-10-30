@@ -891,3 +891,26 @@ Before the fixes, the same load test failed on `main`. The Quizzes page had a p9
 5.7 s (`GET /quizzes` ran 531 queries), and all page loads had a p95 of 4.4 s. A
 no-pause burst also exhausted the connection pool. No API or schema change:
 `docs/api/openapi-v1.json` is unchanged.
+
+## NFR-07 (#52) — Maintainability: modular components with independent deployability
+
+Automated in `tests/test_maintainability.py`. The issue's verification runs as
+`test_NFR_07_a_chat_change_needs_no_quiz_edit_and_quiz_tests_still_pass`: it changes
+the chat service on a copy of the repository (a new query and a changed default),
+checks that no file outside `app/modules/chat` was edited, and runs the quiz scoring
+tests (`test_quiz_attempts.py`, `test_quiz_history.py`, `test_descriptive_results.py`,
+`test_chat_activity_does_not_change_quiz_scores`) plus chat's own tests against the
+changed code. The NFR maps to no Test Plan case ID.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| — | Channels, chat, quizzes, question bank, analytics and LLM services are separate modules | `test_NFR_07_each_named_component_is_a_separate_module[channels/chat/quizzes/questions/analytics/llm]`, `test_NFR_07_every_table_is_owned_by_exactly_one_module`; `tests/test_module_boundaries.py` | Pass |
+| — | A change to one module deploys without changes to unrelated modules | `test_NFR_07_a_chat_change_needs_no_quiz_edit_and_quiz_tests_still_pass`, `test_NFR_07_quiz_scoring_is_out_of_reach_of_a_chat_change`, `test_NFR_07_quiz_scoring_runs_with_the_chat_module_absent`, `test_affected_modules_follow_callers_and_event_subscribers`, `test_the_event_map_is_read_from_the_code`; `tests/test_module_boundaries.py::test_quiz_scoring_does_not_depend_on_chat` | Pass |
+| — | Module interfaces are documented in the repo | `test_NFR_07_the_module_interface_reference_is_current` (`docs/module-interfaces.md`), `test_NFR_07_every_public_service_name_is_documented[*]`, `test_NFR_07_orm_models_are_never_part_of_an_interface`, `test_NFR_07_module_docstring_matches_its_tables_and_dependencies[*]`, `test_NFR_07_the_architecture_table_matches_the_code`, `test_NFR_07_every_module_has_a_readme[*]` | Pass |
+
+The new checks found documentation drift, and this PR fixes it. The docstrings for
+chat, llm and moderation_queue were missing dependencies added by S11.2 and NFR-06,
+and the docstrings for accounts and channels were missing tables.
+Moderation had no README. 77 public service names had no docstring. No route or
+schema changed; the new docstrings now appear as descriptions in
+`docs/api/openapi-v1.json`, which is regenerated.

@@ -22,6 +22,8 @@ from app.modules.chat.models import (
 
 @dataclass(frozen=True)
 class MessageView:
+    """A channel chat message, with its thread parent and any shared resource."""
+
     id: int
     sender_id: int
     body: str
@@ -40,6 +42,8 @@ def post_channel_message(
     parent_id: int | None = None,
     shared_resource: tuple[SharedResourceType, int] | None = None,
 ) -> int:
+    """Post a message (or thread reply) in a channel and announce it to subscribers;
+    returns its id."""
     msg = ChannelMessage(channel_id=channel_id, sender_id=sender_id, body=body, parent_id=parent_id)
     if shared_resource:
         msg.shared_resource_type, msg.shared_resource_id = shared_resource
@@ -90,6 +94,7 @@ def _announce(db: Session, msg: ChannelMessage) -> None:
 
 
 def channel_history(db: Session, channel_id: int, limit: int = 50) -> list[MessageView]:
+    """The channel's oldest ``limit`` messages that are not deleted, in order."""
     rows = db.scalars(
         select(ChannelMessage)
         .where(ChannelMessage.channel_id == channel_id, ChannelMessage.is_deleted.is_(False))
@@ -268,6 +273,7 @@ def send_direct_message(
     body: str,
     shared_resource: tuple[SharedResourceType, int] | None = None,
 ) -> int:
+    """Add a message (optionally sharing a resource) to a conversation; returns its id."""
     msg = DirectMessage(conversation_id=conversation_id, sender_id=sender_id, body=body)
     if shared_resource:
         msg.shared_resource_type, msg.shared_resource_id = shared_resource
@@ -283,6 +289,8 @@ def send_direct_message(
 
 @dataclass(frozen=True)
 class DirectMessageView:
+    """A direct message in a conversation, with any shared resource."""
+
     id: int
     conversation_id: int
     sender_id: int
@@ -412,6 +420,7 @@ def blocks_involving(db: Session, user_id: int) -> tuple[set[int], set[int]]:
 
 
 def get_direct_message(db: Session, message_id: int) -> DirectMessageView | None:
+    """The direct message with this id, or ``None``."""
     m = db.get(DirectMessage, message_id)
     return _dm_view(m) if m else None
 

@@ -24,6 +24,8 @@ from app.modules.reputation import service as reputation
 
 @dataclass(frozen=True)
 class QuestionView:
+    """A question's content and answer key, as scoring and quiz building use it."""
+
     id: int
     subject: str
     topic: str
@@ -146,6 +148,7 @@ def count_authored_by(db: Session, user_id: int) -> int:
 
 
 def recent_authored_by(db: Session, user_id: int, limit: int = 10) -> list[QuestionContribution]:
+    """The user's most recent published questions, newest first."""
     rows = db.scalars(
         select(Question)
         .where(Question.author_id == user_id, Question.status == QuestionStatus.PUBLISHED)

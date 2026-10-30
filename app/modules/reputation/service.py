@@ -79,6 +79,7 @@ def award(
 
 
 def total(db: Session, user_id: int) -> int:
+    """The user's reputation: the sum of their reputation events."""
     return db.scalar(
         select(func.coalesce(func.sum(ReputationEvent.points), 0)).where(
             ReputationEvent.user_id == user_id
@@ -87,6 +88,7 @@ def total(db: Session, user_id: int) -> int:
 
 
 def ensure_badge(db: Session, code: str, name: str, description: str | None = None) -> int:
+    """The id of the badge with ``code``, creating it if it does not exist."""
     badge = db.scalar(select(Badge).where(Badge.code == code))
     if badge is None:
         badge = Badge(code=code, name=name, description=description)
@@ -96,6 +98,7 @@ def ensure_badge(db: Session, code: str, name: str, description: str | None = No
 
 
 def grant_badge(db: Session, user_id: int, badge_id: int) -> None:
+    """Award a badge to the user once (granting again does nothing)."""
     exists = db.scalar(
         select(UserBadge.id).where(UserBadge.user_id == user_id, UserBadge.badge_id == badge_id)
     )
@@ -106,6 +109,8 @@ def grant_badge(db: Session, user_id: int, badge_id: int) -> None:
 
 @dataclass(frozen=True)
 class EarnedBadge:
+    """A badge a user holds and when they earned it."""
+
     code: str
     name: str
     description: str | None
@@ -218,6 +223,8 @@ def events_for(
 
 @dataclass(frozen=True)
 class LeaderboardEntry:
+    """One row of the reputation leaderboard."""
+
     rank: int
     user_id: int
     display_name: str

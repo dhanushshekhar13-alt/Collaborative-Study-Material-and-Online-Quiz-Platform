@@ -559,7 +559,7 @@ class PendingDescriptive:
 
 
 class NotSubmittedError(ValueError):
-    pass
+    """The attempt is still running, so its written answers cannot be evaluated yet."""
 
 
 def pending_descriptive(db: Session, attempt_id: int) -> list[PendingDescriptive]:

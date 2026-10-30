@@ -36,6 +36,8 @@ class MaterialFileInfo:
 
 @dataclass(frozen=True)
 class MaterialSummary:
+    """A study material's details and tags, and its file details if it has one."""
+
     id: int
     title: str
     subject: str
@@ -84,6 +86,7 @@ def create_material(
     description: str | None = None,
     is_official: bool = False,
 ) -> MaterialSummary:
+    """Add a study material; attach its file with ``attach_file``. Caller commits."""
     material = StudyMaterial(
         uploader_id=uploader_id,
         title=title,
@@ -103,6 +106,7 @@ def create_material(
 
 
 def get_material(db: Session, material_id: int) -> MaterialSummary | None:
+    """The active material with this id, or ``None`` (removed ones are hidden)."""
     m = db.get(StudyMaterial, material_id)
     return _summary(m) if m and m.status is ContentStatus.ACTIVE else None
 
@@ -122,6 +126,8 @@ def get_materials(db: Session, material_ids: Collection[int]) -> dict[int, Mater
 
 
 def set_removed(db: Session, material_id: int, removed: bool) -> None:
+    """Remove a material from the platform (or restore it); raises ``LookupError`` if
+    missing."""
     m = db.get(StudyMaterial, material_id)
     if m is None:
         raise LookupError(f"material {material_id} not found")
@@ -172,6 +178,7 @@ def count_uploaded_by(db: Session, user_id: int) -> int:
 
 
 def recent_uploaded_by(db: Session, user_id: int, limit: int = 10) -> list[MaterialContribution]:
+    """The user's most recent active uploads, newest first."""
     rows = db.scalars(
         select(StudyMaterial)
         .where(StudyMaterial.uploader_id == user_id, StudyMaterial.status == ContentStatus.ACTIVE)
@@ -228,6 +235,7 @@ FILE_CONTENT_MESSAGE = "The file's contents do not match its type"
 
 
 def file_too_large_message(max_bytes: int) -> str:
+    """The user-facing message for a file over ``max_bytes``."""
     return f"File must be {max_bytes // (1024 * 1024)} MB or smaller"
 
 
@@ -326,6 +334,8 @@ def describe_material(db: Session, material_id: int) -> MaterialSummary | None:
 
 @dataclass(frozen=True)
 class MaterialFileData:
+    """A material file's bytes with its name, type and stored checksum."""
+
     filename: str
     content_type: str
     data: bytes
@@ -337,6 +347,7 @@ class DamagedFileError(Exception):
 
 
 def checksum(data: bytes) -> str:
+    """The SHA-256 hex digest stored with every upload (NFR-04)."""
     return hashlib.sha256(data).hexdigest()
 
 
@@ -365,6 +376,8 @@ def get_material_file(db: Session, material_id: int) -> MaterialFileData | None:
 
 @dataclass(frozen=True)
 class MaterialPage:
+    """One page of search results and the total number of matches."""
+
     items: list[MaterialSummary]
     total: int
 
