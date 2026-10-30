@@ -5,7 +5,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError
 
 from app import __version__
+from app.core.concurrency import RequestLimit
 from app.core.config import settings
+from app.core.database import max_connections
 from app.modules.accounts.router import router as accounts_router
 from app.modules.admin.router import router as admin_router
 from app.modules.analytics.router import router as analytics_router
@@ -84,6 +86,9 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    # Outermost of the API's own layers: a waiting request holds no connection (NFR-01).
+    app.add_middleware(RequestLimit, limit=max_connections(), prefix=f"{API_PREFIX}/")
 
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(OperationalError, _temporary_failure)

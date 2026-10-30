@@ -833,3 +833,24 @@ everywhere.
 | — | Usable at phone width (no horizontal scroll at 375 px) | browser test, phone step on chat, messages, Ask AI, notifications, moderation and admin | Pass (local) |
 
 No API or schema change: `docs/api/openapi-v1.json` is unchanged.
+
+## NFR-01 (#46) — Performance: keep common operations inside response-time targets
+
+Executed 2026-10-30. The Test Plan has no NFR-01 case, so tests are named after the
+NFR. Targets, method and full results are in [`performance.md`](performance.md). The
+load test (`scripts/load_test.py`) drives 50 concurrent students through 14 page
+loads, 4 searches/filters and quiz submission, against SQLite and, in CI,
+PostgreSQL 16.
+
+| Test case | Acceptance criterion | Evidence | Result |
+| --- | --- | --- | --- |
+| — | Targets are written down as explicit numbers before testing begins | `test_NFR_01_targets_are_written_down_as_explicit_numbers` (2 s pages, 2 s search, 3 s quiz submission; p95; 50 users), `test_NFR_01_the_documented_targets_match_the_ones_tested` (`docs/performance.md`) | Pass |
+| — | Page loads, quiz submission and search or filter complete within the agreed target under normal load | `test_NFR_01_common_operations_stay_inside_their_targets_under_normal_load[sqlite]` and `[postgresql]`; `test_NFR_01_the_load_covers_dashboard_quiz_submission_and_material_search` | Pass |
+| — | No common operation regularly exceeds its target under normal load | The same load test checks the p95 of every operation, not only each category, and fails on any error response. `python -m scripts.load_test` (3 rounds, 2,850 operations): page load p95 0.67 s (SQLite) and 1.11 s (PostgreSQL), search 0.55 s and 0.99 s, quiz submission 1.16 s and 1.51 s | Pass |
+| — | A burst larger than the connection pool does not fail requests | `test_NFR_01_a_burst_larger_than_the_pool_is_served_without_errors`, `test_NFR_01_the_server_admits_one_request_per_database_connection`, `test_NFR_01_static_pages_are_not_held_back_by_the_api_limit` | Pass |
+| — | Percentile computed correctly | `test_NFR_01_p95_is_the_nearest_rank_percentile` | Pass |
+
+Before the fixes, the same load test failed on `main`. The Quizzes page had a p95 of
+5.7 s (`GET /quizzes` ran 531 queries), and all page loads had a p95 of 4.4 s. A
+no-pause burst also exhausted the connection pool. No API or schema change:
+`docs/api/openapi-v1.json` is unchanged.

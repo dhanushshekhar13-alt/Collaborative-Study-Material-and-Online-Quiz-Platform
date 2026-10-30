@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     app_name: str = "Collaborative Study Platform API"
     environment: str = "development"
     database_url: str = "sqlite:///./study_platform.db"
+    # Database connections per server process (NFR-01). The server admits at most
+    # pool size + overflow requests at once (``app.core.database.max_connections``),
+    # so a request never waits for a connection held by a request waiting for a thread.
+    database_pool_size: int = 10
+    database_max_overflow: int = 20
 
     # Authentication (used by the accounts module).
     auth_token_secret: SecretStr | None = None

@@ -263,6 +263,18 @@ def get_bank_question(
     return _bank(db, [q], viewer_id)[0] if q else None
 
 
+def get_bank_questions(
+    db: Session, question_ids: Collection[int], viewer_id: int | None = None
+) -> dict[int, BankQuestion]:
+    """``get_bank_question`` for several questions with one query per kind of data
+    (NFR-05); unknown ids are left out."""
+    ids = set(question_ids)
+    if not ids:
+        return {}
+    rows = list(db.scalars(select(Question).where(Question.id.in_(ids))))
+    return {item.question.id: item for item in _bank(db, rows, viewer_id)}
+
+
 def search_bank(
     db: Session,
     *,
