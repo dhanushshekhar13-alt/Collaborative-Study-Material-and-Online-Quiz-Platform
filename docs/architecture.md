@@ -201,6 +201,19 @@ Modules that need to react to another module's activity subscribe to its events
 (`app/core/events.py`) instead of the other module calling them, as notifications and
 analytics do.
 
+## Performance (NFR-01)
+
+Targets, the load test and its results are in [`performance.md`](performance.md).
+Two rules come out of it for every module:
+
+- **Lists load related rows in batches**, never one query per row. A page of 50 items
+  costs a fixed handful of queries (for example, `building._details` loads the
+  questions of every listed quiz with one batch from `questions.get_bank_questions`).
+- **The server admits at most one API request per database connection**
+  (`app/core/concurrency.py`, sized by `DATABASE_POOL_SIZE` + `DATABASE_MAX_OVERFLOW`,
+  kept under the 40-thread pool), so a burst queues at the door instead of deadlocking
+  the connection pool.
+
 ## Data model
 
 ```mermaid
