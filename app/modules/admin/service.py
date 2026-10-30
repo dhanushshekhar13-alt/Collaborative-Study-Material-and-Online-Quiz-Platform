@@ -37,15 +37,15 @@ class AdminActionError(Exception):
 
 
 class NotFound(AdminActionError):
-    pass
+    """The user or content an admin action names does not exist (404)."""
 
 
 class NotAllowed(AdminActionError):
-    pass
+    """The admin action is not permitted on this target (403)."""
 
 
 class Conflict(AdminActionError):
-    pass
+    """The target is already in the requested state (409)."""
 
 
 # --------------------------------------------------------------------------- #
@@ -114,6 +114,9 @@ def reinstate_user(
 
 @dataclass(frozen=True)
 class RemovedContent:
+    """The outcome of removing reported content: what was removed, the reports it closed,
+    whether the poster was told, and the audit entry."""
+
     target_type: ReportTarget
     target_id: int
     title: str
@@ -220,6 +223,8 @@ class DashboardSummary:
 
 
 def dashboard(db: Session) -> DashboardSummary:
+    """The admin dashboard counts: users, suspended users, pending channel requests, open
+    reports and flagged items."""
     # Counted in the database rather than by loading every account (NFR-05).
     return DashboardSummary(
         total_users=accounts.count_accounts(db),

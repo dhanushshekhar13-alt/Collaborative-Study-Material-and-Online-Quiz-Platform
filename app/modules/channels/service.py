@@ -20,6 +20,8 @@ from app.modules.channels.models import (
 
 @dataclass(frozen=True)
 class ChannelSummary:
+    """A channel as other modules see it: type, approval, subject and size."""
+
     id: int
     name: str
     channel_type: ChannelType
@@ -114,6 +116,8 @@ def create_channel(
 
 
 def set_approval(db: Session, channel_id: int, status: ApprovalStatus) -> None:
+    """Set an Authorized Channel's approval status; raises ``LookupError`` if missing.
+    Caller commits."""
     channel = db.get(Channel, channel_id)
     if channel is None:
         raise LookupError(f"channel {channel_id} not found")
@@ -121,6 +125,7 @@ def set_approval(db: Session, channel_id: int, status: ApprovalStatus) -> None:
 
 
 def get_channel(db: Session, channel_id: int) -> ChannelSummary | None:
+    """The channel with this id (in any approval state), or ``None``."""
     channel = db.get(Channel, channel_id)
     return _summary(channel) if channel else None
 
@@ -128,6 +133,7 @@ def get_channel(db: Session, channel_id: int) -> ChannelSummary | None:
 def add_member(
     db: Session, channel_id: int, user_id: int, role: MemberRole = MemberRole.MEMBER
 ) -> None:
+    """Add the user to the channel with ``role``; does nothing if already a member."""
     if member_role(db, channel_id, user_id) is None:
         db.add(ChannelMembership(channel_id=channel_id, user_id=user_id, role=role))
         db.flush()
@@ -167,6 +173,7 @@ def member_role(db: Session, channel_id: int, user_id: int) -> MemberRole | None
 
 
 def is_member(db: Session, channel_id: int, user_id: int) -> bool:
+    """Whether the user belongs to the channel."""
     return member_role(db, channel_id, user_id) is not None
 
 
@@ -234,6 +241,8 @@ def pending_requests(db: Session) -> list[ChannelSummary]:
 
 @dataclass(frozen=True)
 class MemberSummary:
+    """A channel member with their role and when they joined."""
+
     user_id: int
     role: MemberRole
     joined_at: datetime | None
@@ -254,6 +263,7 @@ def can_manage_members(role: MemberRole | None) -> bool:
 
 
 def can_remove(actor_role: MemberRole | None, target_role: MemberRole) -> bool:
+    """Whether a member with ``actor_role`` may remove one with ``target_role``."""
     return actor_role is not None and target_role in _REMOVABLE_BY[actor_role]
 
 
@@ -333,6 +343,8 @@ def manages_official_content(
 
 @dataclass(frozen=True)
 class PostSummary:
+    """A channel discussion post."""
+
     id: int
     channel_id: int
     author_id: int
@@ -369,6 +381,7 @@ def create_post(db: Session, channel_id: int, author_id: int, body: str) -> Post
 
 
 def get_post(db: Session, channel_id: int, post_id: int) -> PostSummary | None:
+    """The post if it exists and belongs to this channel, else ``None``."""
     post = db.get(ChannelPost, post_id)
     return _post(post) if post is not None and post.channel_id == channel_id else None
 
@@ -401,6 +414,7 @@ def edit_post(db: Session, post_id: int, body: str) -> PostSummary:
 
 
 def delete_post(db: Session, post_id: int) -> None:
+    """Delete a post (no-op if it is already gone)."""
     post = db.get(ChannelPost, post_id)
     if post is not None:
         db.delete(post)

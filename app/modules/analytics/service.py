@@ -47,6 +47,8 @@ EMPTY_MESSAGE = "No quiz attempts yet. Attempt a quiz to see your performance he
 
 
 class Standing(StrEnum):
+    """How a topic's accuracy compares with the strong and weak thresholds."""
+
     STRONG = "strong"
     DEVELOPING = "developing"
     WEAK = "weak"
@@ -54,6 +56,8 @@ class Standing(StrEnum):
 
 
 class Direction(StrEnum):
+    """Which way a score trend is heading."""
+
     IMPROVING = "improving"
     STEADY = "steady"
     DECLINING = "declining"
@@ -76,6 +80,8 @@ def _percent(score: float, possible: float) -> float | None:
 
 @dataclass(frozen=True)
 class TopicTotals:
+    """Stored score totals for one subject and topic."""
+
     subject: str
     topic: str
     attempts: int
@@ -89,6 +95,8 @@ class TopicTotals:
 
 @dataclass(frozen=True)
 class PerformanceSummary:
+    """A user's overall attempts and score totals."""
+
     attempts: int
     total_score: float
     total_possible: float
@@ -270,6 +278,8 @@ def rebuild_user(db: Session, user_id: int) -> None:
 
 @dataclass(frozen=True)
 class TopicPerformance:
+    """One topic's results with its accuracy and standing."""
+
     subject: str
     topic: str
     attempts: int
@@ -281,6 +291,8 @@ class TopicPerformance:
 
 @dataclass(frozen=True)
 class TrendPoint:
+    """One scored attempt on a trend line, with the running accuracy after it."""
+
     attempt_id: int
     quiz_id: int
     quiz_title: str
@@ -293,6 +305,8 @@ class TrendPoint:
 
 @dataclass(frozen=True)
 class Trend:
+    """Scores over time with the least-squares slope and its direction."""
+
     points: list[TrendPoint]
     slope: float | None
     direction: Direction
@@ -303,6 +317,8 @@ class Trend:
 
 @dataclass(frozen=True)
 class SubjectPerformance:
+    """One subject's totals, its topics and its trend."""
+
     subject: str
     attempts: int
     total_score: float
@@ -314,6 +330,9 @@ class SubjectPerformance:
 
 @dataclass(frozen=True)
 class Dashboard:
+    """Everything the performance dashboard shows (S12.1): totals, subjects, trend,
+    strengths, weak areas and the thresholds used."""
+
     attempts: int
     total_score: float
     total_possible: float

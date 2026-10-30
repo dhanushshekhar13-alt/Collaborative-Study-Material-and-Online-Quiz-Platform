@@ -27,6 +27,8 @@ def file_report(
     details: str | None = None,
     channel_id: int | None = None,
 ) -> int:
+    """Record an open report on any content (type plus id); returns its id. Caller
+    commits."""
     report = Report(
         reporter_id=reporter_id,
         target_type=target_type,
@@ -56,6 +58,7 @@ class ReportSummary:
 
 
 def get_report(db: Session, report_id: int) -> ReportSummary | None:
+    """The report with this id, or ``None``."""
     r = db.get(Report, report_id)
     if r is None:
         return None
@@ -87,6 +90,7 @@ def find_open_report(
 
 
 def open_reports(db: Session, channel_id: int | None = None) -> list[int]:
+    """Ids of open reports, oldest first, optionally in one channel."""
     stmt = select(Report.id).where(Report.status == ReportStatus.OPEN)
     if channel_id is not None:
         stmt = stmt.where(Report.channel_id == channel_id)
@@ -96,6 +100,7 @@ def open_reports(db: Session, channel_id: int | None = None) -> list[int]:
 def resolve_report(
     db: Session, report_id: int, *, moderator_id: int, dismissed: bool, note: str | None = None
 ) -> None:
+    """Close one report as resolved or dismissed by ``moderator_id``."""
     report = db.get(Report, report_id)
     if report is None:
         raise LookupError(f"report {report_id} not found")
@@ -114,6 +119,7 @@ def log_action(
     report_id: int | None = None,
     note: str | None = None,
 ) -> int:
+    """Write an entry to the moderation audit log; returns its id."""
     entry = ModerationAction(
         actor_id=actor_id,
         action=action,
@@ -332,6 +338,7 @@ def flagged_targets(db: Session, target_type: ReportTarget | None = None) -> lis
 
 
 def count_open_reports(db: Session) -> int:
+    """How many reports are still open."""
     return db.scalar(select(func.count(Report.id)).where(Report.status == ReportStatus.OPEN)) or 0
 
 

@@ -33,6 +33,8 @@ from app.modules.quizzes.models import (
 
 @dataclass(frozen=True)
 class AttemptResult:
+    """A scored attempt's totals."""
+
     attempt_id: int
     quiz_id: int
     user_id: int
@@ -97,6 +99,7 @@ def submit_attempt(db: Session, attempt_id: int, responses: dict[int, str]) -> A
 
 
 def get_attempt_result(db: Session, attempt_id: int) -> AttemptResult:
+    """The attempt's score totals; raises ``LookupError`` if it does not exist."""
     a = db.get(QuizAttempt, attempt_id)
     if a is None:
         raise LookupError(f"attempt {attempt_id} not found")
@@ -341,6 +344,7 @@ def count_created_by(db: Session, user_id: int) -> int:
 
 
 def recent_created_by(db: Session, user_id: int, limit: int = 10) -> list[QuizContribution]:
+    """The user's most recent published quizzes, newest first."""
     rows = db.scalars(
         select(Quiz)
         .where(Quiz.creator_id == user_id, Quiz.status == QuizStatus.PUBLISHED)

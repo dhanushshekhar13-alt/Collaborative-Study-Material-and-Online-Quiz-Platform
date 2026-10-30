@@ -22,6 +22,7 @@ from app.modules.questions import service as questions
 
 
 def is_enabled() -> bool:
+    """Whether an LLM provider is configured (``LLM_PROVIDER`` is not ``none``)."""
     return get_settings().llm_enabled
 
 
@@ -35,6 +36,7 @@ def record_request(
     subject: str | None = None,
     topic: str | None = None,
 ) -> int:
+    """Record an LLM request before it is sent, for the audit trail; returns its id."""
     req = LlmRequest(
         user_id=user_id,
         task=task,
@@ -51,6 +53,7 @@ def record_request(
 def complete_request(
     db: Session, request_id: int, *, output: dict[str, Any] | None = None, error: str | None = None
 ) -> None:
+    """Store a request's output, or its error (which marks it failed)."""
     req = db.get(LlmRequest, request_id)
     if req is None:
         raise LookupError(f"llm request {request_id} not found")
@@ -136,5 +139,6 @@ def set_withdrawn(db: Session, request_id: int, withdrawn: bool) -> None:
 
 
 def is_withdrawn(db: Session, request_id: int) -> bool:
+    """Whether a moderator withdrew this AI output after a report (NFR-06)."""
     req = db.get(LlmRequest, request_id)
     return bool(req is not None and req.withdrawn)

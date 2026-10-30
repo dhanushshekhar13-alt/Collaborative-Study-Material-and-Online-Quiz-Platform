@@ -1855,6 +1855,7 @@
         "type": "object"
       },
       "ContributionType": {
+        "description": "The kinds of content counted as a user's contributions.",
         "enum": [
           "material",
           "question",
@@ -2110,6 +2111,7 @@
         "type": "object"
       },
       "Direction": {
+        "description": "Which way a score trend is heading.",
         "enum": [
           "improving",
           "steady",
@@ -6486,6 +6488,7 @@
         "type": "string"
       },
       "Standing": {
+        "description": "How a topic's accuracy compares with the strong and weak thresholds.",
         "enum": [
           "strong",
           "developing",

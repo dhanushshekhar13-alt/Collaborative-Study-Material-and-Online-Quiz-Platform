@@ -21,6 +21,8 @@ RECENT_CONTRIBUTIONS = 10
 
 
 class ContributionType(StrEnum):
+    """The kinds of content counted as a user's contributions."""
+
     MATERIAL = "material"
     QUESTION = "question"
     QUIZ = "quiz"
@@ -28,6 +30,8 @@ class ContributionType(StrEnum):
 
 @dataclass(frozen=True)
 class Contribution:
+    """One recent contribution shown on a profile."""
+
     type: ContributionType
     id: int
     title: str
@@ -36,6 +40,9 @@ class Contribution:
 
 @dataclass(frozen=True)
 class Contributions:
+    """Counts of a user's published materials, questions and quizzes, and the latest
+    ones."""
+
     materials: int
     questions: int
     quizzes: int
@@ -48,6 +55,8 @@ class Contributions:
 
 @dataclass(frozen=True)
 class Profile:
+    """A user's profile page: account details, reputation, contributions and badges."""
+
     account: accounts.ProfileDetails
     reputation: int
     contributions: Contributions
