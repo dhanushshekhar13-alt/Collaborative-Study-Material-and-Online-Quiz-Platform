@@ -31,7 +31,11 @@
     direct_message: "Direct message",
     channel_message: "Chat message",
     channel_post: "Channel post",
+    ai_response: "AI response",
   };
+  // What a moderator can take off the platform from the queue (NFR-06: an upheld report
+  // on an AI response withdraws it).
+  const REMOVABLE = new Set(["material", "question", "ai_response"]);
   const label = (pairs, value) => (pairs.find(([v]) => v === value) || [value, value])[1];
   const POLL_MS = 5000;
 
@@ -566,6 +570,34 @@
     );
   };
 
+  // NFR-06: report an incorrect or inappropriate AI answer; it goes to moderation.
+  function aiReportControl(h, responseId, busy, alertBox, show) {
+    const open = h("button", { type: "button", class: "link report" }, "Report this AI answer");
+    const reason = h("select", { name: "reason" }, h("option", { value: "" }, "Select a reason"), REPORT_REASONS.map(([v, t]) => h("option", { value: v }, t)));
+    const details = h("input", { name: "details", maxlength: 2000, placeholder: "What is wrong? (optional)" });
+    const note = alertBox();
+    const submit = h("button", { type: "submit" }, "Submit report");
+    const form = h("form", { class: "report-form inline ai-report", hidden: true }, reason, details, submit, note);
+    open.addEventListener("click", () => {
+      form.hidden = !form.hidden;
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!reason.value) return show(note, "Select a reason for reporting this answer", "error");
+      busy(submit, async () => {
+        try {
+          const result = await API.post(`/ai/responses/${responseId}/reports`, { reason: reason.value, details: details.value.trim() || null });
+          show(note, result.message, "success"); // "Report submitted for moderation"
+          submit.hidden = true;
+          reason.disabled = details.disabled = true;
+        } catch (err) {
+          show(note, err.message, "error");
+        }
+      });
+    });
+    return h("div", { class: "row-actions" }, open, form);
+  }
+
   function answerCard(h, a, busy, go, alertBox, show) {
     if (a.kind === "explanation" && a.explanation) {
       return h(
@@ -575,6 +607,7 @@
         h("p", { class: "explanation-text" }, a.explanation.text),
         a.explanation.examples.length ? h("div", {}, h("h3", {}, "Examples"), h("ul", { class: "examples" }, a.explanation.examples.map((e) => h("li", {}, e)))) : null,
         h("p", { class: "muted" }, a.message),
+        aiReportControl(h, a.id, busy, alertBox, show),
       );
     }
     const q = a.quiz;
@@ -613,6 +646,7 @@
           ? h("a", { class: "button secondary", href: `#/ask/review/${q.generation_id}` }, "Review the generated questions")
           : null,
       ),
+      aiReportControl(h, a.id, busy, alertBox, show),
     );
   }
 
@@ -886,17 +920,19 @@
       const reportId = item.reports[0].report_id;
       const remove = h("button", { type: "button" }, "Remove Content");
       const dismiss = h("button", { type: "button", class: "secondary" }, "Dismiss");
-      const buttons = h("div", { class: "row-actions" }, item.content.available && (item.target_type === "material" || item.target_type === "question") ? remove : null, dismiss);
+      const isAi = item.target_type === "ai_response";
+      if (isAi) remove.textContent = "Withdraw AI response";
+      const buttons = h("div", { class: "row-actions" }, item.content.available && REMOVABLE.has(item.target_type) ? remove : null, dismiss);
       const done = (result, text) => {
         show(note, `${text} · Status: ${result.status}`, "success");
         buttons.remove();
         row.classList.add("closed");
       };
       remove.addEventListener("click", () => {
-        if (!window.confirm("Remove this content from the platform?")) return;
+        if (!window.confirm(isAi ? "Withdraw this AI response? Its quiz and review screen will close." : "Remove this content from the platform?")) return;
         busy(remove, async () => {
           try {
-            done(await API.post(`/moderation/reports/${reportId}/remove`, { confirm: true }), "Content removed");
+            done(await API.post(`/moderation/reports/${reportId}/remove`, { confirm: true }), isAi ? "AI response withdrawn" : "Content removed");
           } catch (err) {
             show(note, err.message, "error");
           }
@@ -919,7 +955,10 @@
         h("div", {},
           h("span", { class: "badge" }, TARGET_LABEL[item.target_type] || item.target_type), " ",
           href ? h("a", { href, class: "content-title" }, title) : h("strong", { class: "content-title" }, title),
-          item.content.available ? null : h("span", { class: "badge pending" }, "removed"),
+          item.content.ai_generated ? h("span", { class: "badge ai-generated" }, "AI-generated") : null,
+          item.content.available ? null : h("span", { class: "badge pending" }, isAi ? "withdrawn" : "removed"),
+          // An AI response is private to its requester, so it has no link: show what it said.
+          item.content.excerpt ? h("blockquote", { class: "ai-excerpt" }, item.content.excerpt) : null,
           h("p", { class: "muted" }, [item.channel_name, `${item.report_count} report${item.report_count === 1 ? "" : "s"}`, `first reported ${when(item.first_reported_at)}`].filter(Boolean).join(" · ")),
           h("ul", { class: "reporters" }, item.reports.map((r) => h("li", {}, h("strong", {}, r.reporter.name || "Unknown"), ` — ${label(REPORT_REASONS, r.reason)}`, r.details ? `: ${r.details}` : "", h("span", { class: "muted" }, ` · ${when(r.reported_at)}`)))),
           note),

@@ -565,7 +565,11 @@ def test_UI_2_acceptance_criteria_in_the_browser(live_app, browser, tmp_path):
     expect(page.get_by_role("heading", name="OS_Scheduling_Notes")).to_be_visible()
     page.click(".material-detail button:has-text('View')")
     expect(page.locator(".preview iframe.preview-frame")).to_have_count(1)
-    with page.expect_download() as download:
+    # Headless Chromium has no PDF viewer, so the preview iframe's own blob is handed
+    # to the download manager under a random name. That download can fire late, so wait
+    # for the one the Download button starts, not whichever comes first.
+    preview_src = page.locator(".preview iframe.preview-frame").get_attribute("src")
+    with page.expect_download(predicate=lambda d: d.url != preview_src) as download:
         page.click(".material-detail button:has-text('Download')")
     saved = tmp_path / "downloaded.pdf"
     download.value.save_as(saved)

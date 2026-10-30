@@ -914,3 +914,19 @@ and the docstrings for accounts and channels were missing tables.
 Moderation had no README. 77 public service names had no docstring. No route or
 schema changed; the new docstrings now appear as descriptions in
 `docs/api/openapi-v1.json`, which is regenerated.
+
+## Follow-up: AI reports in the web UI (NFR-06, UI-3) and the UI-2 download test
+
+NFR-06 added reporting and withdrawing AI output to the API. The web UI now supports
+both: Ask AI answers (explanations and topic quizzes) have **Report this AI answer**,
+and the moderation page shows reported AI responses with an **AI-generated** badge
+and an excerpt of what the AI said. A moderator can withdraw the response there. Both
+steps run in `tests/test_web_ui_community.py::test_UI_3_acceptance_criteria_in_the_browser`.
+
+`tests/test_web_ui.py::test_UI_2_acceptance_criteria_in_the_browser` sometimes failed
+because the downloaded file came back with a random name. The cause is that headless
+Chromium has no PDF viewer, so the PDF preview iframe hands its own blob to the
+download manager under a UUID name, and that download could arrive while the test was
+waiting for the Download button's download. A standalone Playwright script reproduced
+it. The test now waits for the download that is not the preview's, and still checks
+the exact file name. The app itself is unchanged.

@@ -203,6 +203,19 @@ def test_UI_3_acceptance_criteria_in_the_browser(live_app, browser, fake_llm):  
     expect(answer.locator(".explanation-text")).to_contain_text("B-Tree")
     expect(answer.locator(".examples li")).not_to_have_count(0)
 
+    # NFR-06: report the AI answer; without a reason it is stopped in the page.
+    answer.locator("button:has-text('Report this AI answer')").click()
+    answer.locator(".ai-report button:has-text('Submit report')").click()
+    expect(answer.locator(".ai-report .alert.error")).to_have_text(
+        "Select a reason for reporting this answer"
+    )
+    answer.locator(".ai-report select").select_option("incorrect")
+    answer.locator(".ai-report [name=details]").fill("The example is not a B-Tree")
+    answer.locator(".ai-report button:has-text('Submit report')").click()
+    expect(answer.locator(".ai-report .alert.success")).to_have_text(
+        "Report submitted for moderation"
+    )
+
     ask.locator("[name=query]").fill("Give me a quiz on Binary Search Trees")
     ask.locator("button:has-text('Submit')").click()
     offer = student.locator(".answer.quiz-offer")
@@ -269,6 +282,19 @@ def test_UI_3_acceptance_criteria_in_the_browser(live_app, browser, fake_llm):  
     expect(item.locator(".reporters")).to_contain_text("Sample Faculty — Inappropriate content")
     item.locator("button:has-text('Remove Content')").click()
     expect(item.locator(".alert.success")).to_contain_text("Content removed · Status: resolved")
+
+    # NFR-06: the reported AI answer is in the queue with what it said; withdraw it.
+    ai_item = admin.locator("li.report-item[data-target^='ai_response:']")
+    expect(ai_item.locator(".badge.ai-generated")).to_have_text("AI-generated")
+    expect(ai_item.locator(".content-title")).to_contain_text("AI explanation")
+    expect(ai_item.locator(".ai-excerpt")).to_contain_text("B-Tree")
+    expect(ai_item.locator(".reporters")).to_contain_text(
+        "Incorrect information: The example is not a B-Tree"
+    )
+    ai_item.locator("button:has-text('Withdraw AI response')").click()
+    expect(ai_item.locator(".alert.success")).to_contain_text(
+        "AI response withdrawn · Status: resolved"
+    )
 
     # ---- IT_28: a student opening the admin URL sees "Unauthorized" -------------
     outsider.goto(f"{base}/app/#/admin")
