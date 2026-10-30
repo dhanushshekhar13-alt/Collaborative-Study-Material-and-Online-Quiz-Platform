@@ -366,15 +366,17 @@ def list_quizzes(
 ) -> list[QuizSummaryResponse]:
     """Published quizzes in a channel's Quizzes tab (members only), the general list
     (no ``channel_id``), or with ``mine=true`` the caller's own drafts and quizzes."""
-    names: dict[int, str | None] = {}
     if mine:
         found = building.list_by_creator(db, user.id)
         if channel_id is not None:
             found = [q for q in found if q.channel_id == channel_id]
-        return [_summary(q, db, names) for q in found]
-    if channel_id is not None:
-        _member_channel(db, channel_id, user, QUIZZES_MEMBERS_ONLY)
-    return [_summary(q, db, names) for q in building.list_published(db, channel_id)]
+    else:
+        if channel_id is not None:
+            _member_channel(db, channel_id, user, QUIZZES_MEMBERS_ONLY)
+        found = building.list_published(db, channel_id)
+    creators = accounts.get_users(db, {q.creator_id for q in found})
+    names: dict[int, str | None] = {uid: u.display_name for uid, u in creators.items()}
+    return [_summary(q, db, names) for q in found]
 
 
 @router.get("/{quiz_id}", response_model=QuizResponse)

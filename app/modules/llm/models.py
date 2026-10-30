@@ -29,7 +29,9 @@ class LlmRequest(CreatedAtMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    channel_id: Mapped[int | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"))
+    channel_id: Mapped[int | None] = mapped_column(
+        ForeignKey("channels.id", ondelete="SET NULL"), index=True
+    )
     task: Mapped[LlmTask] = mapped_column(enum_column(LlmTask, "llm_task"))
     subject: Mapped[str | None] = mapped_column(String(100))
     topic: Mapped[str | None] = mapped_column(String(100))
@@ -56,11 +58,13 @@ class AdaptiveSession(CreatedAtMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"))
+    quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"), index=True)
     attempt_id: Mapped[int] = mapped_column(
         ForeignKey("quiz_attempts.id", ondelete="CASCADE"), unique=True
     )
-    channel_id: Mapped[int | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"))
+    channel_id: Mapped[int | None] = mapped_column(
+        ForeignKey("channels.id", ondelete="SET NULL"), index=True
+    )
     subject: Mapped[str] = mapped_column(String(100))
     topic: Mapped[str] = mapped_column(String(100))
     start_difficulty: Mapped[str] = mapped_column(String(16))

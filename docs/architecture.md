@@ -151,6 +151,56 @@ fails the build.
 running the real app mid-submission and mid-upload, injects transient failures, and
 reopens the database as a restarted server would.
 
+## Scalability (NFR-05)
+
+Performance has to hold as users and content grow. Three rules keep it that way, and
+`tests/test_scalability.py` checks each one against a seeded dataset at both ends of
+the tested range (`scripts/seed_scale.py`: factor 1 is 50 users, 500 materials and
+about 1,100 channel messages; factor 10 is 500 users, 5,000 materials, 11,000 channel
+messages, 10,000 direct messages, 10,000 notifications and 2,000 quiz attempts).
+
+- **Every hot path answers inside its target at both ends of the range.** The target
+  is NFR-01's 1 second (search and filter), applied to the dashboard, chat history,
+  quiz start and submit, the moderation queue and the other paths listed in the test.
+- **Queries per request do not grow with the data.** A list looks related rows up
+  with one batched query (`accounts.get_users`, `channels.describe_channels`,
+  `channels.member_roles`, `materials.get_materials`, `questions.get_question_owners`,
+  `chat.blocks_involving`), never one query per row. Long lists are paged (materials,
+  the question bank, chat and direct messages, notifications, reviews).
+- **Hot queries are answered from an index.** The test runs every hot path's queries
+  through SQLite's query planner and fails on a full table scan of a growing table;
+  the two intended scans (the leaderboard aggregate, the admin dashboard's account
+  counts) are listed with their reason. Every foreign key column is indexed too,
+  because PostgreSQL does not index them itself and joins and cascading deletes
+  follow them. Migration `0014` added the missing ones.
+
+To re-run the suite against a real database: `alembic upgrade head`, then
+`SEED_USER_PASSWORD=... python -m scripts.seed_scale --factor 10`, and drive the API
+as `scale_probe` (student) or `scale_admin`. Use a throwaway database, never production.
+
+Known limits: the admin user list (`GET /api/v1/admin/users`, `GET
+/api/v1/accounts/admin/users`) and a quiz list (`GET /api/v1/quizzes`) return every
+row in one response. Each is a fixed couple of queries at any size, so they pass the
+suite, but the payload grows with the number of accounts or quizzes; they need paging
+(and a matching UI change) before the platform holds tens of thousands of either.
+
+### Adding a domain
+
+A new feature domain is a new module; nothing existing has to be redesigned:
+
+1. Create `app/modules/<name>/` with `models.py` (its own tables), `service.py` (the
+   dataclass interface) and `router.py`, and register the models in `app/models.py`.
+2. Add `"<name>": {...}` to `ALLOWED_DEPENDENCIES` with the services it calls, and a
+   row to the module table above. The dependency graph has no cycles
+   (`test_NFR_05_module_dependencies_form_layers_a_new_module_can_sit_on`), so a new
+   module can sit on top of any existing service without that module changing.
+3. Mount the router in `app/main.py` under `/api/v1` and regenerate the contract.
+4. Add a migration for its tables and an index on each foreign key.
+
+Modules that need to react to another module's activity subscribe to its events
+(`app/core/events.py`) instead of the other module calling them, as notifications and
+analytics do.
+
 ## Performance (NFR-01)
 
 Targets, the load test and its results are in [`performance.md`](performance.md).

@@ -62,3 +62,11 @@ All under `/api/v1/moderation`, signed in.
   time, in the same transaction as the change; the closed reports also record
   `resolved_by` and `resolved_at`. Migration `0010` adds `dismiss_report` to the
   action type's CHECK constraint.
+
+## Scale (NFR-05)
+
+The queue grows with the platform, so it is built from a fixed number of queries
+whatever its length: the open reports (served by `ix_reports_status_created_at`), then
+reporters' names, channel names, material titles and question headlines in one batch
+each. "Every report on this item" and the item's history use `ix_reports_target` and
+`ix_moderation_actions_target` (migration `0014`).

@@ -12,6 +12,10 @@ always sets it, and those older accounts sign in with their email.
 
 Passwords are stored only as salted scrypt digests (`app.core.security`).
 
+Lists elsewhere name people through `get_users` (one query for many ids), and the
+admin dashboard counts accounts with `count_accounts` and `count_suspended_accounts`
+rather than loading them (NFR-05).
+
 S01.2 adds `profile_pictures` (migration `0003`): at most one picture per user, kept in
 the database (≤ 2 MB) so it survives redeploys without a file volume. Profile reads and
 edits go through `get_profile`, `update_profile`, `set_profile_picture`,

@@ -148,7 +148,9 @@ Load testing under concurrent users is NFR-01 (#46).
 `rate_material`, `set_helpful`, `list_reviews` (`MaterialReviewEntry`), and from
 S03.1 `update_material` and the `is_official` filter on `search_materials`.
 `MaterialSummary` gained optional fields (semester, uploader,
-file, ...) with defaults, so existing callers are unchanged.
+file, ...) with defaults, so existing callers are unchanged. NFR-05 adds
+`get_materials` (several active materials in one query, for lists such as the
+moderation queue); a search page looks its uploaders' names up in one batch.
 
 ## Dependencies
 

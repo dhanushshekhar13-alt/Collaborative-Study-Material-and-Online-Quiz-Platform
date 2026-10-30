@@ -13,7 +13,9 @@ both **FR-12**. Module rules are in [`docs/architecture.md`](../../../docs/archi
 | `recommendation_opens` | Which recommended items each user opened (S12.2, migration `0011`). |
 
 Both are derived from the quizzes module's attempts and can always be rebuilt from
-them (migration `0009`). Subject and topic come from the quiz the attempt was taken at.
+them (migration `0009`). Reconciling before the dashboard loads the user's whole ledger in one
+query, so a dashboard view costs the same few queries however many attempts the user
+has (NFR-05). Subject and topic come from the quiz the attempt was taken at.
 Accuracy is points earned over points possible, so a descriptive answer still awaiting
 evaluation counts 0 until it is scored, exactly as in Quiz History.
 

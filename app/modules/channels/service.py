@@ -1,5 +1,6 @@
 """Public interface of the channels module."""
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -37,14 +38,29 @@ class ChannelSummary:
 
 
 def _member_count(db: Session, channel_id: int) -> int:
-    return (
-        db.scalar(
-            select(func.count(ChannelMembership.id)).where(
-                ChannelMembership.channel_id == channel_id
-            )
-        )
-        or 0
+    return _member_counts(db, [channel_id]).get(channel_id, 0)
+
+
+def _member_counts(db: Session, channel_ids: Collection[int]) -> dict[int, int]:
+    """Member counts for several channels in one grouped query (NFR-05).
+
+    Lists of channels used to count each channel's members separately, so the number
+    of queries grew with the number of channels on the platform.
+    """
+    ids = set(channel_ids)
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(ChannelMembership.channel_id, func.count(ChannelMembership.id))
+        .where(ChannelMembership.channel_id.in_(ids))
+        .group_by(ChannelMembership.channel_id)
     )
+    return dict(rows.tuples().all())
+
+
+def _summaries(db: Session, channels: list[Channel]) -> list[ChannelSummary]:
+    counts = _member_counts(db, [c.id for c in channels])
+    return [_summary(c, counts.get(c.id, 0)) for c in channels]
 
 
 def _summary(c: Channel, member_count: int = 0) -> ChannelSummary:
@@ -117,6 +133,30 @@ def add_member(
         db.flush()
 
 
+def member_roles(db: Session, user_id: int, channel_ids: Collection[int]) -> dict[int, MemberRole]:
+    """The user's role in each of these channels they belong to, in one query (NFR-05)."""
+    ids = set(channel_ids)
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(ChannelMembership.channel_id, ChannelMembership.role).where(
+            ChannelMembership.user_id == user_id, ChannelMembership.channel_id.in_(ids)
+        )
+    )
+    return dict(rows.tuples().all())
+
+
+def describe_channels(db: Session, channel_ids: Collection[int]) -> dict[int, ChannelSummary]:
+    """Several channels with their member counts, keyed by id; unknown ids are left out."""
+    ids = set(channel_ids)
+    if not ids:
+        return {}
+    return {
+        s.id: s
+        for s in _summaries(db, list(db.scalars(select(Channel).where(Channel.id.in_(ids)))))
+    }
+
+
 def member_role(db: Session, channel_id: int, user_id: int) -> MemberRole | None:
     """The user's role in the channel, or ``None`` if they are not a member."""
     return db.scalar(
@@ -174,7 +214,7 @@ def list_channels(
         statement = statement.where(
             or_(Channel.approval_status == ApprovalStatus.APPROVED, Channel.created_by == viewer_id)
         )
-    return [_summary(c, _member_count(db, c.id)) for c in db.scalars(statement)]
+    return _summaries(db, list(db.scalars(statement)))
 
 
 def pending_requests(db: Session) -> list[ChannelSummary]:
@@ -184,7 +224,7 @@ def pending_requests(db: Session) -> list[ChannelSummary]:
         .where(Channel.approval_status == ApprovalStatus.PENDING)
         .order_by(Channel.created_at, Channel.id)
     )
-    return [_summary(c, _member_count(db, c.id)) for c in db.scalars(statement)]
+    return _summaries(db, list(db.scalars(statement)))
 
 
 # --------------------------------------------------------------------------- #
@@ -255,7 +295,9 @@ def channels_for_member(db: Session, user_id: int) -> list[tuple[ChannelSummary,
         .where(ChannelMembership.user_id == user_id)
         .order_by(Channel.name, Channel.id)
     )
-    return [(_summary(c, _member_count(db, c.id)), role) for c, role in rows]
+    pairs = rows.tuples().all()
+    summaries = _summaries(db, [c for c, _ in pairs])
+    return [(summary, role) for summary, (_, role) in zip(summaries, pairs, strict=True)]
 
 
 # --------------------------------------------------------------------------- #

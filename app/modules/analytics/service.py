@@ -239,11 +239,11 @@ def sync_user(db: Session, user_id: int) -> int:
     """Reconcile the user's stored figures with their raw attempts; returns rows fixed."""
     quizzes.close_expired_attempts(db, user_id)
     current = {a.attempt_id: a for a in quizzes.scored_attempts_for_user(db, user_id)}
-    ledger = set(
-        db.scalars(
-            select(PerformanceAttempt.attempt_id).where(PerformanceAttempt.user_id == user_id)
-        )
-    )
+    # Loading the whole ledger at once puts every row in the session, so ``_fold``'s
+    # lookups below need no query of their own: a dashboard view costs the same few
+    # queries however many attempts the user has (NFR-05).
+    rows = db.scalars(select(PerformanceAttempt).where(PerformanceAttempt.user_id == user_id)).all()
+    ledger = {row.attempt_id for row in rows}
     changed = 0
     for attempt_id in sorted(ledger | set(current)):
         changed += _fold(db, attempt_id, current.get(attempt_id))

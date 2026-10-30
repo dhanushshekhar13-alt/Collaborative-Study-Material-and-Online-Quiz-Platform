@@ -176,6 +176,22 @@ def get_question_owner(db: Session, question_id: int) -> QuestionOwner | None:
     )
 
 
+def get_question_owners(db: Session, question_ids: Collection[int]) -> dict[int, QuestionOwner]:
+    """``get_question_owner`` for several questions in one query (NFR-05)."""
+    ids = set(question_ids)
+    if not ids:
+        return {}
+    rows = db.scalars(
+        select(Question).where(Question.id.in_(ids), Question.status == QuestionStatus.PUBLISHED)
+    )
+    return {
+        q.id: QuestionOwner(
+            q.id, q.author_id, _headline(q.text), q.channel_id, q.source is QuestionSource.LLM
+        )
+        for q in rows
+    }
+
+
 def set_removed(db: Session, question_id: int, removed: bool) -> None:
     """Take a question off the platform (or put it back); it keeps its history."""
     q = db.get(Question, question_id)

@@ -349,13 +349,31 @@ def get_conversation(db: Session, conversation_id: int, user_id: int) -> Convers
 
 
 def conversations_for(db: Session, user_id: int) -> list[ConversationSummary]:
-    """The user's conversations, most recent activity first."""
-    ids = db.scalars(
-        select(ConversationParticipant.conversation_id).where(
-            ConversationParticipant.user_id == user_id
-        )
+    """The user's conversations, most recent activity first.
+
+    Three queries however many conversations the user has (NFR-05): their
+    conversations with every participant, then the last message of each.
+    """
+    mine = select(ConversationParticipant.conversation_id).where(
+        ConversationParticipant.user_id == user_id
     )
-    summaries = [s for s in (get_conversation(db, cid, user_id) for cid in ids) if s]
+    rows = db.execute(
+        select(Conversation, ConversationParticipant.user_id)
+        .join(ConversationParticipant, ConversationParticipant.conversation_id == Conversation.id)
+        .where(Conversation.id.in_(mine))
+        .order_by(Conversation.id, ConversationParticipant.user_id)
+    ).tuples()
+    conversations: dict[int, Conversation] = {}
+    participants: dict[int, list[int]] = {}
+    for conv, participant in rows:
+        conversations[conv.id] = conv
+        participants.setdefault(conv.id, []).append(participant)
+    last = _last_messages(db, list(conversations))
+    summaries = []
+    for cid, conv in conversations.items():
+        others = [p for p in participants[cid] if p != user_id]
+        other = others[0] if others else user_id
+        summaries.append(ConversationSummary(cid, other, conv.created_at, last.get(cid)))
 
     def activity(s: ConversationSummary) -> tuple[int, int]:
         # Message ids follow the order the database accepted them; a conversation
@@ -363,6 +381,34 @@ def conversations_for(db: Session, user_id: int) -> list[ConversationSummary]:
         return (s.last_message.id if s.last_message else 0, s.id)
 
     return sorted(summaries, key=activity, reverse=True)
+
+
+def _last_messages(db: Session, conversation_ids: list[int]) -> dict[int, DirectMessageView]:
+    if not conversation_ids:
+        return {}
+    newest = (
+        select(func.max(DirectMessage.id))
+        .where(DirectMessage.conversation_id.in_(conversation_ids))
+        .group_by(DirectMessage.conversation_id)
+    )
+    rows = db.scalars(select(DirectMessage).where(DirectMessage.id.in_(newest)))
+    return {m.conversation_id: _dm_view(m) for m in rows}
+
+
+def blocks_involving(db: Session, user_id: int) -> tuple[set[int], set[int]]:
+    """Who the user has blocked, and who has blocked them, in one query (NFR-05)."""
+    rows = db.execute(
+        select(UserBlock.blocker_id, UserBlock.blocked_id).where(
+            (UserBlock.blocker_id == user_id) | (UserBlock.blocked_id == user_id)
+        )
+    ).tuples()
+    blocked_by_me, blocked_me = set(), set()
+    for blocker, blocked in rows:
+        if blocker == user_id:
+            blocked_by_me.add(blocked)
+        else:
+            blocked_me.add(blocker)
+    return blocked_by_me, blocked_me
 
 
 def get_direct_message(db: Session, message_id: int) -> DirectMessageView | None:

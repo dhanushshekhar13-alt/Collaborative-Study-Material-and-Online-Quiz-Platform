@@ -117,7 +117,8 @@ def _responses(
     db: Session, channel_id: int, messages: list[service.MessageView], viewer: UserSummary
 ) -> list[MessageResponse]:
     """Responses for a page, with sender names and reply counts read once per page."""
-    names: dict[int, str | None] = {}
+    senders = accounts.get_users(db, {m.sender_id for m in messages})
+    names: dict[int, str | None] = {uid: u.display_name for uid, u in senders.items()}
     threads = service.thread_summaries(db, [m.id for m in messages if m.parent_id is None])
     return [_response(db, channel_id, m, names, viewer, threads) for m in messages]
 

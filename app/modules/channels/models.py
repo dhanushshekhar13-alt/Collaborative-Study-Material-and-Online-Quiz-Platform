@@ -40,7 +40,9 @@ class Channel(CreatedAtMixin, Base):
         enum_column(ChannelType, "channel_type"), default=ChannelType.NORMAL
     )
     approval_status: Mapped[ApprovalStatus] = mapped_column(
-        enum_column(ApprovalStatus, "channel_approval_status"), default=ApprovalStatus.APPROVED
+        enum_column(ApprovalStatus, "channel_approval_status"),
+        default=ApprovalStatus.APPROVED,
+        index=True,  # the admin's pending-request list (NFR-05)
     )
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
